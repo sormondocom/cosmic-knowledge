@@ -1,0 +1,11 @@
+[package]
+name = "cosmic_knowledge"
+version = "0.3.0"
+edition = "2021"
+
+[dependencies]
+colored = "2"
+rodio = "0.17"
+hound = "3.5"
+symphonia = { version = "0.5", features = ["mp3", "flac", "vorbis"] }
+ogg = "0.8"
