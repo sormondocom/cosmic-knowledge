@@ -6,16 +6,17 @@
 //!  - `build_enochian_translation_report` — letter-by-letter translation report
 //!  - `build_enochian_gematria_report`  — Enochian-only gematria report
 //!  - `strip_leading_emoji`             — emoji-strip for plain-text output
-//!  - `chrono_now`                      — lightweight UTC timestamp (no chrono dep)
+//!  - `chrono_now`                      — accurate UTC timestamp via chrono
 
 use std::fs;
 use std::io::{self, Write};
 use colored::*;
+use chrono::Utc;
 
 use crate::enochian::{enochian_lookup, enochian_substitute, aethyr_lookup, enochian_meaning, enochian_angelic_message};
 use crate::numerology::{
-    numerology, digital_root, meaning_of, angelic_message,
-    master_numbers_message, check_special_sequences, get_calculation_breakdown,
+    numerology, digital_root, meaning_of, isopsephy_meaning, abjad_meaning,
+    angelic_message, master_numbers_message, check_special_sequences, get_calculation_breakdown,
 };
 
 // ─── File export prompt ───────────────────────────────────────────────────────
@@ -43,7 +44,13 @@ pub fn prompt_and_export(suggested_stem: &str, content: &str) {
     }
 
     let raw = if choice.is_empty() { suggested_stem.to_string() } else { choice.to_string() };
-    let stem = raw.trim_end_matches(".txt");
+    // Sanitize: keep only alphanumerics, hyphens, underscores — prevents path traversal.
+    let stem: String = raw
+        .trim_end_matches(".txt")
+        .chars()
+        .filter(|&c| c.is_alphanumeric() || c == '_' || c == '-')
+        .collect();
+    let stem = if stem.is_empty() { suggested_stem.to_string() } else { stem };
     let path = format!("exports/{}.txt", stem);
 
     match fs::write(&path, content) {
@@ -75,7 +82,12 @@ pub fn build_numerology_report(word: &str, active_systems: &[&str]) -> String {
 
     for (system, (total, root)) in &results {
         let is_enochian = system.starts_with("Enochian");
-        let meaning     = if is_enochian { enochian_meaning(*root) } else { meaning_of(*root) };
+        let meaning = match &system[..] {
+            s if s.starts_with("Enochian") => enochian_meaning(*root),
+            "Greek Isopsephy"              => isopsephy_meaning(*root),
+            "Abjad"                        => abjad_meaning(*root),
+            _                              => meaning_of(*root),
+        };
         let breakdown   = get_calculation_breakdown(word, system);
 
         out.push_str(&format!("\n{:<20} total={:>5}  root={}\n", system, total, root));
@@ -237,23 +249,7 @@ pub fn strip_leading_emoji(s: &str) -> &str {
     s
 }
 
-/// Lightweight UTC timestamp — does not require the `chrono` crate.
-///
-/// Accuracy is approximate (365-day year, no leap-year correction) which is
-/// sufficient for report file headers.
+/// Return an accurate UTC timestamp string for report headers.
 pub fn chrono_now() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let secs = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-
-    let time_s       = secs % 86400;
-    let days         = secs / 86400;
-    let hours        = time_s / 3600;
-    let mins         = (time_s % 3600) / 60;
-    let secs2        = time_s % 60;
-    let year_approx  = 1970 + days / 365;
-
-    format!("{}-approx  {:02}:{:02}:{:02} UTC", year_approx, hours, mins, secs2)
+    Utc::now().format("%Y-%m-%d  %H:%M:%S UTC").to_string()
 }

@@ -6,8 +6,10 @@
 
 // ─── Module declarations ──────────────────────────────────────────────────────
 mod audio;
+mod cosmology;
 mod enochian;
 mod numerology;
+mod print;
 mod reports;
 mod ui;
 
@@ -27,13 +29,15 @@ use enochian::{
     enochian_substitute, show_aethyr_info, show_aethyr_table, show_enochian_table,
 };
 use numerology::{
-    angelic_message, check_special_sequences, digital_root, get_calculation_breakdown,
-    master_numbers_message, meaning_of, numerology,
+    abjad_meaning, angelic_message, check_special_sequences, digital_root,
+    get_calculation_breakdown, isopsephy_meaning, master_numbers_message, meaning_of, numerology,
 };
+use print::{print_numerology_report, export_pdf_report};
 use reports::{
     build_enochian_gematria_report, build_enochian_translation_report,
     build_numerology_report, prompt_and_export,
 };
+use cosmology::run_world_systems_session;
 use ui::{print_angel_banner, show_help, show_loading_screen, show_main_menu, MainMode};
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
@@ -96,6 +100,7 @@ fn main() {
         match show_main_menu() {
             MainMode::Numerology  => run_numerology_session(&audio_system),
             MainMode::Enochian    => run_enochian_session(),
+            MainMode::WorldSystems => run_world_systems_session(),
             MainMode::Frequencies => {
                 if audio_system.is_some() {
                     show_export_menu();
@@ -122,8 +127,9 @@ fn run_numerology_session(audio_system: &Option<AudioSystem>) {
     println!("{}", "╔══════════════════════════════════════════════════════════╗".bright_white());
     println!("{}", "║         🔢  GEMATRIA & NUMEROLOGY SESSION                ║".bold().bright_white());
     println!("{}", "╠══════════════════════════════════════════════════════════╣".bright_white());
-    println!("{}", "║  Systems: Hebrew · Pythagorean · Chaldean                ║".dimmed());
-    println!("{}", "║           Enochian Ordinal · Enochian G.D.               ║".dimmed());
+    println!("{}", "║  Hebrew · Pythagorean · Chaldean · Greek Isopsephy       ║".dimmed());
+    println!("{}", "║  Agrippan · Simple Ordinal · Reverse Ordinal · Abjad     ║".dimmed());
+    println!("{}", "║  Enochian Ordinal · Enochian G.D.                        ║".dimmed());
     println!("{}", "╚══════════════════════════════════════════════════════════╝".bright_white());
     println!();
 
@@ -181,7 +187,12 @@ fn run_numerology_session(audio_system: &Option<AudioSystem>) {
 
         for (system, (total, root)) in &results {
             let is_enochian = system.starts_with("Enochian");
-            let meaning     = if is_enochian { enochian_meaning(*root) } else { meaning_of(*root) };
+            let meaning = match *system {
+                s if s.starts_with("Enochian") => enochian_meaning(*root),
+                "Greek Isopsephy"              => isopsephy_meaning(*root),
+                "Abjad"                        => abjad_meaning(*root),
+                _                              => meaning_of(*root),
+            };
             let breakdown   = get_calculation_breakdown(&word, system);
 
             println!(
@@ -235,14 +246,23 @@ fn run_numerology_session(audio_system: &Option<AudioSystem>) {
 
         println!("{}", "  ─".repeat(23).dimmed());
 
-        print!("{}", "  ▸ Save this result to a file? (y/n): ".cyan());
+        print!("{}", "  ▸ Save (s), Print (p), PDF (d), or skip (Enter):".cyan());
         io::stdout().flush().unwrap_or(());
         let mut save_choice = String::new();
         if io::stdin().read_line(&mut save_choice).is_err() { continue; }
-        if save_choice.trim().eq_ignore_ascii_case("y") {
-            let report = build_numerology_report(&word, &active_systems);
-            let stem   = format!("numerology_{}", word.to_lowercase());
-            prompt_and_export(&stem, &report);
+        match save_choice.trim().to_lowercase().as_str() {
+            "s" | "save" | "y" | "yes" => {
+                let report = build_numerology_report(&word, &active_systems);
+                let stem   = format!("numerology_{}", word.to_lowercase());
+                prompt_and_export(&stem, &report);
+            }
+            "p" | "print" => {
+                print_numerology_report(&word, &active_systems);
+            }
+            "d" | "pdf" => {
+                export_pdf_report(&word, &active_systems);
+            }
+            _ => {}
         }
         println!();
     }
@@ -253,6 +273,11 @@ fn choose_numerology_systems() -> Vec<&'static str> {
         "Hebrew Gematria",
         "Pythagorean",
         "Chaldean",
+        "Greek Isopsephy",
+        "Agrippan",
+        "Simple Ordinal",
+        "Reverse Ordinal",
+        "Abjad",
         "Enochian Ordinal",
         "Enochian G.D.",
     ];
@@ -436,14 +461,26 @@ fn enochian_translate_word() {
     println!("  {}", format!("   {}", enochian_angelic_message(root)).italic().bright_yellow());
     println!();
 
-    print!("{}", "  ▸ Save this translation to a file? (y/n): ".cyan());
+    print!("{}", "  ▸ Save (s), Print (p), PDF (d), or skip (Enter):".cyan());
     io::stdout().flush().unwrap_or(());
     let mut save_choice = String::new();
     if io::stdin().read_line(&mut save_choice).is_err() { return; }
-    if save_choice.trim().eq_ignore_ascii_case("y") {
-        let report = build_enochian_translation_report(&word);
-        let stem   = format!("enochian_translation_{}", word.to_lowercase());
-        prompt_and_export(&stem, &report);
+    match save_choice.trim().to_lowercase().as_str() {
+        "s" | "save" | "y" | "yes" => {
+            let report = build_enochian_translation_report(&word);
+            let stem   = format!("enochian_translation_{}", word.to_lowercase());
+            prompt_and_export(&stem, &report);
+        }
+        "p" | "print" => {
+            // For Enochian translations, print the full numerology report over Enochian systems.
+            let enochian_systems = &["Enochian Ordinal", "Enochian G.D."];
+            print_numerology_report(&word, enochian_systems);
+        }
+        "d" | "pdf" => {
+            let enochian_systems = &["Enochian Ordinal", "Enochian G.D."];
+            export_pdf_report(&word, enochian_systems);
+        }
+        _ => {}
     }
 }
 

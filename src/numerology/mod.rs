@@ -1,21 +1,27 @@
-//! Numerology systems module.
+//! Numerology systems — letter-to-number mappings and interpretive functions.
 //!
-//! Contains:
-//!  - Five gematria/numerology letter-value systems
-//!  - `digital_root` reduction
-//!  - Root meanings, angelic messages, master-number detection
-//!  - Special sequence detection
-//!  - Per-system calculation breakdown strings
+//! Sub-modules (one per tradition):
+//!  - `hebrew`      — Hebrew Gematria (Mispar Hechrachi)
+//!  - `pythagorean` — Pythagorean / Western cyclical system
+//!  - `chaldean`    — Chaldean / Babylonian vibrational system
+//!  - `greek`       — Greek Isopsephy (Neoplatonic tradition)
+//!  - `agrippan`    — Agrippan / Barrett English extension
+//!  - `ordinal`     — Simple Ordinal and Reverse Ordinal
+//!  - `abjad`       — Arabic/Islamic Abjad numerals
+
+pub mod hebrew;
+pub mod pythagorean;
+pub mod chaldean;
+pub mod greek;
+pub mod agrippan;
+pub mod ordinal;
+pub mod abjad;
+
+pub use greek::isopsephy_meaning;
+pub use abjad::abjad_meaning;
 
 use std::collections::HashMap;
 use crate::enochian::{enochian_lookup, enochian_substitute};
-
-// ─── Internal helper ──────────────────────────────────────────────────────────
-
-/// Build a `HashMap<char, u32>` from a const array of pairs.
-pub fn hashmap_from<const N: usize>(entries: [(char, u32); N]) -> HashMap<char, u32> {
-    entries.into_iter().collect()
-}
 
 // ─── Core computation ─────────────────────────────────────────────────────────
 
@@ -27,37 +33,23 @@ pub fn digital_root(mut n: u32) -> u32 {
     n
 }
 
-/// Compute totals and digital roots for all five numerology systems.
+/// Compute totals and digital roots for all ten numerology systems.
 ///
-/// Returns a `Vec` of `(system_name, (total, root))` in a stable order:
-/// Hebrew Gematria, Pythagorean, Chaldean, Enochian Ordinal, Enochian G.D.
+/// Returns a `Vec` of `(system_name, (total, root))` in stable order:
+/// Hebrew Gematria, Pythagorean, Chaldean,
+/// Greek Isopsephy, Agrippan, Simple Ordinal, Reverse Ordinal, Abjad,
+/// Enochian Ordinal, Enochian G.D.
 pub fn numerology(word: &str) -> Vec<(&'static str, (u32, u32))> {
-    let hebrew = hashmap_from([
-        ('A',  1), ('B',  2), ('C',  3), ('D',  4), ('E',   5),
-        ('F',  6), ('G',  7), ('H',  8), ('I',  9), ('J',  10),
-        ('K', 20), ('L', 30), ('M', 40), ('N', 50), ('O',  60),
-        ('P', 70), ('Q', 80), ('R',100), ('S',200), ('T', 300),
-        ('U',400), ('V',500), ('W',600), ('X',700), ('Y', 800),
-        ('Z',900),
-    ]);
-
-    let pythagorean = hashmap_from([
-        ('A',1),('B',2),('C',3),('D',4),('E',5),('F',6),('G',7),('H',8),('I',9),
-        ('J',1),('K',2),('L',3),('M',4),('N',5),('O',6),('P',7),('Q',8),('R',9),
-        ('S',1),('T',2),('U',3),('V',4),('W',5),('X',6),('Y',7),('Z',8),
-    ]);
-
-    let chaldean = hashmap_from([
-        ('A',1),('B',2),('C',3),('D',4),('E',5),('F',8),('G',3),('H',5),('I',1),
-        ('J',1),('K',2),('L',3),('M',4),('N',5),('O',7),('P',8),('Q',1),('R',2),
-        ('S',3),('T',4),('U',6),('V',6),('W',6),('X',5),('Y',1),('Z',7),
-    ]);
-
-    // Standard map-based systems
+    // Standard map-based systems — shared static tables, no per-call allocation.
     let mut results: Vec<(&'static str, (u32, u32))> = [
-        ("Hebrew Gematria", &hebrew),
-        ("Pythagorean",     &pythagorean),
-        ("Chaldean",        &chaldean),
+        ("Hebrew Gematria", &*hebrew::MAP),
+        ("Pythagorean",     &*pythagorean::MAP),
+        ("Chaldean",        &*chaldean::MAP),
+        ("Greek Isopsephy", &*greek::MAP),
+        ("Agrippan",        &*agrippan::MAP),
+        ("Simple Ordinal",  &*ordinal::SIMPLE_MAP),
+        ("Reverse Ordinal", &*ordinal::REVERSE_MAP),
+        ("Abjad",           &*abjad::MAP),
     ]
     .iter()
     .map(|(name, map)| {
@@ -188,30 +180,15 @@ pub fn get_calculation_breakdown(word: &str, system_name: &str) -> String {
         return enochian_breakdown(word, |_, _, gd| gd);
     }
 
-    // Standard map-based systems — rebuild map locally (cheap for short words)
-    let hebrew = hashmap_from([
-        ('A',  1), ('B',  2), ('C',  3), ('D',  4), ('E',   5),
-        ('F',  6), ('G',  7), ('H',  8), ('I',  9), ('J',  10),
-        ('K', 20), ('L', 30), ('M', 40), ('N', 50), ('O',  60),
-        ('P', 70), ('Q', 80), ('R',100), ('S',200), ('T', 300),
-        ('U',400), ('V',500), ('W',600), ('X',700), ('Y', 800),
-        ('Z',900),
-    ]);
-    let pythagorean = hashmap_from([
-        ('A',1),('B',2),('C',3),('D',4),('E',5),('F',6),('G',7),('H',8),('I',9),
-        ('J',1),('K',2),('L',3),('M',4),('N',5),('O',6),('P',7),('Q',8),('R',9),
-        ('S',1),('T',2),('U',3),('V',4),('W',5),('X',6),('Y',7),('Z',8),
-    ]);
-    let chaldean = hashmap_from([
-        ('A',1),('B',2),('C',3),('D',4),('E',5),('F',8),('G',3),('H',5),('I',1),
-        ('J',1),('K',2),('L',3),('M',4),('N',5),('O',7),('P',8),('Q',1),('R',2),
-        ('S',3),('T',4),('U',6),('V',6),('W',6),('X',5),('Y',1),('Z',7),
-    ]);
-
-    let map = match system_name {
-        "Hebrew Gematria" => &hebrew,
-        "Pythagorean"     => &pythagorean,
-        "Chaldean"        => &chaldean,
+    let map: &HashMap<char, u32> = match system_name {
+        "Hebrew Gematria" => &hebrew::MAP,
+        "Pythagorean"     => &pythagorean::MAP,
+        "Chaldean"        => &chaldean::MAP,
+        "Greek Isopsephy" => &greek::MAP,
+        "Agrippan"        => &agrippan::MAP,
+        "Simple Ordinal"  => &ordinal::SIMPLE_MAP,
+        "Reverse Ordinal" => &ordinal::REVERSE_MAP,
+        "Abjad"           => &abjad::MAP,
         _                 => return String::new(),
     };
 
@@ -243,4 +220,192 @@ where
         })
         .collect();
     if parts.len() > 1 { parts.join(" + ") } else { String::new() }
+}
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── digital_root ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn digital_root_single_digits_unchanged() {
+        for n in 0..=9 {
+            assert_eq!(digital_root(n), n);
+        }
+    }
+
+    #[test]
+    fn digital_root_two_digits() {
+        assert_eq!(digital_root(10), 1);  // 1+0=1
+        assert_eq!(digital_root(19), 1);  // 1+9=10 → 1+0=1
+        assert_eq!(digital_root(29), 2);  // 2+9=11 → 1+1=2
+        assert_eq!(digital_root(99), 9);  // 9+9=18 → 1+8=9
+    }
+
+    #[test]
+    fn digital_root_three_digits() {
+        assert_eq!(digital_root(100), 1);
+        assert_eq!(digital_root(999), 9);
+        assert_eq!(digital_root(123), 6); // 1+2+3=6
+    }
+
+    #[test]
+    fn digital_root_master_numbers_reduce() {
+        // Master numbers are meaningful as totals, but digital_root still reduces them.
+        assert_eq!(digital_root(11), 2);
+        assert_eq!(digital_root(22), 4);
+        assert_eq!(digital_root(33), 6);
+    }
+
+    // ── numerology ────────────────────────────────────────────────────────────
+
+    #[test]
+    fn numerology_returns_ten_systems() {
+        let results = numerology("LOVE");
+        assert_eq!(results.len(), 10);
+        let names: Vec<&str> = results.iter().map(|(n, _)| *n).collect();
+        for expected in &[
+            "Hebrew Gematria", "Pythagorean", "Chaldean",
+            "Enochian Ordinal", "Enochian G.D.",
+            "Greek Isopsephy", "Agrippan", "Simple Ordinal",
+            "Reverse Ordinal", "Abjad",
+        ] {
+            assert!(names.contains(expected), "Missing system: {}", expected);
+        }
+    }
+
+    // ── new systems ───────────────────────────────────────────────────────────
+
+    #[test]
+    fn simple_ordinal_abc() {
+        // A=1, B=2, C=3 → total=6, root=6
+        let results = numerology("ABC");
+        let so = results.iter().find(|(n, _)| *n == "Simple Ordinal").unwrap();
+        assert_eq!(so.1.0, 6);
+        assert_eq!(so.1.1, 6);
+    }
+
+    #[test]
+    fn simple_ordinal_z_is_26() {
+        let results = numerology("Z");
+        let so = results.iter().find(|(n, _)| *n == "Simple Ordinal").unwrap();
+        assert_eq!(so.1.0, 26);
+    }
+
+    #[test]
+    fn reverse_ordinal_a_is_26() {
+        let results = numerology("A");
+        let ro = results.iter().find(|(n, _)| *n == "Reverse Ordinal").unwrap();
+        assert_eq!(ro.1.0, 26);
+    }
+
+    #[test]
+    fn reverse_ordinal_z_is_1() {
+        let results = numerology("Z");
+        let ro = results.iter().find(|(n, _)| *n == "Reverse Ordinal").unwrap();
+        assert_eq!(ro.1.0, 1);
+    }
+
+    #[test]
+    fn simple_and_reverse_ordinal_sum_to_27_per_letter() {
+        // For any single letter, simple + reverse = 27 (1+26, 2+25, ..., 26+1)
+        for c in 'A'..='Z' {
+            let word = c.to_string();
+            let r = numerology(&word);
+            let so = r.iter().find(|(n, _)| *n == "Simple Ordinal").unwrap().1.0;
+            let ro = r.iter().find(|(n, _)| *n == "Reverse Ordinal").unwrap().1.0;
+            assert_eq!(so + ro, 27, "Letter {} sums to {} not 27", c, so + ro);
+        }
+    }
+
+    #[test]
+    fn agrippan_a_through_i_matches_hebrew_one_through_nine() {
+        // A–I in Agrippan are 1–9, same as in Hebrew Gematria.
+        for (c, expected) in ('A'..='I').zip(1u32..=9) {
+            let results = numerology(&c.to_string());
+            let ag = results.iter().find(|(n, _)| *n == "Agrippan").unwrap().1.0;
+            assert_eq!(ag, expected, "Agrippan {} = {}, expected {}", c, ag, expected);
+        }
+    }
+
+    #[test]
+    fn isopsephy_o_is_70() {
+        // O → Omicron = 70 (not 60 as in Pythagorean mod-9)
+        let results = numerology("O");
+        let iso = results.iter().find(|(n, _)| *n == "Greek Isopsephy").unwrap();
+        assert_eq!(iso.1.0, 70);
+    }
+
+    #[test]
+    fn abjad_l_is_30() {
+        // L → Lam = 30
+        let results = numerology("L");
+        let ab = results.iter().find(|(n, _)| *n == "Abjad").unwrap();
+        assert_eq!(ab.1.0, 30);
+    }
+
+    #[test]
+    fn numerology_pythagorean_love() {
+        // L=3, O=6, V=4, E=5 → total=18 → root=9
+        let results = numerology("LOVE");
+        let py = results.iter().find(|(n, _)| *n == "Pythagorean").unwrap();
+        assert_eq!(py.1.0, 18);
+        assert_eq!(py.1.1, 9);
+    }
+
+    #[test]
+    fn numerology_hebrew_single_letter() {
+        // A=1 in Hebrew
+        let results = numerology("A");
+        let heb = results.iter().find(|(n, _)| *n == "Hebrew Gematria").unwrap();
+        assert_eq!(heb.1.0, 1);
+        assert_eq!(heb.1.1, 1);
+    }
+
+    #[test]
+    fn numerology_chaldean_known_values() {
+        // A=1, B=2, C=3 → total=6, root=6
+        let results = numerology("ABC");
+        let ch = results.iter().find(|(n, _)| *n == "Chaldean").unwrap();
+        assert_eq!(ch.1.0, 6);
+        assert_eq!(ch.1.1, 6);
+    }
+
+    // ── special sequences ─────────────────────────────────────────────────────
+
+    #[test]
+    fn check_special_sequences_repeating_ones() {
+        assert!(check_special_sequences(111).is_some());
+        assert!(check_special_sequences(1111).is_some());
+    }
+
+    #[test]
+    fn check_special_sequences_ascending() {
+        assert!(check_special_sequences(123).is_some());
+    }
+
+    #[test]
+    fn check_special_sequences_none_for_ordinary() {
+        assert!(check_special_sequences(42).is_none());
+        assert!(check_special_sequences(7).is_none());
+    }
+
+    // ── master numbers ────────────────────────────────────────────────────────
+
+    #[test]
+    fn master_numbers_all_recognised() {
+        for n in [11u32, 22, 33, 44, 55, 66, 77, 88, 99] {
+            assert!(master_numbers_message(n).is_some(), "Master number {} not recognised", n);
+        }
+    }
+
+    #[test]
+    fn master_numbers_non_master_returns_none() {
+        assert!(master_numbers_message(10).is_none());
+        assert!(master_numbers_message(23).is_none());
+        assert!(master_numbers_message(100).is_none());
+    }
 }

@@ -20,6 +20,7 @@ use crate::audio::SOLFEGGIO_FREQUENCIES;
 pub enum MainMode {
     Numerology,
     Enochian,
+    WorldSystems,
     Frequencies,
     Help,
     Quit,
@@ -45,6 +46,9 @@ pub fn show_main_menu() -> MainMode {
     println!("{}", "║                                                          ║".bright_yellow());
     println!("{}", "║   4.  ❓  Help & Reference                               ║".white());
     println!("{}", "║                                                          ║".bright_yellow());
+    println!("{}", "║   5.  🌏  World Cosmologies                              ║".bright_green());
+    println!("{}", "║          Chinese · African · Nine Star Ki · Ifá          ║".dimmed());
+    println!("{}", "║                                                          ║".bright_yellow());
     println!("{}", "║   0.  ✦  Exit                                            ║".dimmed());
     println!("{}", "║                                                          ║".bright_yellow());
     println!("{}", "╚══════════════════════════════════════════════════════════╝".bright_yellow());
@@ -60,8 +64,9 @@ pub fn show_main_menu() -> MainMode {
             "2"       => return MainMode::Enochian,
             "3"       => return MainMode::Frequencies,
             "4"       => return MainMode::Help,
+            "5"       => return MainMode::WorldSystems,
             "0" | ""  => return MainMode::Quit,
-            _         => println!("{}", "  Please enter 0–4.".yellow()),
+            _         => println!("{}", "  Please enter 0–5.".yellow()),
         }
     }
 }
@@ -85,7 +90,8 @@ pub fn print_angel_banner() {
     "#;
     println!("{}", angel.bright_white());
     println!("{}", "CELESTIAL NUMEROLOGY ANALYZER".bold().bright_yellow());
-    println!("{}", "Hebrew · Pythagorean · Chaldean · Enochian (John Dee)".italic().bright_blue());
+    println!("{}", "Hebrew · Pythagorean · Chaldean · Greek Isopsephy · Agrippan".italic().bright_blue());
+    println!("{}", "Simple Ordinal · Reverse Ordinal · Abjad · Enochian (John Dee)".italic().bright_blue());
     println!("{}", "──────────────────────────────────────────────────────────".dimmed());
 }
 
@@ -184,10 +190,8 @@ pub fn show_loading_screen() {
     println!("\n{}", "            Ready to decode the universe…".italic().bright_blue());
     thread::sleep(Duration::from_millis(1000));
 
-    for _ in 0..3 {
-        print!("\x1B[2J\x1B[H");
-        thread::sleep(Duration::from_millis(100));
-    }
+    // Single clear — avoids the visible flicker caused by rapid repeated clears.
+    print!("\x1B[2J\x1B[H");
     io::stdout().flush().unwrap_or(());
 }
 
@@ -212,9 +216,14 @@ pub fn show_help() {
     println!("{}", "  -h, --help              Show this help message".bright_white());
     println!();
     println!("{}", "NUMEROLOGICAL SYSTEMS:".bold());
-    println!("{}", "  Hebrew Gematria   — Traditional letter-values (Aleph=1 … Tav=400)".bright_white());
-    println!("{}", "  Pythagorean       — Western 1-9 cyclical mapping".bright_white());
-    println!("{}", "  Chaldean          — Ancient Babylonian vibrational system".bright_white());
+    println!("{}", "  Hebrew Gematria   — Traditional letter-values (A=1 … Z=900, Mispar Hechrachi)".bright_white());
+    println!("{}", "  Pythagorean       — Western 1-9 cyclical mapping (mod-9 of alphabet position)".bright_white());
+    println!("{}", "  Chaldean          — Ancient Babylonian vibrational system (9 sacred, unassigned)".bright_white());
+    println!("{}", "  Greek Isopsephy   — Classical Greek letter-number system (Neoplatonic tradition)".bright_white());
+    println!("{}", "  Agrippan          — Cornelius Agrippa/Francis Barrett Latin gematria (c.1531/1801)".bright_white());
+    println!("{}", "  Simple Ordinal    — Direct alphabetical position 1-26 (modern English Gematria)".bright_white());
+    println!("{}", "  Reverse Ordinal   — Mirror complement: Z=1 … A=26".bright_white());
+    println!("{}", "  Abjad             — Arabic/Islamic letter-number system (ḥisāb al-jumal)".bright_white());
     println!("{}", "  Enochian Ordinal  — John Dee's angelic alphabet, positional values 1-21".bright_white());
     println!("{}", "  Enochian G.D.     — Golden Dawn's Hebrew-mapped Enochian values".bright_white());
     println!();
@@ -229,6 +238,10 @@ pub fn show_help() {
     println!("{}", "  • Pure tones (mono) or Binaural beats (stereo)".bright_white());
     println!("{}", "  • Durations: 5, 10, or 30 minutes".bright_white());
     println!("{}", "  • Custom frequency combinations available".bright_white());
+    println!();
+    println!("{}", "WORLD COSMOLOGIES:".bold());
+    println!("{}", "  Chinese     — Nine Star Ki natal star, Wu Xing Five Elements, lucky/unlucky numbers".bright_white());
+    println!("{}", "  African     — Yoruba Ifá (16 Odù), Akan day-soul names, Kemetic sacred numbers".bright_white());
     println!();
     println!("{}", "Visit the interactive mode to analyze words and export personalized frequencies!".italic().bright_blue());
 }

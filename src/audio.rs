@@ -30,20 +30,24 @@ pub struct AudioSystem {
 // ─── Sine wave source ─────────────────────────────────────────────────────────
 
 /// Infinite iterator that yields single-channel `f32` PCM samples for a pure sine tone.
+///
+/// Uses a normalised phase accumulator (0.0..1.0) rather than a raw sample counter.
+/// This avoids precision loss over long runs (a u64 counter would eventually lose
+/// floating-point resolution; a fractional phase wraps cleanly every cycle).
 pub struct SineWave {
     pub frequency: f32,
     pub sample_rate: f32,
-    pub num_samples: usize,
+    /// Normalised phase in [0.0, 1.0).  Advances by `frequency / sample_rate` each sample.
+    pub phase: f64,
 }
 
 impl Iterator for SineWave {
     type Item = f32;
 
     fn next(&mut self) -> Option<f32> {
-        // Amplitude kept low (0.1) to protect hearing when speakers are loud
-        let sample = (2.0 * PI * self.frequency * self.num_samples as f32 / self.sample_rate).sin()
-            * 0.1;
-        self.num_samples += 1;
+        // Amplitude kept low (0.1) to protect hearing when speakers are loud.
+        let sample = (2.0 * std::f64::consts::PI * self.phase).sin() as f32 * 0.1;
+        self.phase = (self.phase + self.frequency as f64 / self.sample_rate as f64) % 1.0;
         Some(sample)
     }
 }
@@ -68,7 +72,7 @@ pub fn initialize_audio() -> Result<AudioSystem, Box<dyn std::error::Error>> {
 
 /// Begin playing a continuous sine tone at `frequency` Hz.
 pub fn start_ambient_frequency(system: &AudioSystem, frequency: f32) {
-    let wave = SineWave { frequency, sample_rate: 44100.0, num_samples: 0 };
+    let wave = SineWave { frequency, sample_rate: 44100.0, phase: 0.0 };
     if let Ok(sink) = system.sink.lock() {
         sink.append(wave);
         sink.play();
@@ -84,7 +88,7 @@ pub fn change_frequency(system: &AudioSystem, frequency: f32) {
         sink.stop();
     }
     thread::sleep(Duration::from_millis(100));
-    let wave = SineWave { frequency, sample_rate: 44100.0, num_samples: 0 };
+    let wave = SineWave { frequency, sample_rate: 44100.0, phase: 0.0 };
     if let Ok(sink) = system.sink.lock() {
         sink.append(wave);
         sink.play();
@@ -136,13 +140,16 @@ pub fn get_frequency_name(frequency: f32) -> &'static str {
 
 /// Write a WAV file to `exports/<filename>`.
 ///
-/// * `binaural = false` → mono pure tone (left only)
-/// * `binaural = true`  → stereo with right channel at `frequency + 6 Hz` (theta beat)
+/// * `binaural = false` → mono pure tone (left only); `beat_hz` is ignored.
+/// * `binaural = true`  → stereo with right channel at `frequency + beat_hz`.
+///
+/// The traditional theta-wave preset is 6 Hz; pass 6.0 when no specific beat is required.
 pub fn generate_audio_file(
     frequency: f32,
     duration_seconds: u32,
     filename: &str,
     binaural: bool,
+    beat_hz: f32,
 ) -> Result<(), Box<dyn std::error::Error>> {
     std::fs::create_dir_all("exports")?;
     let filepath = format!("exports/{}", filename);
@@ -160,8 +167,8 @@ pub fn generate_audio_file(
     for i in 0..total_samples {
         let t = i as f32 / sample_rate;
         if binaural {
-            let left  = (2.0 * PI * frequency         * t).sin();
-            let right = (2.0 * PI * (frequency + 6.0) * t).sin();
+            let left  = (2.0 * PI * frequency               * t).sin();
+            let right = (2.0 * PI * (frequency + beat_hz)   * t).sin();
             writer.write_sample((left  * 0.3 * i16::MAX as f32) as i16)?;
             writer.write_sample((right * 0.3 * i16::MAX as f32) as i16)?;
         } else {
@@ -200,12 +207,16 @@ pub fn generate_binaural_beat(
     for i in 0..total_samples {
         let t = i as f32 / sample_rate;
 
+        // Raised-cosine (Hann) envelope: smoother than linear, avoids click artefacts.
+        // envelope(t) = 0.5 * (1 − cos(π·t))  where t ∈ [0,1] → 0…1 fade-in
         let fade_factor = if i < fade_samples {
-            i as f32 / fade_samples as f32
+            let t = i as f32 / fade_samples as f32;
+            0.5 * (1.0 - (PI * t).cos())
         } else if i > total_samples - fade_samples {
-            (total_samples - i) as f32 / fade_samples as f32
+            let t = (total_samples - i) as f32 / fade_samples as f32;
+            0.5 * (1.0 - (PI * t).cos())
         } else {
-            1.0
+            1.0_f32
         };
 
         let left  = (2.0 * PI * base_freq               * t).sin();
@@ -259,7 +270,7 @@ pub fn export_frequency(frequency: f32, name: &str) {
     let filename = format!("{}Hz_{}{}.wav", frequency as u32, name, suffix);
     println!("\n{}", format!("🎶 Generating {} Hz frequency…", frequency).bright_magenta());
 
-    match generate_audio_file(frequency, duration, &filename, binaural) {
+    match generate_audio_file(frequency, duration, &filename, binaural, 6.0) {
         Ok(_) => {
             println!("{}", format!("✅ Successfully exported: {}", filename).bright_green());
             println!("{}", format!("   Duration: {} minutes", duration / 60).dimmed());
@@ -277,7 +288,7 @@ pub fn export_all_frequencies() {
         let filename = format!("{}Hz_{}_binaural_10min.wav", *freq as u32, name);
         print!("{}", format!("Generating {} Hz… ", freq).dimmed());
         io::stdout().flush().unwrap_or(());
-        match generate_audio_file(*freq, 600, &filename, true) {
+        match generate_audio_file(*freq, 600, &filename, true, 6.0) {
             Ok(_)  => { println!("{}", "✅".bright_green());  ok   += 1; }
             Err(_) => { println!("{}", "❌".bright_red());    fail += 1; }
         }
@@ -302,7 +313,7 @@ pub fn export_all_frequencies_cli() {
         let filename = format!("{}Hz_{}_binaural_10min.wav", *freq as u32, name);
         print!("{}", format!("🎶 Generating {} Hz ({})… ", freq, name.replace('_', " ")).bright_cyan());
         io::stdout().flush().unwrap_or(());
-        match generate_audio_file(*freq, 600, &filename, true) {
+        match generate_audio_file(*freq, 600, &filename, true, 6.0) {
             Ok(_)  => { println!("{}", "✅".bright_green()); ok   += 1; }
             Err(e) => { println!("{}", format!("❌ Error: {}", e).bright_red()); fail += 1; }
         }

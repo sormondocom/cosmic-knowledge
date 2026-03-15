@@ -1,49 +1,6 @@
-//! Enochian angelology module — John Dee / Edward Kelley (1582–1587)
-//!
-//! Contains:
-//!  - The Enochian alphabet with ordinal and Golden Dawn gematria values
-//!  - The 30 Aethyrs
-//!  - Lookup helpers
-//!  - Root-number meanings framed in Enochian cosmology
-//!  - Display routines for the alphabet and Aethyr tables
+//! The 30 Aethyrs — lookup table and display routines.
 
 use colored::*;
-
-// ─── Enochian alphabet ────────────────────────────────────────────────────────
-//
-// Each entry: (letter_name, english_chars_it_covers, ordinal_value, golden_dawn_value)
-//
-// Sources:
-//  • Dee's Loagaeth (Sloane MS 3189)
-//  • Laycock, "The Complete Enochian Dictionary" (2001)
-//  • Regardie / Schueler — Golden Dawn tradition (GD column)
-//
-// J, K, W have NO Enochian equivalent; they are substituted at call-site:
-//   J → I,  K → C,  W → V  (Elizabethan / scholarly consensus)
-pub const ENOCHIAN_LETTERS: &[(&str, &[char], u32, u32)] = &[
-    // name     chars          ordinal  GD/Hebrew-mapped
-    ("Un",    &['A'],         1,    1 ),  // Aleph  = 1
-    ("Pa",    &['B'],         2,    2 ),  // Beth   = 2
-    ("Veh",   &['C'],         3,    3 ),  // Gimel  = 3
-    ("Gal",   &['D'],         4,    4 ),  // Daleth = 4
-    ("Graph", &['E'],         5,    5 ),  // Heh    = 5
-    ("Or",    &['F'],         6,    6 ),  // Vav    = 6
-    ("Ged",   &['G'],         7,    3 ),  // Gimel  = 3 (GD: G maps to Gimel like C)
-    ("Na",    &['H'],         8,    8 ),  // Cheth  = 8
-    ("Gon",   &['I', 'Y'],    9,   10 ),  // Yod    = 10
-    ("Ur",    &['L'],        10,   30 ),  // Lamed  = 30
-    ("Tal",   &['M'],        11,   40 ),  // Mem    = 40
-    ("Drux",  &['N'],        12,   50 ),  // Nun    = 50
-    ("Med",   &['O'],        13,   70 ),  // Ayin   = 70
-    ("Mals",  &['P'],        14,   80 ),  // Peh    = 80
-    ("Ger",   &['Q'],        15,  100 ),  // Qoph   = 100
-    ("Don",   &['R'],        16,  200 ),  // Resh   = 200
-    ("Fam",   &['S'],        17,   60 ),  // Samech = 60
-    ("Gisg",  &['T'],        18,    9 ),  // Tet    = 9
-    ("Van",   &['U', 'V'],   19,    6 ),  // Vav    = 6
-    ("Pal",   &['X'],        20,   60 ),  // Samech = 60 (no direct Hebrew equiv.)
-    ("Ceph",  &['Z'],        21,    7 ),  // Zayin  = 7
-];
 
 // ─── The 30 Aethyrs ───────────────────────────────────────────────────────────
 //
@@ -82,69 +39,6 @@ pub const AETHYRS: &[(u32, &str, &str)] = &[
     ( 1, "LIL", "The highest Aethyr; LIL means 'night'; the limitless light beyond the first veil"),
 ];
 
-// ─── Letter helpers ───────────────────────────────────────────────────────────
-
-/// Substitute letters that have no Enochian glyph before lookup.
-///
-/// `J → I`,  `K → C`,  `W → V`  (Elizabethan / scholarly consensus)
-#[inline]
-pub fn enochian_substitute(c: char) -> char {
-    match c {
-        'J' => 'I',
-        'K' => 'C',
-        'W' => 'V',
-        other => other,
-    }
-}
-
-/// Return `(letter_name, ordinal_value, gd_value)` for an English character, or `None`.
-///
-/// The substitution table is applied automatically.
-pub fn enochian_lookup(c: char) -> Option<(&'static str, u32, u32)> {
-    let c = enochian_substitute(c);
-    ENOCHIAN_LETTERS.iter().find_map(|(name, chars, ord, gd)| {
-        if chars.contains(&c) {
-            Some((*name, *ord, *gd))
-        } else {
-            None
-        }
-    })
-}
-
-// ─── Interpretive functions ───────────────────────────────────────────────────
-
-/// Root-number meanings framed through John Dee's Enochian / angelic-call cosmology.
-pub fn enochian_meaning(root: u32) -> &'static str {
-    match root {
-        1 => "🜁 Un — The Primal Fire; the First Aethyr speaks; a new cycle of angelic emanation begins",
-        2 => "🜂 Pa — The Dual Watchtowers; balance between the elemental tablets; duality of creation",
-        3 => "🜃 Veh — The Trinitarian Call; Dee's Three Books of Mystery; mind, will, and word aligned",
-        4 => "🜄 Gal — The Four Watchtowers (Earth, Air, Fire, Water); the Great Table of the Universe",
-        5 => "⊕ Graph — The Fifth element, Spirit; the Tablet of Union (EXARP·HCOMA·NANTA·BITOM)",
-        6 => "✡ Or — Six-fold symmetry of the Sigillum Dei Aemeth; harmony of the celestial spheres",
-        7 => "☽ Ged — The Seven Heptarchic Kings; Dee's seven planetary governors of divine mystery",
-        8 => "♄ Na — The Eight Temples of Heptarchia Mystica; the infinite angels of the lower aethyrs",
-        9 => "☉ Gon — The 91 Governors across the 30 Aethyrs (91=7×13); completion of the divine plan",
-        _ => "🌌 Beyond the 30th Aethyr — TEX dissolves into the Limitless Light",
-    }
-}
-
-/// Enochian angelic call message, inspired by the 19 Enochian Keys.
-pub fn enochian_angelic_message(root: u32) -> &'static str {
-    match root {
-        1 => "MICMA — I reign over you, saith the God of Justice. The first call opens the gates of the celestial city.",
-        2 => "ADGT — The wings of the winds understand your voices of wonder. Two pillars sustain the heavens.",
-        3 => "MICAOLI — Behold, saith your God, I am a circle on whose hands stand Twelve Kingdoms. Three-fold is the light.",
-        4 => "OTHIL — I have set my feet in the South, and have looked about me, saying: are not the thunders of increase numbered 33?",
-        5 => "SAPAH — The mighty sounds have entered into the third angle, and are become as olives in the olive mount.",
-        6 => "GAHE — The spirits of the fourth angle are nine mighty in the firmament of waters; they frame the earth with 46 voices of creation.",
-        7 => "RAAS — The East is a house of virgins singing praises among the flames of first glory. Seek the seventh Aethyr.",
-        8 => "BAZMELO — The midday of the first is as the third heaven made of hyacinth pillars, 26 in number.",
-        9 => "TELOCH — A mighty guard of fire with two-edged swords of ice; the name of their God is Baligon. All is accomplished.",
-        _ => "OL SONF VORSG — I reign over you in power exalted above the firmaments of wrath. Enter into the silence.",
-    }
-}
-
 // ─── Aethyr lookup ────────────────────────────────────────────────────────────
 
 /// Map a gematria total to its resonant Aethyr.
@@ -161,37 +55,6 @@ pub fn aethyr_lookup(total: u32) -> (u32, &'static str, &'static str) {
 }
 
 // ─── Display routines ─────────────────────────────────────────────────────────
-
-/// Print the full Enochian alphabet table to stdout.
-pub fn show_enochian_table() {
-    println!();
-    println!("{}", "╔══════════════════════════════════════════════════════════════════════════╗".bright_yellow());
-    println!("{}", "║          📜 THE ENOCHIAN ALPHABET — John Dee / Edward Kelley (1582)      ║".bold().bright_yellow());
-    println!("{}", "║    Source: Sloane MS 3189 (Loagaeth) · Laycock, Complete Enochian Dict.  ║".dimmed());
-    println!("{}", "╠══════════════════════════════════════════════════════════════════════════╣".bright_yellow());
-    println!("{}",
-        format!("║  {:<6}  {:<8}  {:<10}  {:>8}  {:>10}  ║",
-            "#", "Name", "English", "Ordinal", "GD Value")
-        .bold().bright_white());
-    println!("{}", "╠══════════════════════════════════════════════════════════════════════════╣".bright_yellow());
-    for (i, (name, chars, ord, gd)) in ENOCHIAN_LETTERS.iter().enumerate() {
-        let eng: String = chars.iter().map(|c| c.to_string()).collect::<Vec<_>>().join("/");
-        println!("{}",
-            format!("║  {:<6}  {:<8}  {:<10}  {:>8}  {:>10}  ║",
-                format!("{:>2}.", i + 1), name, eng, ord, gd)
-            .bright_white());
-    }
-    println!("{}", "╠══════════════════════════════════════════════════════════════════════════╣".bright_yellow());
-    println!("{}", "║  Substitutions (no Enochian glyph):                                      ║".italic().dimmed());
-    println!("{}", "║    J → I (Gon, ord=9, GD=10)                                             ║".italic().dimmed());
-    println!("{}", "║    K → C (Veh, ord=3, GD= 3)                                             ║".italic().dimmed());
-    println!("{}", "║    W → V (Van, ord=19, GD= 6)                                            ║".italic().dimmed());
-    println!("{}", "║  Note: Dee's originals contain NO explicit gematria table.               ║".italic().dimmed());
-    println!("{}", "║  The Ordinal system (pos. 1-21) is most defensible; the GD values        ║".italic().dimmed());
-    println!("{}", "║  are a 19th-century Golden Dawn retrofitting (Mathers/Regardie).         ║".italic().dimmed());
-    println!("{}", "╚══════════════════════════════════════════════════════════════════════════╝".bright_yellow());
-    println!();
-}
 
 /// Print the table of all 30 Aethyrs to stdout.
 pub fn show_aethyr_table() {
@@ -271,5 +134,51 @@ pub fn show_aethyr_info(query: &str) {
             println!("{}", "╚══════════════════════════════════════════════╝".bright_cyan());
             println!();
         }
+    }
+}
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn aethyr_lookup_zero_returns_tex() {
+        let (num, name, _) = aethyr_lookup(0);
+        assert_eq!(num, 30);
+        assert_eq!(name, "TEX");
+    }
+
+    #[test]
+    fn aethyr_lookup_30_returns_tex() {
+        let (num, name, _) = aethyr_lookup(30);
+        assert_eq!(num, 30);
+        assert_eq!(name, "TEX");
+    }
+
+    #[test]
+    fn aethyr_lookup_1_returns_rii() {
+        // 1 % 30 = 1 → remainder 1 → Aethyr 30-1 = 29 (RII)
+        let (num, name, _) = aethyr_lookup(1);
+        assert_eq!(num, 29);
+        assert_eq!(name, "RII");
+    }
+
+    #[test]
+    fn aethyr_lookup_29_returns_lil() {
+        // 29 % 30 = 29 → Aethyr 30-29 = 1 (LIL)
+        let (num, name, _) = aethyr_lookup(29);
+        assert_eq!(num, 1);
+        assert_eq!(name, "LIL");
+    }
+
+    #[test]
+    fn aethyr_lookup_modulo_wraps_correctly() {
+        // 60 % 30 = 0 → TEX; 61 % 30 = 1 → RII
+        let (n60, _, _) = aethyr_lookup(60);
+        assert_eq!(n60, 30);
+        let (n61, _, _) = aethyr_lookup(61);
+        assert_eq!(n61, 29);
     }
 }
