@@ -1,11 +1,10 @@
-//! UI / display module — terminal rendering helpers that are pure presentation.
+//! Menu system — dynamic box-drawing menus and terminal display helpers.
 //!
-//! Contains:
-//!  - `MainMode` enum
-//!  - `show_main_menu` — top-level menu loop
-//!  - `print_angel_banner` — ASCII angel and title bar
-//!  - `show_loading_screen` — animated startup sequence
-//!  - `show_help` — usage reference
+//! Replaces `ui.rs`.  Contains:
+//!  - [`MenuItem`] / [`Menu`] — data-driven, 60-column box-drawing menus
+//!  - [`MainMode`] — top-level navigation enum
+//!  - [`show_main_menu`] — renders and reads the top-level menu
+//!  - [`print_angel_banner`], [`show_loading_screen`], [`show_help`]
 
 use std::io::{self, Write};
 use std::thread;
@@ -14,9 +13,132 @@ use colored::*;
 
 use crate::audio::SOLFEGGIO_FREQUENCIES;
 
-// ─── Main-menu enum ───────────────────────────────────────────────────────────
+// ─── Primitives ───────────────────────────────────────────────────────────────
 
-/// Top-level navigation choices.
+/// One selectable entry in a [`Menu`].
+pub struct MenuItem {
+    /// Key the user types to select this item (e.g. `"1"`, `"2"`).
+    pub key:   &'static str,
+    /// Emoji or symbol shown beside the label (assumed 2 display columns).
+    pub icon:  &'static str,
+    /// Primary label text (max ~47 chars; truncated if longer).
+    pub label: &'static str,
+    /// Dimmed sub-line hint below the label.  Empty string = no hint line.
+    pub hint:  &'static str,
+}
+
+/// A renderable 60-column box-drawing menu.
+///
+/// Call [`Menu::show_and_read`] to render the menu and return the user's
+/// trimmed input, or [`Menu::show`] just to print it.
+pub struct Menu {
+    /// Centred title in the header row.
+    pub title:        &'static str,
+    /// Colour applied to the box border lines.
+    pub border_color: MenuColor,
+    /// Selectable items rendered in order.
+    pub items:        &'static [MenuItem],
+    /// Key string for the back / exit footer entry.
+    pub back_key:     &'static str,
+    /// Label for the back / exit footer entry.
+    pub back_label:   &'static str,
+}
+
+/// Border colour variants for [`Menu`].
+#[allow(dead_code)]
+pub enum MenuColor {
+    Yellow,
+    Cyan,
+    White,
+    Magenta,
+    Green,
+}
+
+// Total display width of a menu line (border walls included).
+const LINE_W: usize = 60;
+// Inner display width between the two ║ walls.
+const INNER:  usize = LINE_W - 2; // 58
+
+impl Menu {
+    /// Print the menu to stdout.
+    pub fn show(&self) {
+        let b = |s: &str| -> ColoredString {
+            match self.border_color {
+                MenuColor::Yellow  => s.bright_yellow(),
+                MenuColor::Cyan    => s.bright_cyan(),
+                MenuColor::White   => s.bright_white(),
+                MenuColor::Magenta => s.bright_magenta(),
+                MenuColor::Green   => s.bright_green(),
+            }
+        };
+
+        let horiz = "═".repeat(INNER);
+        let empty = format!("║{}║", " ".repeat(INNER));
+
+        println!();
+        println!("{}", b(&format!("╔{}╗", horiz)));
+        println!("{}", b(&format!("║{}║", centre_pad(self.title, INNER))));
+        println!("{}", b(&format!("╠{}╣", horiz)));
+
+        for item in self.items {
+            println!("{}", b(&empty));
+            println!("{}", item_line(item.key, item.icon, item.label).bright_white());
+            if !item.hint.is_empty() {
+                println!("{}", hint_line(item.hint).dimmed());
+            }
+        }
+
+        println!("{}", b(&empty));
+        println!("{}", b(&format!("╠{}╣", horiz)));
+        println!("{}", item_line(self.back_key, "←", self.back_label).dimmed());
+        println!("{}", b(&empty));
+        println!("{}", b(&format!("╚{}╝", horiz)));
+        println!();
+    }
+
+    /// Print the menu and return the user's trimmed input.
+    pub fn show_and_read(&self) -> String {
+        self.show();
+        print!("{}", "▸ Enter choice: ".bold().cyan());
+        io::stdout().flush().unwrap_or(());
+        let mut buf = String::new();
+        io::stdin().read_line(&mut buf).unwrap_or(0);
+        buf.trim().to_string()
+    }
+}
+
+// ─── Line-building helpers ────────────────────────────────────────────────────
+
+/// Pad `text` symmetrically to exactly `width` Unicode chars (truncates if longer).
+fn centre_pad(text: &str, width: usize) -> String {
+    let len: usize = text.chars().count();
+    if len >= width {
+        return text.chars().take(width).collect();
+    }
+    let total = width - len;
+    let left  = total / 2;
+    let right = total - left;
+    format!("{}{}{}", " ".repeat(left), text, " ".repeat(right))
+}
+
+/// `║   KEY.  ICON  LABEL<padding>║`  — 60 display columns total.
+///
+/// Inner layout (display cols):
+/// 3(spaces) + 2(key+".") + 2(spaces) + 2(icon emoji) + 2(spaces) + 47(label) = 58
+fn item_line(key: &str, icon: &str, label: &str) -> String {
+    let label_truncated: String = label.chars().take(47).collect();
+    format!("║   {}.  {}  {:<47}║", key, icon, label_truncated)
+}
+
+/// `║          HINT<padding>║`  — 60 display columns total.
+fn hint_line(hint: &str) -> String {
+    let hint_truncated: String = hint.chars().take(48).collect();
+    format!("║          {:<48}║", hint_truncated)
+}
+
+// ─── Main menu ────────────────────────────────────────────────────────────────
+
+/// Top-level navigation choices returned by [`show_main_menu`].
 pub enum MainMode {
     Numerology,
     Enochian,
@@ -26,54 +148,45 @@ pub enum MainMode {
     Quit,
 }
 
-// ─── Main menu ────────────────────────────────────────────────────────────────
+static MAIN_ITEMS: &[MenuItem] = &[
+    MenuItem { key: "1", icon: "🔢", label: "Gematria & Numerology",
+               hint: "Analyze words across all ten systems" },
+    MenuItem { key: "2", icon: "📜", label: "Enochian Angelology",
+               hint: "Alphabet · Aethyrs · Translate · Keys" },
+    MenuItem { key: "3", icon: "🎵", label: "Sacred Frequencies & Export",
+               hint: "Binaural beats · Solfeggio · WAV export" },
+    MenuItem { key: "4", icon: "❓", label: "Help & Reference",
+               hint: "" },
+    MenuItem { key: "5", icon: "🌏", label: "World Cosmologies",
+               hint: "Chinese · African · Nine Star Ki · Ifa" },
+];
+
+static MAIN_MENU: Menu = Menu {
+    title:        "✦  CHOOSE YOUR PATH  ✦",
+    border_color: MenuColor::Yellow,
+    items:        MAIN_ITEMS,
+    back_key:     "0",
+    back_label:   "Exit",
+};
 
 /// Display the top-level menu and return the user's selection.
 pub fn show_main_menu() -> MainMode {
-    println!();
-    println!("{}", "╔══════════════════════════════════════════════════════════╗".bright_yellow());
-    println!("{}", "║                  ✦  CHOOSE YOUR PATH  ✦                  ║".bold().bright_yellow());
-    println!("{}", "╠══════════════════════════════════════════════════════════╣".bright_yellow());
-    println!("{}", "║                                                          ║".bright_yellow());
-    println!("{}", "║   1.  🔢  Gematria & Numerology                          ║".bright_white());
-    println!("{}", "║          Analyze words across all five systems           ║".dimmed());
-    println!("{}", "║                                                          ║".bright_yellow());
-    println!("{}", "║   2.  📜  Enochian Angelology                            ║".bright_cyan());
-    println!("{}", "║          Alphabet · Aethyrs · Translate · Keys           ║".dimmed());
-    println!("{}", "║                                                          ║".bright_yellow());
-    println!("{}", "║   3.  🎵  Sacred Frequencies & Export                    ║".bright_magenta());
-    println!("{}", "║          Binaural beats · Solfeggio · WAV export         ║".dimmed());
-    println!("{}", "║                                                          ║".bright_yellow());
-    println!("{}", "║   4.  ❓  Help & Reference                               ║".white());
-    println!("{}", "║                                                          ║".bright_yellow());
-    println!("{}", "║   5.  🌏  World Cosmologies                              ║".bright_green());
-    println!("{}", "║          Chinese · African · Nine Star Ki · Ifá          ║".dimmed());
-    println!("{}", "║                                                          ║".bright_yellow());
-    println!("{}", "║   0.  ✦  Exit                                            ║".dimmed());
-    println!("{}", "║                                                          ║".bright_yellow());
-    println!("{}", "╚══════════════════════════════════════════════════════════╝".bright_yellow());
-    println!();
-
     loop {
-        print!("{}", "▸ Enter choice: ".bold().cyan());
-        io::stdout().flush().unwrap_or(());
-        let mut input = String::new();
-        if io::stdin().read_line(&mut input).is_err() { return MainMode::Quit; }
-        match input.trim() {
-            "1"       => return MainMode::Numerology,
-            "2"       => return MainMode::Enochian,
-            "3"       => return MainMode::Frequencies,
-            "4"       => return MainMode::Help,
-            "5"       => return MainMode::WorldSystems,
-            "0" | ""  => return MainMode::Quit,
-            _         => println!("{}", "  Please enter 0–5.".yellow()),
+        match MAIN_MENU.show_and_read().as_str() {
+            "1"      => return MainMode::Numerology,
+            "2"      => return MainMode::Enochian,
+            "3"      => return MainMode::Frequencies,
+            "4"      => return MainMode::Help,
+            "5"      => return MainMode::WorldSystems,
+            "0" | "" => return MainMode::Quit,
+            _        => println!("{}", "  Please enter 0–5.".yellow()),
         }
     }
 }
 
 // ─── Angel banner ─────────────────────────────────────────────────────────────
 
-/// Print the ASCII angel figure and application title.
+/// Print the ASCII angel figure and application title bar.
 pub fn print_angel_banner() {
     let angel = r#"
           ⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -97,7 +210,7 @@ pub fn print_angel_banner() {
 
 // ─── Loading screen ───────────────────────────────────────────────────────────
 
-/// Play the animated startup sequence, then clear the terminal.
+/// Play the animated startup sequence then clear the terminal.
 pub fn show_loading_screen() {
     print!("\x1B[2J\x1B[H");
     io::stdout().flush().unwrap_or(());
@@ -121,17 +234,17 @@ pub fn show_loading_screen() {
     println!("\n");
 
     let messages = [
-        ("Connecting to celestial frequencies",   "🌌"),
-        ("Aligning with divine numerology",        "⚡"),
-        ("Awakening angelic consciousness",        "👼"),
-        ("Tuning into universal vibrations",       "🎵"),
-        ("Opening sacred numerical channels",      "🔢"),
-        ("Downloading cosmic wisdom",              "📡"),
-        ("Initializing spiritual algorithms",      "🧮"),
-        ("Calibrating mystical sensors",           "🔮"),
+        ("Connecting to celestial frequencies",  "🌌"),
+        ("Aligning with divine numerology",       "⚡"),
+        ("Awakening angelic consciousness",       "👼"),
+        ("Tuning into universal vibrations",      "🎵"),
+        ("Opening sacred numerical channels",     "🔢"),
+        ("Downloading cosmic wisdom",             "📡"),
+        ("Initializing spiritual algorithms",     "🧮"),
+        ("Calibrating mystical sensors",          "🔮"),
     ];
     let spinners = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-    let bar_len = 20;
+    let bar_len  = 20;
 
     for (message, icon) in &messages {
         for frame in 0..25_usize {
@@ -139,22 +252,15 @@ pub fn show_loading_screen() {
             let progress = (frame * bar_len) / 25;
             let bar      = format!("[{}{}]", "█".repeat(progress), "░".repeat(bar_len - progress));
             print!("\r        {} {} {} {} {}",
-                icon,
-                spinner.bright_white(),
-                message.bright_white(),
-                bar.bright_blue(),
-                format!("{}%", (frame * 100) / 25).dimmed(),
+                icon, spinner.bright_white(), message.bright_white(),
+                bar.bright_blue(), format!("{}%", (frame * 100) / 25).dimmed(),
             );
             io::stdout().flush().unwrap_or(());
             thread::sleep(Duration::from_millis(50));
         }
         let full_bar = format!("[{}]", "█".repeat(bar_len));
         println!("\r        {} ✓ {} {} {}   ",
-            icon,
-            message.bright_white(),
-            full_bar.bright_green(),
-            "100%".bright_green(),
-        );
+            icon, message.bright_white(), full_bar.bright_green(), "100%".bright_green());
         thread::sleep(Duration::from_millis(150));
     }
 
@@ -164,7 +270,7 @@ pub fn show_loading_screen() {
         "⭐ Blessing your spiritual journey…",
         "✨ Opening gates of wisdom…",
         "🌙 Moon cycles aligned…",
-        "☄️ Cosmic energies flowing…",
+        "☄️  Cosmic energies flowing…",
         "🪐 Planetary influences calibrated…",
         "🌌 Universe ready to speak…",
     ];
@@ -190,7 +296,6 @@ pub fn show_loading_screen() {
     println!("\n{}", "            Ready to decode the universe…".italic().bright_blue());
     thread::sleep(Duration::from_millis(1000));
 
-    // Single clear — avoids the visible flicker caused by rapid repeated clears.
     print!("\x1B[2J\x1B[H");
     io::stdout().flush().unwrap_or(());
 }
@@ -223,7 +328,7 @@ pub fn show_help() {
     println!("{}", "  Agrippan          — Cornelius Agrippa/Francis Barrett Latin gematria (c.1531/1801)".bright_white());
     println!("{}", "  Simple Ordinal    — Direct alphabetical position 1-26 (modern English Gematria)".bright_white());
     println!("{}", "  Reverse Ordinal   — Mirror complement: Z=1 … A=26".bright_white());
-    println!("{}", "  Abjad             — Arabic/Islamic letter-number system (ḥisāb al-jumal)".bright_white());
+    println!("{}", "  Abjad             — Arabic/Islamic letter-number system (hisab al-jumal)".bright_white());
     println!("{}", "  Enochian Ordinal  — John Dee's angelic alphabet, positional values 1-21".bright_white());
     println!("{}", "  Enochian G.D.     — Golden Dawn's Hebrew-mapped Enochian values".bright_white());
     println!();
@@ -241,7 +346,7 @@ pub fn show_help() {
     println!();
     println!("{}", "WORLD COSMOLOGIES:".bold());
     println!("{}", "  Chinese     — Nine Star Ki natal star, Wu Xing Five Elements, lucky/unlucky numbers".bright_white());
-    println!("{}", "  African     — Yoruba Ifá (16 Odù), Akan day-soul names, Kemetic sacred numbers".bright_white());
+    println!("{}", "  African     — Yoruba Ifa (16 Odu), Akan day-soul names, Kemetic sacred numbers".bright_white());
     println!();
     println!("{}", "Visit the interactive mode to analyze words and export personalized frequencies!".italic().bright_blue());
 }

@@ -8,7 +8,9 @@
 pub mod alphabet;
 pub mod aethyrs;
 pub mod messages;
+pub mod session;
 
-pub use alphabet::{enochian_substitute, enochian_lookup, show_enochian_table};
-pub use aethyrs::{aethyr_lookup, show_aethyr_table, show_aethyr_info};
+pub use alphabet::{ENOCHIAN_LETTERS, enochian_substitute, enochian_lookup, show_enochian_table};
+pub use aethyrs::{AETHYRS, aethyr_lookup, show_aethyr_table, show_aethyr_info};
 pub use messages::{enochian_meaning, enochian_angelic_message};
+pub use session::run_enochian_session;

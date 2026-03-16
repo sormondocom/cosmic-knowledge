@@ -16,6 +16,9 @@ pub mod greek;
 pub mod agrippan;
 pub mod ordinal;
 pub mod abjad;
+pub mod session;
+
+pub use session::run_numerology_session;
 
 pub use greek::isopsephy_meaning;
 pub use abjad::abjad_meaning;
