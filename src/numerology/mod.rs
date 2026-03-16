@@ -8,6 +8,7 @@
 //!  - `agrippan`    — Agrippan / Barrett English extension
 //!  - `ordinal`     — Simple Ordinal and Reverse Ordinal
 //!  - `abjad`       — Arabic/Islamic Abjad numerals
+//!  - `vedic`       — Vedic Anka Vidya / Jyotish Navagraha system
 
 pub mod hebrew;
 pub mod pythagorean;
@@ -16,12 +17,14 @@ pub mod greek;
 pub mod agrippan;
 pub mod ordinal;
 pub mod abjad;
+pub mod vedic;
 pub mod session;
 
 pub use session::run_numerology_session;
 
 pub use greek::isopsephy_meaning;
 pub use abjad::abjad_meaning;
+pub use vedic::vedic_reading;
 
 use std::collections::HashMap;
 use crate::enochian::{enochian_lookup, enochian_substitute};
@@ -36,12 +39,12 @@ pub fn digital_root(mut n: u32) -> u32 {
     n
 }
 
-/// Compute totals and digital roots for all ten numerology systems.
+/// Compute totals and digital roots for all eleven numerology systems.
 ///
 /// Returns a `Vec` of `(system_name, (total, root))` in stable order:
 /// Hebrew Gematria, Pythagorean, Chaldean,
 /// Greek Isopsephy, Agrippan, Simple Ordinal, Reverse Ordinal, Abjad,
-/// Enochian Ordinal, Enochian G.D.
+/// Vedic, Enochian Ordinal, Enochian G.D.
 pub fn numerology(word: &str) -> Vec<(&'static str, (u32, u32))> {
     // Standard map-based systems — shared static tables, no per-call allocation.
     let mut results: Vec<(&'static str, (u32, u32))> = [
@@ -53,6 +56,7 @@ pub fn numerology(word: &str) -> Vec<(&'static str, (u32, u32))> {
         ("Simple Ordinal",  &*ordinal::SIMPLE_MAP),
         ("Reverse Ordinal", &*ordinal::REVERSE_MAP),
         ("Abjad",           &*abjad::MAP),
+        ("Vedic",           &*vedic::MAP),
     ]
     .iter()
     .map(|(name, map)| {
@@ -192,6 +196,7 @@ pub fn get_calculation_breakdown(word: &str, system_name: &str) -> String {
         "Simple Ordinal"  => &ordinal::SIMPLE_MAP,
         "Reverse Ordinal" => &ordinal::REVERSE_MAP,
         "Abjad"           => &abjad::MAP,
+        "Vedic"           => &vedic::MAP,
         _                 => return String::new(),
     };
 
@@ -266,18 +271,27 @@ mod tests {
     // ── numerology ────────────────────────────────────────────────────────────
 
     #[test]
-    fn numerology_returns_ten_systems() {
+    fn numerology_returns_eleven_systems() {
         let results = numerology("LOVE");
-        assert_eq!(results.len(), 10);
+        assert_eq!(results.len(), 11);
         let names: Vec<&str> = results.iter().map(|(n, _)| *n).collect();
         for expected in &[
             "Hebrew Gematria", "Pythagorean", "Chaldean",
             "Enochian Ordinal", "Enochian G.D.",
             "Greek Isopsephy", "Agrippan", "Simple Ordinal",
-            "Reverse Ordinal", "Abjad",
+            "Reverse Ordinal", "Abjad", "Vedic",
         ] {
             assert!(names.contains(expected), "Missing system: {}", expected);
         }
+    }
+
+    #[test]
+    fn vedic_abc() {
+        // A=1, B=2, C=3 → total=6, root=6 (same letter values as Chaldean)
+        let results = numerology("ABC");
+        let v = results.iter().find(|(n, _)| *n == "Vedic").unwrap();
+        assert_eq!(v.1.0, 6);
+        assert_eq!(v.1.1, 6);
     }
 
     // ── new systems ───────────────────────────────────────────────────────────

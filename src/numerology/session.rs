@@ -17,7 +17,7 @@ use crate::reports::build_numerology_report;
 use super::{
     abjad_meaning, angelic_message, check_special_sequences,
     get_calculation_breakdown, isopsephy_meaning, master_numbers_message,
-    meaning_of, numerology,
+    meaning_of, numerology, vedic_reading,
 };
 
 // ─── Session entry point ──────────────────────────────────────────────────────
@@ -30,7 +30,7 @@ pub fn run_numerology_session(audio_system: &Option<AudioSystem>) {
     println!("{}", "╠══════════════════════════════════════════════════════════╣".bright_white());
     println!("{}", "║  Hebrew · Pythagorean · Chaldean · Greek Isopsephy       ║".dimmed());
     println!("{}", "║  Agrippan · Simple Ordinal · Reverse Ordinal · Abjad     ║".dimmed());
-    println!("{}", "║  Enochian Ordinal · Enochian G.D.                        ║".dimmed());
+    println!("{}", "║  Vedic (Anka Vidya) · Enochian Ordinal · Enochian G.D.  ║".dimmed());
     println!("{}", "╚══════════════════════════════════════════════════════════╝".bright_white());
     println!();
 
@@ -92,6 +92,7 @@ pub fn run_numerology_session(audio_system: &Option<AudioSystem>) {
                 s if s.starts_with("Enochian") => enochian_meaning(*root),
                 "Greek Isopsephy"              => isopsephy_meaning(*root),
                 "Abjad"                        => abjad_meaning(*root),
+                "Vedic"                        => vedic_reading(*root).meaning,
                 _                              => meaning_of(*root),
             };
             let breakdown = get_calculation_breakdown(&word, system);
@@ -111,6 +112,16 @@ pub fn run_numerology_session(audio_system: &Option<AudioSystem>) {
                 println!("      {}",
                     format!("⟁ Aethyr {:>2} ({}) — {}", an, aname, adesc)
                         .italic().bright_cyan());
+            }
+            if *system == "Vedic" {
+                let vr = vedic_reading(*root);
+                println!("      {}",
+                    format!("☽ {} {} | Gem: {} | Dosha: {} | {}",
+                        vr.planet, vr.sanskrit, vr.gem, vr.dosha, vr.day)
+                        .italic().bright_cyan());
+                println!("      {}",
+                    format!("  Bīja: {} | Colors: {}", vr.bija, vr.color)
+                        .dimmed());
             }
             if !is_enochian {
                 if let Some(msg) = master_numbers_message(*total) {
@@ -170,6 +181,7 @@ fn choose_numerology_systems() -> Vec<&'static str> {
         "Simple Ordinal",
         "Reverse Ordinal",
         "Abjad",
+        "Vedic",
         "Enochian Ordinal",
         "Enochian G.D.",
     ];
@@ -191,7 +203,7 @@ fn choose_numerology_systems() -> Vec<&'static str> {
     let line = line.trim().to_uppercase();
 
     if line.is_empty() || line.contains('A') {
-        println!("{}", "  ✓ All ten systems selected.".bright_green());
+        println!("{}", "  ✓ All eleven systems selected.".bright_green());
         return ALL.to_vec();
     }
 

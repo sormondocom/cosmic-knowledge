@@ -28,13 +28,65 @@ letter that precedes all letters, burning in silence against the void."</em></p>
 
 ---
 
+## Table of Contents
+
+**Reference**
+- [At-a-Glance](#at-a-glance)
+- [Overview](#overview)
+
+**Traditions & Systems**
+- [Numerology Systems](#numerology-systems)
+  - [Hebrew Gematria](#hebrew-gematria)
+  - [Pythagorean Numerology](#pythagorean-numerology)
+  - [Chaldean Numerology](#chaldean-numerology)
+  - [Greek Isopsephy](#greek-isopsephy)
+  - [Agrippan Numerology](#agrippan-numerology)
+  - [Simple Ordinal](#simple-ordinal)
+  - [Reverse Ordinal](#reverse-ordinal)
+  - [Abjad](#abjad)
+  - [Vedic Numerology (Anka Vidya)](#vedic-numerology-anka-vidya)
+- [Enochian Angelology](#enochian-angelology)
+  - [Alphabet](#alphabet)
+  - [Aethyrs](#aethyrs)
+  - [Angelic Calls (Keys)](#angelic-calls-keys)
+- [World Cosmologies](#world-cosmologies)
+  - [Chinese Traditions](#chinese-traditions) — Nine Star Ki · Wu Xing · Ba Gua
+  - [African Traditions](#african-traditions) — Yoruba Ifá · Akan · Kemetic
+- [Psi–RNG Experiment](#psirng-experiment)
+- [Zodiac & Astrology](#zodiac--astrology)
+  - [Hebrew Mazzaroth](#hebrew-mazzaroth) — Signs · Sefer Yetzirah · Tribes · Hoshen
+- [Sacred Frequencies](#sacred-frequencies)
+  - [Solfeggio Frequencies](#solfeggio-frequencies)
+  - [Binaural Beats](#binaural-beats)
+
+**Getting the Application Running**
+- [Installation & Build Guide](#installation--build-guide)
+  - [What You Need to Know First](#what-you-need-to-know-first)
+  - [Windows — Full Walkthrough](#windows--full-walkthrough)
+  - [macOS — Full Walkthrough](#macos--full-walkthrough)
+  - [Linux — Full Walkthrough](#linux--full-walkthrough)
+  - [Download the Application](#download-the-application)
+  - [Build and Run](#build-and-run)
+  - [Launch Options](#launch-options)
+  - [Updating the Application](#updating-the-application)
+  - [Troubleshooting](#troubleshooting)
+
+**Reference**
+- [CLI Flags](#cli-flags)
+- [Exports](#exports)
+- [Source Texts and Scholarly References](#source-texts-and-scholarly-references)
+- [Accuracy Notes](#accuracy-notes)
+- [Contributing](#contributing)
+
+---
+
 ## At-a-Glance
 
 ### Quick-reference: what the app can do
 
 | Want to… | How |
 |---|---|
-| Analyze a word across all ten systems | `cargo run` → option **1** |
+| Analyze a word across all eleven systems | `cargo run` → option **1** |
 | Select a subset of numerology systems | option **1** → enter system numbers at the prompt |
 | Browse or look up an Aethyr | `cargo run -- --aethyr ZAX` or `cargo run -- --aethyr 10` |
 | Translate a word into Enochian letter names | option **2** → sub-option **4** |
@@ -66,6 +118,7 @@ letter that precedes all letters, burning in silence against the void."</em></p>
 | `numerology/ordinal.rs` | Simple Ordinal | Modern English | A=1 … Z=26 |
 | `numerology/ordinal.rs` | Reverse Ordinal | Modern English | A=26 … Z=1 |
 | `numerology/abjad.rs` | Abjad | Arabic / Islamic | Semitic abjad numerals |
+| `numerology/vedic.rs` | Vedic (Anka Vidyā) | Indian / Jyotish | Navagraha framework; 1–8 scale; 9 sacred |
 | `enochian/alphabet.rs` | Enochian Ordinal | Dee–Kelley (1582–1587) | Positional 1–21; most historically defensible |
 | `enochian/alphabet.rs` | Enochian G.D. | Golden Dawn (19th c.) | Hebrew-mapped values; Mathers/Regardie retrofit |
 | `cosmology/chinese.rs` | Nine Star Ki | East Asian | Solar-year natal star calculation |
@@ -113,7 +166,7 @@ The `numerology/` module aggregates ten letter-to-number mapping systems. Shared
 
 The function `numerology(word: &str)` returns all ten results in a stable order:
 Hebrew Gematria, Pythagorean, Chaldean, Greek Isopsephy, Agrippan, Simple Ordinal, Reverse
-Ordinal, Abjad, Enochian Ordinal, Enochian G.D.
+Ordinal, Abjad, Vedic (Anka Vidyā), Enochian Ordinal, Enochian G.D.
 
 ### Hebrew Gematria
 
@@ -279,6 +332,54 @@ Latin script; canonical Abjad operates on Arabic Unicode.
 - Ibn Khaldūn, *Muqaddimah* (1377; trans. Rosenthal, 1958, Princeton)
 - Schimmel, A. *The Mystery of Numbers* (1993, OUP)
 - Ibn ʿArabī, *Futūḥāt al-Makkiyya* (13th c.) — ʿilm al-ḥurūf tradition
+
+---
+
+### Vedic Numerology (Anka Vidya)
+
+**Source file:** `src/numerology/vedic.rs`
+**Tradition:** Indian / Jyotish (Hindu astrology)
+**Method:** Vedic numerology — known in Sanskrit as *Anka Vidyā* (अंक विद्या, "the science of
+numbers") — assigns letter values on the same 1–8 phonetic scale as the Chaldean tradition, from
+which the Indian system historically draws. The number 9 (Mars / Maṅgala) is considered sacred
+and unassigned to individual letters in both traditions. However, the interpretive layer is
+entirely distinct: every root number is identified with one of the **Navagraha** — the nine
+celestial bodies of Jyotish — and carries a full constellation of planetary correspondences:
+
+| Root | Graha (Planet) | Sanskrit | Bīja Mantra | Navaratna Gem | Dosha | Day |
+|------|---------------|----------|-------------|---------------|-------|-----|
+| 1 | Sun (Sūrya) | सूर्य | Oṃ Hrāṃ Hrīṃ Hrauṃ Saḥ Sūryāya Namaḥ | Ruby (Māṇikya) | Pitta | Sunday |
+| 2 | Moon (Chandra) | चन्द्र | Oṃ Śrāṃ Śrīṃ Śrauṃ Saḥ Chandrāya Namaḥ | Pearl (Moti) | Kapha, Vāta | Monday |
+| 3 | Jupiter (Guru) | गुरु | Oṃ Brāṃ Brīṃ Brauṃ Saḥ Guruve Namaḥ | Yellow Sapphire (Pushyarāga) | Kapha | Thursday |
+| 4 | Rāhu (N. Node) | राहु | Oṃ Bhrāṃ Bhrīṃ Bhrauṃ Saḥ Rāhave Namaḥ | Hessonite Garnet (Gomeda) | Vāta | Saturday |
+| 5 | Mercury (Budha) | बुध | Oṃ Brāṃ Brīṃ Brauṃ Saḥ Budhāya Namaḥ | Emerald (Pannā) | Tridoshic | Wednesday |
+| 6 | Venus (Śukra) | शुक्र | Oṃ Drāṃ Drīṃ Drauṃ Saḥ Śukrāya Namaḥ | Diamond / White Sapphire (Hīrā) | Kapha, Pitta | Friday |
+| 7 | Ketu (S. Node) | केतु | Oṃ Srāṃ Srīṃ Srauṃ Saḥ Ketave Namaḥ | Cat's Eye (Lahsuniyā) | Pitta, Vāta | Thursday |
+| 8 | Saturn (Śani) | शनि | Oṃ Prāṃ Prīṃ Prauṃ Saḥ Śanaiścarāya Namaḥ | Blue Sapphire (Nīlam) | Vāta | Saturday |
+| 9 | Mars (Maṅgala) | मंगल | Oṃ Krāṃ Krīṃ Krauṃ Saḥ Bhauma Namaḥ | Red Coral (Moṅgā) | Pitta | Tuesday |
+
+**Letter values (Latin phonetic approximation, Johari 1990):**
+
+| A | B | C | D | E | F | G | H | I | J | K | L | M |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 2 | 3 | 4 | 5 | 8 | 3 | 5 | 1 | 1 | 2 | 3 | 4 |
+
+| N | O | P | Q | R | S | T | U | V | W | X | Y | Z |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 5 | 7 | 8 | 1 | 2 | 3 | 4 | 6 | 6 | 6 | 5 | 1 | 7 |
+
+The session display shows the graha name (English and Devanāgarī), gem, Ayurvedic dosha, sacred
+day, bīja mantra, and associated colors for the word's root number.
+
+**Key source texts:**
+- Johari, H. *Numerology: with Tantra, Ayurveda, and Astrology* (1990, Destiny Books) — primary letter table and Navagraha framework
+- Chaudhry, J.C. *Numerology for Success* (2002, Sterling) — corroborating letter values
+- Defouw, H. & Svoboda, R. *Light on Life: An Introduction to the Astrology of India* (1996, Arkana / Penguin) — Navagraha attributes
+- Frawley, D. *Astrology of the Seers: A Guide to Vedic/Hindu Astrology* (1990, Passage Press) — planetary meanings and doshas
+- Svoboda, R. *Aghora: At the Left Hand of God* (1986, Brotherhood of Life) — bīja mantras and gemstone lore
+- Rao, P.V.R.N. *Vedic Astrology: An Integrated Approach* (2000) — Navagraha overview
+- *Bṛhat Parāśara Horā Śāstra* (ancient; trans. Santhanam, 1984, Ranjan) — foundational Jyotish planetary natures
+- Lad, V. *Textbook of Ayurveda*, Vol. 1 (2002, Ayurvedic Press) — dosha attributes
 
 ---
 
@@ -774,301 +875,354 @@ batch export of all nine frequencies.
 
 ---
 
-## Installation & Running the Application
+## Installation & Build Guide
 
-This section guides you through installing and running the Celestial Numerology Analyzer from
-scratch, assuming no prior experience with programming tools. If you have used Rust before,
-the short version is: install Rust stable ≥ 1.70, then `cargo run --release`.
+This guide walks you through getting the Celestial Numerology Analyzer running on your
+computer. No prior programming experience is assumed. Choose your operating system and follow
+that section from start to finish — each one is self-contained.
 
----
-
-### Background: What This Requires
-
-The application is written in **Rust** — a compiled programming language. Think of Rust as the
-workshop in which this software was crafted. Before you can run the application, your computer
-needs to assemble the source code into a working program — a one-time process called *building*
-or *compiling* (analogous to typesetting a manuscript before it can be read). The tool that
-manages this process is called **Cargo**, which is installed automatically alongside Rust.
-
-You will also need a **terminal** (also called a command prompt or command line) — a text-based
-window where you type short instructions directly to your computer. Every modern operating
-system includes one; instructions for opening it are in each platform section below.
+> **Already know Rust?** Install Rust stable >= 1.70, clone the repository, and run
+> `cargo run --release`.
 
 ---
 
-### Step 1 — Open a Terminal
+### What You Need to Know First
 
-**Windows**
-Press **Windows + R**, type `cmd`, and press Enter. A window with white text on a dark background
-will appear. Alternatively, search for *Command Prompt* or *Windows Terminal* in the Start menu.
+**What is a terminal?**
+A terminal (also called a command prompt or command line) is a text-based window where you
+type short instructions directly to your computer. You do not need to understand how it works
+— the instructions below tell you exactly what to type. Every modern operating system includes
+one, and you will use it for three things: installing Rust, downloading the application, and
+starting it.
 
-**macOS**
-Open **Finder → Applications → Utilities → Terminal**, or press **⌘ + Space**, type
-`Terminal`, and press Enter.
+**What is Rust?**
+Rust is the programming language this application is written in. Before you can run it, your
+computer needs to assemble the source code into a working program — a one-time process called
+*building* or *compiling*, similar to typesetting a manuscript before it can be read. Rust
+provides a tool called **Cargo** that handles this automatically. Once built, launching the
+application takes only a second or two.
 
-**Linux**
-Your distribution likely has a terminal in the applications menu — commonly named *Terminal*,
-*Konsole*, or *GNOME Terminal*. The keyboard shortcut **Ctrl + Alt + T** opens it on most
-desktop environments.
+**How long does setup take?**
+On a reasonably modern computer with a broadband connection: roughly 10–15 minutes end to end,
+most of which is an unattended download and compilation. You will not need to repeat it.
 
 ---
 
-### Step 2 — Install Rust
+### Windows — Full Walkthrough
 
-Rust is installed through a small program called **rustup**, which handles everything
-automatically and places nothing in system directories that would be difficult to remove later.
+#### 1. Open a terminal
 
-#### Windows
+Press **Windows + R**, type `cmd`, and press **Enter**. A dark window with white text appears.
+This is the Command Prompt. Leave it open throughout the following steps.
 
-1. In your web browser, go to **https://rustup.rs**
-2. Click the **DOWNLOAD RUSTUP-INIT.EXE (64-BIT)** button and run the downloaded file.
-3. A terminal window will open and present a menu. Press **1** and then **Enter** to proceed
-   with the standard installation.
-4. When it finishes, **close your terminal completely and reopen it** so the new tools are
-   recognized.
-5. Confirm the installation succeeded by typing the following and pressing Enter:
+Alternatively, search for **Windows Terminal** in the Start menu — if it is installed, it
+renders the application's characters more crisply (see Troubleshooting if symbols look wrong).
+
+#### 2. Install Rust
+
+1. Open your web browser and go to **https://rustup.rs**
+2. Click **DOWNLOAD RUSTUP-INIT.EXE (64-BIT)** and run the file once it downloads.
+3. A terminal window opens automatically and shows a menu. Type **1** and press **Enter** to
+   proceed with the standard installation.
+4. The installer may detect that the **Microsoft C++ Build Tools** are missing and offer to
+   install them first. Allow it — this is required and takes a few minutes.
+5. When the installer finishes, **close the Command Prompt completely and reopen it** so
+   Windows recognises the new tools.
+6. Confirm Rust installed correctly by typing this and pressing Enter:
    ```
    rustc --version
    ```
-   You should see a line such as `rustc 1.78.0 (...)`. Any version numbered 1.70 or later is
-   sufficient.
+   You should see something like `rustc 1.78.0 (...)`. Any number beginning with 1.70 or
+   higher is fine.
 
-> **Windows note:** Rust on Windows requires the Microsoft C++ Build Tools. The rustup
-> installer will detect whether they are present and prompt you to install them if needed.
-> Follow that prompt — it downloads and installs them automatically. The process takes a few
-> minutes and requires an internet connection.
+#### 3. Download the application
 
-#### macOS
+**Option A — Using Git (lets you get future updates easily)**
 
-1. In your terminal, paste the following line exactly and press Enter:
-   ```
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-   ```
-2. When prompted, press **1** and Enter for the default installation.
-3. Once complete, either close and reopen the terminal, or run:
-   ```
-   source "$HOME/.cargo/env"
-   ```
-4. Confirm with `rustc --version`.
+Type the following in your terminal and press Enter:
+```
+git clone https://github.com/sormondocom/cosmic-knowledge.git
+```
+If Windows says `git` is not recognised, download Git from **https://git-scm.com/downloads**,
+run the installer with default settings, reopen the terminal, and try again.
 
-> **macOS note:** If your system does not have the Xcode Command Line Tools installed, macOS
-> will prompt you automatically. Click *Install* and allow it to complete.
+**Option B — Download as a ZIP file**
 
-#### Linux
+Go to the repository on GitHub, click the green **Code** button, and choose **Download ZIP**.
+Once downloaded, right-click the ZIP file and choose *Extract All*. You will have a folder
+called `cosmic-knowledge-main` — you can rename it `cosmic-knowledge` if you wish.
 
-1. In your terminal, paste the following and press Enter:
-   ```
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-   ```
-2. Press **1** and Enter for the default installation.
-3. Either close and reopen your terminal, or run:
-   ```
-   source "$HOME/.cargo/env"
-   ```
-4. Confirm with `rustc --version`.
+#### 4. Navigate to the application folder
 
-**Additional Linux step — audio support**
+Type the following and press Enter:
+```
+cd %USERPROFILE%\cosmic-knowledge
+```
+> **Tip:** Type `cd ` (with a trailing space), then drag the application folder from File
+> Explorer into the Command Prompt window. Windows will paste the full path for you.
 
-The application produces sacred-frequency audio. On Linux this requires the ALSA sound
-library headers, which most distributions do not install by default. Run the command for
-your distribution before building:
+#### 5. Build the application
 
 ```
-# Ubuntu, Debian, Linux Mint, and derivatives:
-sudo apt install libasound2-dev
-
-# Fedora, RHEL, CentOS Stream, and derivatives:
-sudo dnf install alsa-lib-devel
-
-# Arch Linux, Manjaro, EndeavourOS, and derivatives:
-sudo pacman -S alsa-lib
+cargo build --release
 ```
+Progress text scrolls past for **one to five minutes** — this is normal. Done when you see
+`Finished release`.
 
-The prefix `sudo` means "run this as an administrator." You will be asked for your password;
-it is normal for nothing to appear on screen as you type it — simply press Enter when done.
+#### 6. Run the application
 
-> macOS and Windows users can skip this step entirely. macOS uses its built-in CoreAudio
-> framework; Windows uses WASAPI, which is already part of the operating system.
+```
+cargo run --release
+```
+The application opens with an Enochian Aethyr chord, a brief animated sequence, and then the
+main menu. From this point forward, `cargo run --release` is all you need to launch it.
 
 ---
 
-### Step 3 — Download the Application
+### macOS — Full Walkthrough
 
-You have two options: using Git (a version-tracking tool), or downloading a ZIP archive.
+#### 1. Open a terminal
 
-**Option A — Using Git (recommended)**
+Press **Command + Space**, type `Terminal`, and press **Enter**. Alternatively, open
+**Finder → Applications → Utilities → Terminal**.
 
-Git allows you to receive future updates with a single command. To check whether Git is
-already on your system, type `git --version` in your terminal. If it is not present, download
-it from **https://git-scm.com/downloads** and follow the installer for your platform.
+#### 2. Install the Xcode Command Line Tools (if not already present)
 
-Once Git is available, paste the following into your terminal and press Enter:
+Type the following and press Enter:
+```
+xcode-select --install
+```
+If a dialog appears asking you to install developer tools, click **Install** and wait. If the
+terminal says the tools are already installed, continue to the next step.
 
+#### 3. Install Rust
+
+Paste the following into your terminal and press Enter:
+```
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+When asked which option to choose, type **1** and press **Enter** for the standard
+installation. When it finishes, run:
+```
+source "$HOME/.cargo/env"
+```
+This makes Rust available immediately without closing the terminal. Confirm with:
+```
+rustc --version
+```
+
+#### 4. Download the application
+
+**Option A — Using Git**
 ```
 git clone https://github.com/sormondocom/cosmic-knowledge.git
 ```
 
-This creates a folder called `cosmic-knowledge` in your current location containing all the
-source files.
+**Option B — Download as a ZIP file**
 
-**Option B — Download as ZIP**
+Go to the repository on GitHub, click **Code → Download ZIP**. Double-click the downloaded
+ZIP to extract it. A folder named `cosmic-knowledge-main` appears in your Downloads folder.
 
-On the repository's GitHub page, click the green **Code** button, then select
-**Download ZIP**. Once downloaded, unzip the archive. You will have a folder named
-`cosmic-knowledge-main` (or similar).
+#### 5. Navigate to the application folder
+
+```
+cd ~/cosmic-knowledge
+```
+Or drag the folder from Finder into the terminal window after typing `cd `.
+
+#### 6. Build the application
+
+```
+cargo build --release
+```
+Compilation takes **one to five minutes**. `Finished release` means it is done.
+
+#### 7. Run the application
+
+```
+cargo run --release
+```
 
 ---
 
-### Step 4 — Navigate to the Application Folder
+### Linux — Full Walkthrough
 
-In your terminal, move into the folder you just downloaded. The `cd` command (short for
-*change directory*) does this. Type the following and press Enter, substituting the actual
-path if you saved the folder somewhere other than your home directory:
+These steps work for all common Linux desktop distributions. Use the command for your package
+manager where options are given.
 
-**Windows**
+#### 1. Open a terminal
+
+Most desktop environments open a terminal with **Ctrl + Alt + T**. It may also appear in your
+applications menu as *Terminal*, *Konsole*, *GNOME Terminal*, or *xterm*.
+
+#### 2. Install audio development headers
+
+The application produces sacred-frequency audio through the ALSA sound library. The
+development headers it needs are not installed by default on most systems. `sudo` means
+"run as administrator" and will prompt for your password (nothing appears as you type it —
+press Enter when done):
+
+| Distribution family | Command |
+|---|---|
+| Ubuntu, Debian, Linux Mint, Pop!\_OS | `sudo apt install libasound2-dev` |
+| Fedora, RHEL, CentOS Stream, Rocky | `sudo dnf install alsa-lib-devel` |
+| Arch Linux, Manjaro, EndeavourOS | `sudo pacman -S alsa-lib` |
+| openSUSE | `sudo zypper install alsa-devel` |
+
+#### 3. Install Rust
+
 ```
-cd %USERPROFILE%\cosmic-knowledge
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
+Type **1** and Enter for standard installation. When done, run:
+```
+source "$HOME/.cargo/env"
+```
+Confirm with `rustc --version`.
 
-**macOS / Linux**
+#### 4. Download the application
+
+**Option A — Using Git**
+```
+git clone https://github.com/sormondocom/cosmic-knowledge.git
+```
+If `git` is not installed:
+
+| Distribution | Command |
+|---|---|
+| Ubuntu / Debian | `sudo apt install git` |
+| Fedora | `sudo dnf install git` |
+| Arch | `sudo pacman -S git` |
+
+**Option B — Download as a ZIP**
+
+On GitHub, click **Code → Download ZIP** and extract the archive. On most Linux desktops,
+right-click the file and choose *Extract Here*.
+
+#### 5. Navigate to the application folder
+
 ```
 cd ~/cosmic-knowledge
 ```
 
-> **Tip:** If you are unsure of the exact path, type `cd ` (with a trailing space), then
-> drag the folder from your file manager directly into the terminal window — most systems
-> will paste the full path automatically. Press Enter to confirm.
-
----
-
-### Step 5 — Build the Application
-
-This is the compilation step. Rust reads all the source code and assembles it into a
-standalone program. Type the following and press Enter:
+#### 6. Build the application
 
 ```
 cargo build --release
 ```
+Done when you see `Finished release` (one to five minutes).
 
-**The first build takes between one and five minutes** depending on your computer's speed.
-During this time Cargo downloads the application's supporting libraries and compiles
-everything. Lines of progress text will scroll past — this is expected behavior, not an
-error. The process is complete when you see a line ending with `Finished release`.
-
-You only need to perform this step once. Subsequent launches start immediately without
-rebuilding.
-
----
-
-### Step 6 — Run the Application
-
-Once the build is complete, start the application with:
+#### 7. Run the application
 
 ```
 cargo run --release
 ```
 
-The application will play an opening chord derived from a randomly selected Enochian Aethyr,
-display an animated loading sequence, and then present the main menu.
+---
 
-**Useful launch options:**
+### Download the Application
+
+If Rust is already installed and you only need the source code:
+
+**Git (recommended — enables one-command updates)**
+```
+git clone https://github.com/sormondocom/cosmic-knowledge.git
+```
+
+**ZIP archive**
+
+On the GitHub repository page, click the green **Code** button → **Download ZIP**. Unzip and
+place the resulting folder wherever you prefer.
+
+---
+
+### Build and Run
+
+From inside the application folder:
+
+```
+cargo build --release
+```
+Compiles once. Then run with:
+```
+cargo run --release
+```
+You do not need to rebuild on subsequent launches unless the source code has changed.
+
+---
+
+### Launch Options
 
 | Command | Effect |
 |---------|--------|
-| `cargo run --release` | Standard launch with audio and loading screen |
-| `cargo run --release -- --fast` | Skip the loading animation; go straight to the menu |
-| `cargo run --release -- --silent` | Disable all audio (useful in shared spaces) |
+| `cargo run --release` | Standard launch — audio enabled, loading screen shown |
+| `cargo run --release -- --fast` | Skip the animated loading screen |
+| `cargo run --release -- --silent` | Disable all audio |
 | `cargo run --release -- --fast --silent` | Skip animation and disable audio |
 | `cargo run --release -- --aethyr ZAX` | Look up Aethyr ZAX and exit |
-| `cargo run --release -- --export-all` | Export all Solfeggio frequencies as WAV files and exit |
+| `cargo run --release -- --aethyr` | Print the full 30-Aethyr table and exit |
+| `cargo run --release -- --export-all` | Export all Solfeggio frequencies as WAV and exit |
+| `cargo run --release -- --help` | Print a reference card and exit |
 
-The double dash `--` separates Cargo's own options from the options passed to the
-application itself. Think of it as a handoff: everything before `--` is for Cargo, everything
-after is for the Celestial Numerology Analyzer.
+The double dash `--` separates Cargo's own flags from the application's flags — everything
+before `--` is for Cargo, everything after is for the Celestial Numerology Analyzer.
 
 ---
 
-### Step 7 — Subsequent Runs
+### Updating the Application
 
-After the first build, you do not need to rebuild unless the source code has changed. Navigate
-to the application folder in your terminal and simply run:
-
-```
-cargo run --release
-```
-
-To receive the latest updates from the repository (if you used Git):
-
+If you downloaded via Git:
 ```
 git pull
 cargo build --release
 ```
-
----
-
-### Platform Summary
-
-| Platform | Audio system | Extra setup required |
-|----------|-------------|----------------------|
-| Windows 10 / 11 | WASAPI (built-in) | None beyond Rust itself |
-| macOS 11 Big Sur and later | CoreAudio (built-in) | None beyond Rust itself |
-| Linux — Ubuntu / Debian family | ALSA | `sudo apt install libasound2-dev` |
-| Linux — Fedora / RHEL family | ALSA | `sudo dnf install alsa-lib-devel` |
-| Linux — Arch family | ALSA | `sudo pacman -S alsa-lib` |
+If you downloaded a ZIP, download a fresh copy from GitHub and repeat the build step.
 
 ---
 
 ### Troubleshooting
 
-**"cargo: command not found" or "'cargo' is not recognized as an internal or external command"**
-Rust was installed but your terminal has not yet picked up the new tools. Close the terminal
-window entirely, reopen it, and try again. If the problem persists on Windows, restart your
-computer; the installer modifies the PATH environment variable, which some systems only reload
-after a full restart.
+**"cargo: command not found" / "'cargo' is not recognized"**
+The terminal does not yet know where Rust is. Close it completely, reopen it, and try again.
+On Windows, a full computer restart sometimes resolves this.
 
-**Build fails with "linker not found" or "link.exe not found" on Windows**
-The Microsoft C++ Build Tools are missing. Download the **Visual Studio Build Tools** from
-Microsoft (search for "Visual Studio Build Tools download"), run the installer, select the
-workload *Desktop development with C++*, and complete the installation. Then try
-`cargo build --release` again.
+**Windows build fails — "linker not found" or "link.exe not found"**
+The Microsoft C++ Build Tools are missing. Search for *Visual Studio Build Tools* on
+Microsoft's website, run the installer, select *Desktop development with C++*, and complete
+the installation. Then run `cargo build --release` again.
 
-**Build fails with "error: failed to run custom build command for \`alsa-sys\`" on Linux**
-The ALSA development headers are not installed. Run the appropriate package manager command
-from Step 2 above, then retry the build.
+**Linux build fails — "error: failed to run custom build command for alsa-sys"**
+The ALSA audio development headers are not installed. Run the appropriate command from
+**Step 2** of the Linux walkthrough above, then retry the build.
 
-**The application starts but there is no sound**
-Run with `--silent` first to confirm the rest of the application works. On Linux, verify
-that a sound server (PulseAudio or PipeWire) is running. On Windows, ensure the default
-playback device is correctly configured in the system Sound settings.
+**No sound, or audio is distorted**
+Launch with `--silent` to confirm the rest of the application works. On Linux, verify that
+PulseAudio or PipeWire is running. On Windows, check the default playback device in Sound
+Settings.
 
-**The terminal displays garbled characters, broken boxes, or missing symbols**
-The application uses Unicode box-drawing characters and emoji. On older Windows terminals
-(*cmd.exe*) these may not render correctly. Switch to **Windows Terminal**, available free
-from the Microsoft Store, and set its font to *Cascadia Code* or *Consolas* for best results.
-On macOS and Linux this is not typically an issue with default terminal configurations.
+**Symbols, box-drawing characters, or emoji look broken on Windows**
+The default Command Prompt uses a limited font. Switch to **Windows Terminal** (free from the
+Microsoft Store) and set its font to *Cascadia Code* or *Consolas*.
 
-**"No such file or directory" after downloading a ZIP**
-You are likely in the wrong folder. Type `cd ` (with a trailing space), drag the unzipped
-application folder into the terminal to paste its path, and press Enter. Then run
-`cargo build --release`.
+**"No such file or directory" after unzipping**
+Your terminal is not in the right folder. Type `cd ` (with a trailing space), drag the
+unzipped folder into the terminal window to paste its path, and press Enter.
 
-**The build succeeds but `cargo run` produces a different error each time**
-This is very unlikely but can occur if the `exports/` directory lacks write permissions.
-Create the directory manually with `mkdir exports` while inside the application folder.
+**Build succeeds but the application fails to create export files**
+Create the exports folder manually:
+```
+mkdir exports
+```
 
 ---
 
 ### Verifying the Installation (Optional)
 
-To confirm that all internal tests pass on your system, run:
-
+To confirm that the full test suite passes on your system:
 ```
 cargo test
 ```
-
-A successful result ends with a line such as `test result: ok. 57 passed; 0 failed`. This
-step is not required to use the application, but it provides confidence that the compilation
-environment on your machine is functioning correctly.
+A successful run ends with `test result: ok. 57 passed; 0 failed`.
 
 ---
 
@@ -1144,6 +1298,13 @@ The user may accept the suggested stem or provide a custom name at the save prom
 - Barrett, F. *The Magus, or Celestial Intelligencer* (1801; facsimile, Weiser, 1967) — Agrippan
 - Ibn Khaldūn, *Muqaddimah* (1377; trans. Rosenthal, 1958, Princeton) — Abjad
 - Ibn ʿArabī, *Futūḥāt al-Makkiyya* (13th c.) — Abjad / ʿilm al-ḥurūf tradition
+- Johari, H. *Numerology: with Tantra, Ayurveda, and Astrology* (1990, Destiny Books) — **Vedic; primary letter table**
+- Chaudhry, J.C. *Numerology for Success* (2002, Sterling) — Vedic; corroborating letter values
+- Defouw, H. & Svoboda, R. *Light on Life: An Introduction to the Astrology of India* (1996, Arkana / Penguin) — Vedic; Navagraha attributes
+- Frawley, D. *Astrology of the Seers: A Guide to Vedic/Hindu Astrology* (1990, Passage Press) — Vedic; planetary meanings and doshas
+- Svoboda, R. *Aghora: At the Left Hand of God* (1986, Brotherhood of Life) — Vedic; bīja mantras and gemstone lore
+- *Bṛhat Parāśara Horā Śāstra* (ancient; trans. Santhanam, 1984, Ranjan) — Vedic; foundational Jyotish planetary natures
+- Lad, V. *Textbook of Ayurveda*, Vol. 1 (2002, Ayurvedic Press) — Vedic; dosha attributes
 
 ### Enochian
 
@@ -1289,6 +1450,17 @@ approximations, or reflects modern rather than ancient constructions.
     constellations due to the precession of the equinoxes (approximately 1° per 72 years since
     the 2nd century CE). Classical Jewish astrology was aware of precession; modern practitioners
     vary on which system to use.
+
+16. **Vedic letter values — shared with Chaldean.** The phonetic letter values used in the Vedic
+    (Anka Vidyā) system (A=1, B=2, C=3, …, 9 unassigned) are identical to those of the Chaldean
+    system as documented for Latin script. This is not an implementation error: Johari (1990) and
+    Chaudhry (2002) use the same 1–8 table, and this convergence is well-attested — the Indian
+    system draws historically from the same Babylonian-Semitic numerological substrate as Chaldean.
+    The traditions are distinguished entirely by their interpretive frameworks: Chaldean uses
+    Western root meanings, while Vedic maps every root number to a Navagraha planetary archetype
+    with its own bīja mantra, Navaratna gem, Ayurvedic dosha, sacred day, and Jyotish planetary
+    lore. Word totals will therefore be numerically identical across both systems; the spiritual
+    readings will differ substantially.
 
 15. **Psi–RNG experiment.** The experiment is provided as an interactive exploration tool, not
     as a validated measurement instrument. Single-trial outcomes — whether early matches or long
