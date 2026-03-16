@@ -295,8 +295,6 @@ exports/
 *.gif
 *.bmp
 *.tiff
-*.svg
-
 # Video files
 *.mp4
 *.avi

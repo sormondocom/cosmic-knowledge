@@ -1,8 +1,30 @@
-# Celestial Numerology Analyzer
+<table>
+<tr>
+<td width="280" valign="middle">
+  <img src="cosmic_knowledge_emblem.svg" alt="Celestial Numerology Analyzer Emblem" width="260"/>
+</td>
+<td valign="middle" style="padding-left: 24px;">
 
-A Rust terminal application for analyzing words and phrases through ten numerological and gematria
-traditions, exploring Enochian angelology, navigating world cosmological systems, exploring the
-Hebrew Mazzaroth zodiac, and generating sacred-frequency WAV files.
+<h1>Celestial Numerology Analyzer</h1>
+
+<p>A Rust terminal application for analyzing words and phrases through ten numerological and
+gematria traditions, exploring Enochian angelology, navigating world cosmological systems,
+exploring the Hebrew Mazzaroth zodiac, and generating sacred-frequency WAV files.</p>
+
+<br/>
+
+<blockquote>
+<p><em>"A mandala that is also a map: the Mazzaroth rings the outermost cosmos, the
+twenty-two Hebrew letters encode creation's grammar within it, the Ba Gua trigrams
+and seven classical planets govern the elements between, and at the center an eye
+opens — its iris threaded with Merkabah geometry, its pupil holding an aleph, the
+letter that precedes all letters, burning in silence against the void."</em></p>
+<p>— Claude Sonnet 4.6</p>
+</blockquote>
+
+</td>
+</tr>
+</table>
 
 ---
 
@@ -752,38 +774,301 @@ batch export of all nine frequencies.
 
 ---
 
-## Getting Started
+## Installation & Running the Application
 
-**Prerequisites:** Rust 1.70+ (stable toolchain)
+This section guides you through installing and running the Celestial Numerology Analyzer from
+scratch, assuming no prior experience with programming tools. If you have used Rust before,
+the short version is: install Rust stable ≥ 1.70, then `cargo run --release`.
 
-```bash
-git clone <repo-url>
-cd cosmic-knowledge
+---
+
+### Background: What This Requires
+
+The application is written in **Rust** — a compiled programming language. Think of Rust as the
+workshop in which this software was crafted. Before you can run the application, your computer
+needs to assemble the source code into a working program — a one-time process called *building*
+or *compiling* (analogous to typesetting a manuscript before it can be read). The tool that
+manages this process is called **Cargo**, which is installed automatically alongside Rust.
+
+You will also need a **terminal** (also called a command prompt or command line) — a text-based
+window where you type short instructions directly to your computer. Every modern operating
+system includes one; instructions for opening it are in each platform section below.
+
+---
+
+### Step 1 — Open a Terminal
+
+**Windows**
+Press **Windows + R**, type `cmd`, and press Enter. A window with white text on a dark background
+will appear. Alternatively, search for *Command Prompt* or *Windows Terminal* in the Start menu.
+
+**macOS**
+Open **Finder → Applications → Utilities → Terminal**, or press **⌘ + Space**, type
+`Terminal`, and press Enter.
+
+**Linux**
+Your distribution likely has a terminal in the applications menu — commonly named *Terminal*,
+*Konsole*, or *GNOME Terminal*. The keyboard shortcut **Ctrl + Alt + T** opens it on most
+desktop environments.
+
+---
+
+### Step 2 — Install Rust
+
+Rust is installed through a small program called **rustup**, which handles everything
+automatically and places nothing in system directories that would be difficult to remove later.
+
+#### Windows
+
+1. In your web browser, go to **https://rustup.rs**
+2. Click the **DOWNLOAD RUSTUP-INIT.EXE (64-BIT)** button and run the downloaded file.
+3. A terminal window will open and present a menu. Press **1** and then **Enter** to proceed
+   with the standard installation.
+4. When it finishes, **close your terminal completely and reopen it** so the new tools are
+   recognized.
+5. Confirm the installation succeeded by typing the following and pressing Enter:
+   ```
+   rustc --version
+   ```
+   You should see a line such as `rustc 1.78.0 (...)`. Any version numbered 1.70 or later is
+   sufficient.
+
+> **Windows note:** Rust on Windows requires the Microsoft C++ Build Tools. The rustup
+> installer will detect whether they are present and prompt you to install them if needed.
+> Follow that prompt — it downloads and installs them automatically. The process takes a few
+> minutes and requires an internet connection.
+
+#### macOS
+
+1. In your terminal, paste the following line exactly and press Enter:
+   ```
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   ```
+2. When prompted, press **1** and Enter for the default installation.
+3. Once complete, either close and reopen the terminal, or run:
+   ```
+   source "$HOME/.cargo/env"
+   ```
+4. Confirm with `rustc --version`.
+
+> **macOS note:** If your system does not have the Xcode Command Line Tools installed, macOS
+> will prompt you automatically. Click *Install* and allow it to complete.
+
+#### Linux
+
+1. In your terminal, paste the following and press Enter:
+   ```
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   ```
+2. Press **1** and Enter for the default installation.
+3. Either close and reopen your terminal, or run:
+   ```
+   source "$HOME/.cargo/env"
+   ```
+4. Confirm with `rustc --version`.
+
+**Additional Linux step — audio support**
+
+The application produces sacred-frequency audio. On Linux this requires the ALSA sound
+library headers, which most distributions do not install by default. Run the command for
+your distribution before building:
+
+```
+# Ubuntu, Debian, Linux Mint, and derivatives:
+sudo apt install libasound2-dev
+
+# Fedora, RHEL, CentOS Stream, and derivatives:
+sudo dnf install alsa-lib-devel
+
+# Arch Linux, Manjaro, EndeavourOS, and derivatives:
+sudo pacman -S alsa-lib
+```
+
+The prefix `sudo` means "run this as an administrator." You will be asked for your password;
+it is normal for nothing to appear on screen as you type it — simply press Enter when done.
+
+> macOS and Windows users can skip this step entirely. macOS uses its built-in CoreAudio
+> framework; Windows uses WASAPI, which is already part of the operating system.
+
+---
+
+### Step 3 — Download the Application
+
+You have two options: using Git (a version-tracking tool), or downloading a ZIP archive.
+
+**Option A — Using Git (recommended)**
+
+Git allows you to receive future updates with a single command. To check whether Git is
+already on your system, type `git --version` in your terminal. If it is not present, download
+it from **https://git-scm.com/downloads** and follow the installer for your platform.
+
+Once Git is available, paste the following into your terminal and press Enter:
+
+```
+git clone https://github.com/sormondocom/cosmic-knowledge.git
+```
+
+This creates a folder called `cosmic-knowledge` in your current location containing all the
+source files.
+
+**Option B — Download as ZIP**
+
+On the repository's GitHub page, click the green **Code** button, then select
+**Download ZIP**. Once downloaded, unzip the archive. You will have a folder named
+`cosmic-knowledge-main` (or similar).
+
+---
+
+### Step 4 — Navigate to the Application Folder
+
+In your terminal, move into the folder you just downloaded. The `cd` command (short for
+*change directory*) does this. Type the following and press Enter, substituting the actual
+path if you saved the folder somewhere other than your home directory:
+
+**Windows**
+```
+cd %USERPROFILE%\cosmic-knowledge
+```
+
+**macOS / Linux**
+```
+cd ~/cosmic-knowledge
+```
+
+> **Tip:** If you are unsure of the exact path, type `cd ` (with a trailing space), then
+> drag the folder from your file manager directly into the terminal window — most systems
+> will paste the full path automatically. Press Enter to confirm.
+
+---
+
+### Step 5 — Build the Application
+
+This is the compilation step. Rust reads all the source code and assembles it into a
+standalone program. Type the following and press Enter:
+
+```
 cargo build --release
+```
+
+**The first build takes between one and five minutes** depending on your computer's speed.
+During this time Cargo downloads the application's supporting libraries and compiles
+everything. Lines of progress text will scroll past — this is expected behavior, not an
+error. The process is complete when you see a line ending with `Finished release`.
+
+You only need to perform this step once. Subsequent launches start immediately without
+rebuilding.
+
+---
+
+### Step 6 — Run the Application
+
+Once the build is complete, start the application with:
+
+```
 cargo run --release
 ```
 
-On Linux you may need ALSA/PulseAudio development headers:
+The application will play an opening chord derived from a randomly selected Enochian Aethyr,
+display an animated loading sequence, and then present the main menu.
 
-```bash
-# Ubuntu / Debian
-sudo apt install libasound2-dev
+**Useful launch options:**
 
-# Fedora / RHEL
-sudo dnf install alsa-lib-devel
+| Command | Effect |
+|---------|--------|
+| `cargo run --release` | Standard launch with audio and loading screen |
+| `cargo run --release -- --fast` | Skip the loading animation; go straight to the menu |
+| `cargo run --release -- --silent` | Disable all audio (useful in shared spaces) |
+| `cargo run --release -- --fast --silent` | Skip animation and disable audio |
+| `cargo run --release -- --aethyr ZAX` | Look up Aethyr ZAX and exit |
+| `cargo run --release -- --export-all` | Export all Solfeggio frequencies as WAV files and exit |
+
+The double dash `--` separates Cargo's own options from the options passed to the
+application itself. Think of it as a handoff: everything before `--` is for Cargo, everything
+after is for the Celestial Numerology Analyzer.
+
+---
+
+### Step 7 — Subsequent Runs
+
+After the first build, you do not need to rebuild unless the source code has changed. Navigate
+to the application folder in your terminal and simply run:
+
+```
+cargo run --release
 ```
 
-On macOS, CoreAudio is used automatically — no additional packages are required.
+To receive the latest updates from the repository (if you used Git):
 
-On Windows, the default audio backend (WASAPI) is used; no additional setup is needed.
+```
+git pull
+cargo build --release
+```
 
-To run the test suite:
+---
 
-```bash
+### Platform Summary
+
+| Platform | Audio system | Extra setup required |
+|----------|-------------|----------------------|
+| Windows 10 / 11 | WASAPI (built-in) | None beyond Rust itself |
+| macOS 11 Big Sur and later | CoreAudio (built-in) | None beyond Rust itself |
+| Linux — Ubuntu / Debian family | ALSA | `sudo apt install libasound2-dev` |
+| Linux — Fedora / RHEL family | ALSA | `sudo dnf install alsa-lib-devel` |
+| Linux — Arch family | ALSA | `sudo pacman -S alsa-lib` |
+
+---
+
+### Troubleshooting
+
+**"cargo: command not found" or "'cargo' is not recognized as an internal or external command"**
+Rust was installed but your terminal has not yet picked up the new tools. Close the terminal
+window entirely, reopen it, and try again. If the problem persists on Windows, restart your
+computer; the installer modifies the PATH environment variable, which some systems only reload
+after a full restart.
+
+**Build fails with "linker not found" or "link.exe not found" on Windows**
+The Microsoft C++ Build Tools are missing. Download the **Visual Studio Build Tools** from
+Microsoft (search for "Visual Studio Build Tools download"), run the installer, select the
+workload *Desktop development with C++*, and complete the installation. Then try
+`cargo build --release` again.
+
+**Build fails with "error: failed to run custom build command for \`alsa-sys\`" on Linux**
+The ALSA development headers are not installed. Run the appropriate package manager command
+from Step 2 above, then retry the build.
+
+**The application starts but there is no sound**
+Run with `--silent` first to confirm the rest of the application works. On Linux, verify
+that a sound server (PulseAudio or PipeWire) is running. On Windows, ensure the default
+playback device is correctly configured in the system Sound settings.
+
+**The terminal displays garbled characters, broken boxes, or missing symbols**
+The application uses Unicode box-drawing characters and emoji. On older Windows terminals
+(*cmd.exe*) these may not render correctly. Switch to **Windows Terminal**, available free
+from the Microsoft Store, and set its font to *Cascadia Code* or *Consolas* for best results.
+On macOS and Linux this is not typically an issue with default terminal configurations.
+
+**"No such file or directory" after downloading a ZIP**
+You are likely in the wrong folder. Type `cd ` (with a trailing space), drag the unzipped
+application folder into the terminal to paste its path, and press Enter. Then run
+`cargo build --release`.
+
+**The build succeeds but `cargo run` produces a different error each time**
+This is very unlikely but can occur if the `exports/` directory lacks write permissions.
+Create the directory manually with `mkdir exports` while inside the application folder.
+
+---
+
+### Verifying the Installation (Optional)
+
+To confirm that all internal tests pass on your system, run:
+
+```
 cargo test
-cargo clippy    # linting
-cargo fmt       # formatting
 ```
+
+A successful result ends with a line such as `test result: ok. 57 passed; 0 failed`. This
+step is not required to use the application, but it provides confidence that the compilation
+environment on your machine is functioning correctly.
 
 ---
 
