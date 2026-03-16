@@ -218,94 +218,154 @@ pub fn print_angel_banner() {
 
 // ─── Loading screen ───────────────────────────────────────────────────────────
 
-/// Play the animated startup sequence then clear the terminal.
+/// Animated ASCII mandala loading screen — mirrors the SVG emblem structure:
+///   outer ring  = 12 Mazzaroth / zodiac signs
+///   middle ring = 22 Hebrew letters (א–ת)
+///   inner ring  = 8 Ba Gua trigrams + 7 classical planet symbols
+///   centre      = all-seeing eye / iris (◉)
 pub fn show_loading_screen() {
-    print!("\x1B[2J\x1B[H");
-    io::stdout().flush().unwrap_or(());
+    // ── Canvas: 71 cols × 37 rows.  Centre: col 35, row 18  (0-indexed) ──────
+    const W: i32 = 71;
 
-    println!("{}", "\n".repeat(6));
-    println!("{}", "            ╭─────────────────────────────────────╮".bright_magenta());
-    println!("{}", "            │        🌟 AWAKENING 🌟             │".bright_magenta());
-    println!("{}", "            │    CELESTIAL CONSCIOUSNESS        │".bright_magenta());
-    println!("{}", "            ╰─────────────────────────────────────╯".bright_magenta());
-    println!();
-
-    for pulse in 0..3_u8 {
-        let energy = if pulse % 2 == 0 { ["◊", "◈", "◉", "◈", "◊"] } else { ["◉", "◈", "◊", "◈", "◉"] };
-        print!("\r                ");
-        for s in energy { print!("{} ", s.bright_cyan()); }
-        print!(" LOADING ");
-        for s in energy.iter().rev() { print!("{} ", s.bright_cyan()); }
-        io::stdout().flush().unwrap_or(());
-        thread::sleep(Duration::from_millis(400));
-    }
-    println!("\n");
-
-    let messages = [
-        ("Connecting to celestial frequencies",  "🌌"),
-        ("Aligning with divine numerology",       "⚡"),
-        ("Awakening angelic consciousness",       "👼"),
-        ("Tuning into universal vibrations",      "🎵"),
-        ("Opening sacred numerical channels",     "🔢"),
-        ("Downloading cosmic wisdom",             "📡"),
-        ("Initializing spiritual algorithms",     "🧮"),
-        ("Calibrating mystical sensors",          "🔮"),
-    ];
-    let spinners = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-    let bar_len  = 20;
-
-    for (message, icon) in &messages {
-        for frame in 0..25_usize {
-            let spinner  = spinners[frame % spinners.len()];
-            let progress = (frame * bar_len) / 25;
-            let bar      = format!("[{}{}]", "█".repeat(progress), "░".repeat(bar_len - progress));
-            print!("\r        {} {} {} {} {}",
-                icon, spinner.bright_white(), message.bright_white(),
-                bar.bright_blue(), format!("{}%", (frame * 100) / 25).dimmed(),
-            );
-            io::stdout().flush().unwrap_or(());
-            thread::sleep(Duration::from_millis(50));
+    /// Place `s` at 0-indexed (row, col); clips silently if out of bounds.
+    fn put(row: i32, col: i32, s: &str) {
+        if row >= 0 && col >= 0 && row < 37 && col < 71 {
+            print!("\x1B[{};{}H{}", row + 1, col + 1, s);
         }
-        let full_bar = format!("[{}]", "█".repeat(bar_len));
-        println!("\r        {} ✓ {} {} {}   ",
-            icon, message.bright_white(), full_bar.bright_green(), "100%".bright_green());
-        thread::sleep(Duration::from_millis(150));
     }
 
-    println!();
-    let mystical = [
-        "🌟 Synchronizing with akashic records…",
-        "⭐ Blessing your spiritual journey…",
-        "✨ Opening gates of wisdom…",
-        "🌙 Moon cycles aligned…",
-        "☄️  Cosmic energies flowing…",
-        "🪐 Planetary influences calibrated…",
-        "🌌 Universe ready to speak…",
+    /// Compute (col, row) for symbol `i` of `n` evenly spaced around an
+    /// ellipse with semi-axes (r_col, r_row) centred at (35, 18), starting
+    /// at the top (−π/2) and advancing clockwise.
+    fn ring_pos(r_col: f64, r_row: f64, i: usize, n: usize) -> (i32, i32) {
+        let a = -std::f64::consts::PI / 2.0
+            + i as f64 * 2.0 * std::f64::consts::PI / n as f64;
+        let col = (35.0_f64 + r_col * a.cos()).round() as i32;
+        let row = (18.0_f64 + r_row * a.sin()).round() as i32;
+        (col, row)
+    }
+
+    // Flush helper (called after every visual change)
+    let flush = || io::stdout().flush().unwrap_or(());
+
+    print!("\x1B[2J\x1B[H\x1B[?25l"); // clear, home, hide cursor
+    flush();
+
+    // ── PHASE 0 · Starfield (scattered background stars) ──────────────────
+    let stars: &[(i32, i32, &str)] = &[
+        ( 4, 0,"·"),(12, 1,"✦"),(23, 0,"·"),(34, 1,"✧"),(47, 0,"·"),
+        (55, 1,"✦"),(64, 0,"·"),(68, 3,"·"),( 0, 7,"✦"),( 1,18,"·"),
+        ( 2,27,"·"),( 5,35,"✧"),(65, 7,"·"),(69,18,"✦"),(67,27,"·"),
+        (63,35,"·"),(14,36,"·"),(27,36,"✧"),(44,36,"·"),(54,36,"✦"),
+        ( 7, 4,"·"),(59, 4,"·"),( 9,31,"✧"),(58,30,"·"),
+        (18, 5,"·"),(49, 5,"✦"),(20,30,"·"),(50,30,"·"),
+        (15,11,"·"),(53,11,"·"),(16,24,"·"),(52,24,"·"),
+        ( 3,14,"·"),(61,22,"✦"),(10,20,"·"),(58,14,"·"),
     ];
-    for text in mystical {
-        println!("{}", format!("           {}", text).italic().bright_magenta());
-        thread::sleep(Duration::from_millis(300));
+    for &(col, row, s) in stars {
+        put(row, col, &s.dimmed().to_string());
+    }
+    flush();
+    thread::sleep(Duration::from_millis(350));
+
+    // ── PHASE 1 · Outer zodiac ring (Mazzaroth) ────────────────────────────
+    // 12 signs materialise clockwise, one per tick  (rcol=13.5, rrow=6.5)
+    let zodiac: &[char] = &[
+        '♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓',
+    ];
+    for (i, &sign) in zodiac.iter().enumerate() {
+        let (col, row) = ring_pos(13.5, 6.5, i, 12);
+        put(row, col, &sign.to_string().bright_cyan().to_string());
+        flush();
+        thread::sleep(Duration::from_millis(75));
+    }
+    thread::sleep(Duration::from_millis(180));
+
+    // ── PHASE 2 · Hebrew ring (22 letters, א–ת) ────────────────────────────
+    // (rcol=9.0, rrow=4.5)
+    let hebrew: &[char] = &[
+        'א','ב','ג','ד','ה','ו','ז','ח','ט','י','כ','ל',
+        'מ','נ','ס','ע','פ','צ','ק','ר','ש','ת',
+    ];
+    for (i, &letter) in hebrew.iter().enumerate() {
+        let (col, row) = ring_pos(9.0, 4.5, i, 22);
+        put(row, col, &letter.to_string().bright_magenta().to_string());
+        flush();
+        thread::sleep(Duration::from_millis(48));
+    }
+    thread::sleep(Duration::from_millis(180));
+
+    // ── PHASE 3a · Ba Gua inner ring (rcol=6.0, rrow=3.0) ──────────────────
+    let bagua: &[char] = &['☰','☱','☲','☳','☴','☵','☶','☷'];
+    for (i, &tri) in bagua.iter().enumerate() {
+        let (col, row) = ring_pos(6.0, 3.0, i, 8);
+        put(row, col, &tri.to_string().bright_yellow().to_string());
+        flush();
+        thread::sleep(Duration::from_millis(80));
     }
 
-    println!("\n");
-    println!("{}", "              ╭───────────────────────╮".bright_yellow());
-    println!("{}", "              │  🔮 CONNECTION LIVE 🔮  │".bold().bright_magenta());
-    println!("{}", "              │   Sacred portal open   │".bright_yellow());
-    println!("{}", "              ╰───────────────────────╯".bright_yellow());
+    // ── PHASE 3b · Classical planet symbols (SVG-proportional positions) ───
+    // Derived from the SVG's r≈147 px ring, scaled to terminal coords.
+    let planets: &[(i32, i32, char)] = &[
+        (37, 15, '☉'),   // Sun      — upper-right
+        (40, 17, '☽'),   // Moon     — right
+        (39, 19, '♂'),   // Mars     — lower-right
+        (36, 20, '♀'),   // Venus    — lower-centre-right
+        (31, 20, '♃'),   // Jupiter  — lower-centre-left
+        (28, 19, '♄'),   // Saturn   — lower-left
+        (27, 17, '☿'),   // Mercury  — left
+    ];
+    for &(col, row, sym) in planets {
+        put(row, col, &sym.to_string().red().to_string());
+        flush();
+        thread::sleep(Duration::from_millis(80));
+    }
+    thread::sleep(Duration::from_millis(200));
 
-    let sparkles = ["✦", "✧", "✩", "✪", "✫"];
-    print!("                ");
-    for s in sparkles {
-        print!("{} ", s.bright_yellow());
-        io::stdout().flush().unwrap_or(());
-        thread::sleep(Duration::from_millis(100));
+    // ── PHASE 4 · Central all-seeing eye ───────────────────────────────────
+    // Faint Merkabah triangles (Star of David geometry inside the iris)
+    put(15, 35, &"▲".dimmed().to_string());
+    put(19, 35, &"▽".dimmed().to_string());
+    flush();
+    thread::sleep(Duration::from_millis(150));
+
+    // Eye box: 7 wide (cols 32–38), 3 tall (rows 16–18).  Centre = (35, 17).
+    // Draw the frame once, then pulse only the iris glyph.
+    put(16, 32, &"╭─────╮".bright_white().bold().to_string());
+    put(17, 32, &"│".bright_white().bold().to_string());
+    put(17, 38, &"│".bright_white().bold().to_string());
+    put(18, 32, &"╰─────╯".bright_white().bold().to_string());
+
+    for (glyph, delay) in [("·", 200u64), ("○", 180), ("◉", 160)] {
+        put(17, 33, &"  ".to_string()); // clear inner
+        put(17, 36, &"  ".to_string());
+        put(17, 35, &glyph.bold().bright_yellow().to_string());
+        flush();
+        thread::sleep(Duration::from_millis(delay));
     }
 
-    println!("\n{}", "            Ready to decode the universe…".italic().bright_blue());
-    thread::sleep(Duration::from_millis(1000));
+    // Settled iris: radial spokes flanking the pupil
+    put(17, 33, &"·".dimmed().to_string());
+    put(17, 37, &"·".dimmed().to_string());
+    put(17, 35, &"◉".bold().bright_yellow().to_string());
+    flush();
+    thread::sleep(Duration::from_millis(400));
 
-    print!("\x1B[2J\x1B[H");
-    io::stdout().flush().unwrap_or(());
+    // ── PHASE 5 · Title ────────────────────────────────────────────────────
+    let title    = "✦  C O S M I C   K N O W L E D G E  ✦";
+    let subtitle = "Celestial Numerology · Sacred Wisdom";
+    let t_col = ((W - title.chars().count() as i32) / 2).max(0);
+    let s_col = ((W - subtitle.chars().count() as i32) / 2).max(0);
+    put(34, t_col, &title.bold().bright_magenta().to_string());
+    flush();
+    thread::sleep(Duration::from_millis(280));
+    put(35, s_col, &subtitle.italic().dimmed().to_string());
+    flush();
+    thread::sleep(Duration::from_millis(1300));
+
+    // ── Teardown ───────────────────────────────────────────────────────────
+    print!("\x1B[?25h\x1B[2J\x1B[H"); // show cursor, clear, home
+    flush();
 }
 
 // ─── Help screen ──────────────────────────────────────────────────────────────
