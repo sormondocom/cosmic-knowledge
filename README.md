@@ -1,8 +1,8 @@
 # Celestial Numerology Analyzer
 
 A Rust terminal application for analyzing words and phrases through ten numerological and gematria
-traditions, exploring Enochian angelology, navigating world cosmological systems, and generating
-sacred-frequency WAV files.
+traditions, exploring Enochian angelology, navigating world cosmological systems, exploring the
+Hebrew Mazzaroth zodiac, and generating sacred-frequency WAV files.
 
 ---
 
@@ -24,6 +24,9 @@ sacred-frequency WAV files.
 | Explore African traditions | option **4** → sub-option **2** |
 | Run the Psi–RNG experiment | option **5** |
 | Configure range and delay for Psi–RNG | option **5** → enter settings at the prompts |
+| Browse all twelve Mazzaroth signs | option **6** → sub-option **1** → sub-option **1** |
+| Look up a Mazzaroth sign by number (1–12) | option **6** → sub-option **1** → sub-option **2** |
+| Find my Mazzaroth sign by birth date | option **6** → sub-option **1** → sub-option **3** |
 | Skip the intro animation | `cargo run -- --fast` |
 | Run silently (no audio) | `cargo run -- --silent` |
 | Run all unit tests | `cargo test` |
@@ -51,6 +54,7 @@ sacred-frequency WAV files.
 | `cosmology/african.rs` | Kemetic Numbers | Ancient Egyptian | Sacred numerical symbolism |
 | `audio.rs` | Solfeggio / Binaural | Modern esoteric | WAV export; binaural beat synthesis |
 | `rng.rs` | Psi–RNG Experiment | Experimental parapsychology | RDRAND hardware TRNG; configurable range and delay |
+| `zodiac/mazzaroth.rs` | Hebrew Mazzaroth | Kabbalistic / Jewish astrology | Twelve signs · Sefer Yetzirah letters · Twelve Tribes · Hoshen gemstones |
 
 **Output formats:** interactive terminal · plain-text reports (`exports/*.txt`) ·
 HTML reports · PDF reports · WAV audio (`exports/*.wav`)
@@ -67,6 +71,8 @@ library of gematria and cosmological traditions. It lets users:
   recorded in John Dee's manuscripts.
 - Access Chinese and African cosmological frameworks (Nine Star Ki natal charts, Wu Xing, Ba Gua,
   Yoruba Ifá Odù, Akan day-name souls, Kemetic number symbolism).
+- Explore the Hebrew Mazzaroth — the twelve zodiacal signs as interpreted through Sefer Yetzirah,
+  the Twelve Tribes of Israel, and the Hoshen (High Priest's breastplate) gemstones.
 - Export pure-tone Solfeggio frequencies and binaural-beat WAV files for meditative use.
 - Save session results to timestamped plain-text files or send formatted HTML reports to a system
   printer.
@@ -531,6 +537,167 @@ publication bias (Alcock, 2003; Wiseman & Schlitz, 1997).
 
 ---
 
+## Zodiac & Astrology
+
+**Source files:** `src/zodiac/mod.rs`, `src/zodiac/mazzaroth.rs`
+**Main menu:** option **6**
+
+The `zodiac/` module provides a structured introduction to sacred astrological traditions. The
+top-level dispatcher (`run_zodiac_session`) presents a menu of traditions; currently the Hebrew
+Mazzaroth is implemented, with the architecture designed for future additions (Western tropical,
+Vedic Jyotish, Chinese Shengxiao, etc.).
+
+### Hebrew Mazzaroth
+
+**Sub-module:** `src/zodiac/mazzaroth.rs`
+**Main menu path:** option **6** → sub-option **1**
+
+The word *Mazzaroth* (מַזָּרוֹת) appears in Job 38:32 ("Canst thou bring forth Mazzaroth in his
+season?") and refers to the twelve constellations of the annual zodiacal cycle as understood
+within the Hebrew scriptural and rabbinic tradition. Unlike Hellenistic astrology, the Hebrew
+interpretation integrates the zodiac with the Twelve Tribes of Israel, the Hebrew calendar months,
+the letter-cosmology of Sefer Yetzirah, and the gemstones of the High Priest's breastplate.
+
+#### The Twelve Signs
+
+| # | Hebrew | Transliteration | English | Symbol | Dates | Element |
+|---|--------|----------------|---------|--------|-------|---------|
+| 1 | טָלֶה | Taleh | Aries | ♈ | 21 Mar – 19 Apr | Fire |
+| 2 | שׁוֹר | Shor | Taurus | ♉ | 20 Apr – 20 May | Earth |
+| 3 | תְּאוֹמִים | Te'omim | Gemini | ♊ | 21 May – 20 Jun | Air |
+| 4 | סַרְטָן | Sartan | Cancer | ♋ | 21 Jun – 22 Jul | Water |
+| 5 | אַרְיֵה | Aryeh | Leo | ♌ | 23 Jul – 22 Aug | Fire |
+| 6 | בְּתוּלָה | Betulah | Virgo | ♍ | 23 Aug – 22 Sep | Earth |
+| 7 | מֹאזְנַיִם | Moznayim | Libra | ♎ | 23 Sep – 22 Oct | Air |
+| 8 | עַקְרָב | Akrav | Scorpio | ♏ | 23 Oct – 21 Nov | Water |
+| 9 | קֶשֶׁת | Keshet | Sagittarius | ♐ | 22 Nov – 21 Dec | Fire |
+| 10 | גְּדִי | Gedi | Capricorn | ♑ | 22 Dec – 19 Jan | Earth |
+| 11 | דְּלִי | Deli | Aquarius | ♒ | 20 Jan – 18 Feb | Air |
+| 12 | דָּגִים | Dagim | Pisces | ♓ | 19 Feb – 20 Mar | Water |
+
+#### Sefer Yetzirah Letters
+
+*Sefer Yetzirah* (*Book of Formation*) chapter 5 assigns one of the twelve *peshutot* (simple
+letters) to each Hebrew month, each associated with a human sense or faculty. The letters and
+their months provide the zodiacal letter assignments used in this application:
+
+| Letter | Sign | Month | Sense (Sefer Yetzirah) |
+|--------|------|-------|------------------------|
+| Heh (ה) | Taleh / Aries | Nisan | Speech |
+| Vav (ו) | Shor / Taurus | Iyar | Thought |
+| Zayin (ז) | Te'omim / Gemini | Sivan | Walking |
+| Chet (ח) | Sartan / Cancer | Tammuz | Sight |
+| Tet (ט) | Aryeh / Leo | Av | Hearing |
+| Yod (י) | Betulah / Virgo | Elul | Work (action) |
+| Lamed (ל) | Moznayim / Libra | Tishrei | Coition |
+| Nun (נ) | Akrav / Scorpio | Cheshvan | Smell |
+| Samech (ס) | Keshet / Sagittarius | Kislev | Sleep |
+| Ayin (ע) | Gedi / Capricorn | Tevet | Anger |
+| Tzade (צ) | Deli / Aquarius | Shevat | Taste / Swallowing |
+| Kuf (ק) | Dagim / Pisces | Adar | Laughter |
+
+*Source: Sefer Yetzirah 5:1–6 (Kaplan, 1990; Hayman, 2004)*
+
+#### Tribal Associations (Bamidbar Rabbah)
+
+The midrashic collection *Bamidbar Rabbah* (Numbers Rabbah) 2:7 aligns each of the Twelve
+Tribes of Israel with a month, a constellation, and a tribal standard. The correspondences
+reflect the arrangement of the twelve tribes around the Mishkan (Tabernacle) in the wilderness:
+
+| Sign | Tribe | Hebrew |
+|------|-------|--------|
+| Taleh / Aries | Judah | יְהוּדָה |
+| Shor / Taurus | Issachar | יִשָּׂשכָר |
+| Te'omim / Gemini | Zebulun | זְבוּלֻן |
+| Sartan / Cancer | Reuben | רְאוּבֵן |
+| Aryeh / Leo | Simeon | שִׁמְעוֹן |
+| Betulah / Virgo | Gad | גָּד |
+| Moznayim / Libra | Ephraim | אֶפְרַיִם |
+| Akrav / Scorpio | Manasseh | מְנַשֶּׁה |
+| Keshet / Sagittarius | Benjamin | בִּנְיָמִין |
+| Gedi / Capricorn | Dan | דָּן |
+| Deli / Aquarius | Asher | אָשֵׁר |
+| Dagim / Pisces | Naphtali | נַפְתָּלִי |
+
+*Source: Bamidbar Rabbah 2:7; cf. Ginzburg, L. Legends of the Jews, Vol. 3 (1913)*
+
+#### Hoshen Gemstones
+
+The High Priest's breastplate (*Hoshen Mishpat*, Exodus 28:15–21) bore twelve gemstones, one
+for each tribe, engraved with the tribal name. The tribal stone assignments follow the Massoretic
+text of Exodus 28:17–20 and cross-reference the identifications discussed in *Talmud Yerushalmi*
+*Yoma* 3:7 and the mediaeval analysis by Nahmanides (*Commentary on Exodus*, 13th c.):
+
+| Tribe | Hebrew Name | Gem | English Identification |
+|-------|-------------|-----|------------------------|
+| Judah | נֹפֶךְ (Nofekh) | Row 2, stone 1 | Turquoise / Carbuncle |
+| Issachar | סַפִּיר (Sapir) | Row 2, stone 2 | Sapphire / Lapis Lazuli |
+| Zebulun | יַהֲלֹם (Yahalom) | Row 2, stone 3 | Diamond |
+| Reuben | אֹדֶם (Odem) | Row 1, stone 1 | Ruby / Carnelian |
+| Simeon | פִּטְדָה (Pitdah) | Row 1, stone 2 | Topaz / Peridot |
+| Gad | שְׁבוֹ (Shevo) | Row 3, stone 2 | Agate / Banded Quartz |
+| Ephraim | שֹׁהַם (Shoham) | Row 4, stone 2 | Onyx / Beryl |
+| Manasseh | שֹׁהַם (Shoham) | Row 4, stone 2 | Onyx / Beryl (shared, sons of Joseph) |
+| Benjamin | יָשְׁפֵה (Yashfeh) | Row 4, stone 3 | Jasper |
+| Dan | לֶשֶׁם (Leshem) | Row 3, stone 1 | Ligure / Jacinth |
+| Asher | תַּרְשִׁישׁ (Tarshish) | Row 4, stone 1 | Beryl / Chrysolite |
+| Naphtali | בָּרֶקֶת (Bareket) | Row 3, stone 3 | Emerald |
+
+**Note on identifications:** The exact mineralogical identity of several Hoshen stones is
+disputed. Ancient Hebrew gem names do not map cleanly onto modern mineralogical taxonomy. The
+English identifications given are the most widely cited scholarly proposals; the Septuagint
+(LXX), *Talmud Bavli* (*Sotah* 36a), Nahmanides, and modern scholars (Hershkovitz, 1983;
+Smeets, 1984) sometimes differ significantly.
+
+#### Planetary Rulerships
+
+The seven classical planets (Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn — the only planets
+known in antiquity) are assigned as domicile rulers to the twelve signs. This scheme derives
+ultimately from Ptolemy's *Tetrabiblos* (c. 150 CE) and was transmitted into medieval Jewish
+astrology primarily through Abraham ibn Ezra's *Re'shit Hokhmah* (*Beginning of Wisdom*, c. 1148):
+
+| Hebrew Name | Transliteration | Body | Signs Ruled |
+|-------------|----------------|------|-------------|
+| שֶׁמֶשׁ | Shemesh | Sun | Leo |
+| לְבָנָה | Levanah | Moon | Cancer |
+| כּוֹכָב | Kokhav | Mercury | Gemini, Virgo |
+| נֹגַהּ | Nogah | Venus | Taurus, Libra |
+| מַאֲדִים | Ma'adim | Mars | Aries, Scorpio |
+| צֶדֶק | Tzedek | Jupiter | Sagittarius, Pisces |
+| שַׁבְּתַאי | Shabbatai | Saturn | Capricorn, Aquarius |
+
+#### Session Options
+
+The Mazzaroth session provides three modes:
+
+1. **Browse all twelve signs** — summary table showing symbol, name, Hebrew, element, and dates
+   for all twelve signs simultaneously.
+2. **Look up by number (1–12)** — full sign card with all fields: element, planet, tribe, month,
+   Sefer Yetzirah letter, Hoshen stone, modality, and spiritual quality.
+3. **Find by birth date** — enter Gregorian month and day; the application returns the matching
+   sign card. The date-range cutoffs follow conventional tropical zodiac boundaries.
+
+**Key source texts:**
+- *Sefer Yetzirah* (Book of Formation), ch. 5 — Kaplan, A. (trans./comm.) *Sefer Yetzirah*
+  (1990, Weiser Books); Hayman, A.P. *Sefer Yesira: Edition, Translation and Text-Critical
+  Commentary* (2004, Mohr Siebeck)
+- *Bamidbar Rabbah* (Numbers Rabbah) 2:7, in *Midrash Rabbah*, vol. 5 (Soncino Press, 1939)
+- Exodus 28:17–20 — *Tanakh: The Holy Scriptures* (Jewish Publication Society, 1985)
+- Talmud Yerushalmi, *Yoma* 3:7 — *Jerusalem Talmud* (Neusner, J., trans., 1982, University
+  of Chicago Press)
+- Nahmanides (Rabbi Moses ben Nahman), *Commentary on the Torah: Exodus* (13th c.; trans.
+  Chavel, C.B., 1973, Shilo Publishing)
+- Ibn Ezra, Abraham. *Re'shit Hokhmah* (*Beginning of Wisdom*) (c. 1148; ed. Levy, R., 1939,
+  University of Toronto Press) — planetary domicile rulerships in Jewish astrology
+- Ptolemy, Claudius. *Tetrabiblos* (c. 150 CE; trans. Robbins, F.E., 1940, Harvard/Loeb) —
+  classical planetary domicile scheme underlying all Western and Jewish astrological traditions
+- Ginzburg, L. *Legends of the Jews*, Vol. 3 (1913, Jewish Publication Society) — tribal
+  associations and Hoshen stone narrative tradition
+- Hershkovitz, M. "The Hoshen Mishpat and Its Stones," *Sinai* 93 (1983) — mineralogical analysis
+- Job 38:32 (MT) — the sole biblical occurrence of the word *Mazzaroth* (מַזָּרוֹת)
+
+---
+
 ## Sacred Frequencies
 
 **Source file:** `src/audio.rs`
@@ -569,7 +736,7 @@ is processed by the brain rather than the ear. The auditory mechanism is well-do
 1973); whether the resulting entrainment produces the meditative states claimed by practitioners
 remains an active area of research.
 
-The interactive export menu (option **4**) exposes:
+The interactive export menu (option **3**) exposes:
 - Per-frequency WAV export (individual Solfeggio tones)
 - Export all nine Solfeggio frequencies at once
 - Custom binaural beat creation (user-specified base frequency and beat frequency)
@@ -717,6 +884,31 @@ The user may accept the suggested stem or provide a custom name at the save prom
 - Morenz, S. *Egyptian Religion* (1973, Cornell; trans. Keep)
 - Asante, M.K. *The Egyptian Philosophers* (2000, African American Images)
 
+### Hebrew Mazzaroth & Jewish Astrology
+
+- *Sefer Yetzirah* (Book of Formation), ch. 5 — Kaplan, A. (trans./comm.) *Sefer Yetzirah*
+  (1990, Weiser Books) — twelve simple letters, months, and ruling senses
+- Hayman, A.P. *Sefer Yesira: Edition, Translation and Text-Critical Commentary*
+  (2004, Mohr Siebeck) — critical scholarly edition; principal academic reference
+- *Bamidbar Rabbah* (Numbers Rabbah) 2:7, in *Midrash Rabbah*, Vol. 5
+  (Soncino Press, 1939) — tribal-to-constellation associations
+- *Bereshit Rabbah* (Genesis Rabbah) 10:6 — planetary governance
+- *Pirke de-Rabbi Eliezer*, ch. 6 (trans. Friedlander, G., 1916, Kegan Paul) — Mazzaroth
+  as forty-nine celestial intelligences
+- Ibn Ezra, Abraham. *Re'shit Hokhmah* (*Beginning of Wisdom*) (c. 1148; ed. Levy, R.,
+  1939, University of Toronto Press) — the foundational text of medieval Jewish astrology;
+  planetary domiciles and sign qualities
+- Ptolemy, Claudius. *Tetrabiblos* (c. 150 CE; trans. Robbins, F.E., 1940, Harvard/Loeb) —
+  classical planetary domicile scheme and modalities
+- Exodus 28:15–21 — Hoshen (breastplate) gemstone specification, Massoretic text
+- Nahmanides. *Commentary on the Torah: Exodus* (13th c.; trans. Chavel, C.B., 1973, Shilo) —
+  authoritative medieval interpretation of the Hoshen stones
+- Ginzburg, L. *Legends of the Jews*, Vol. 3 (1913, Jewish Publication Society) — narrative
+  sources for tribal standards and Hoshen traditions
+- Hershkovitz, M. "The Hoshen Mishpat and Its Stones," *Sinai* 93 (1983) — mineralogical
+  analysis of the twelve Hoshen gem names
+- Job 38:32 (MT) — sole biblical occurrence of *Mazzaroth* (מַזָּרוֹת)
+
 ### Psi Research
 
 - Jahn, R.G. & Dunne, B.J. *Margins of Reality: The Role of Consciousness in the Physical World* (1987, Harcourt Brace)
@@ -788,7 +980,32 @@ approximations, or reflects modern rather than ancient constructions.
     biomedical evidence supports DNA repair, pineal activation, or measurable spiritual effects
     at these specific frequencies.
 
-11. **Psi–RNG experiment.** The experiment is provided as an interactive exploration tool, not
+11. **Hebrew Mazzaroth — gemstone identifications.** The English names for the twelve Hoshen
+    gemstones are scholarly proposals, not settled identifications. Ancient Hebrew mineral
+    vocabulary does not map cleanly onto modern gemology. The LXX, Talmud, Nahmanides, and
+    modern mineralogists (Hershkovitz, 1983; Smeets, 1984) offer differing identifications for
+    several stones — notably *odem* (ruby vs. carnelian), *pitdah* (topaz vs. peridot), *bareket*
+    (emerald vs. malachite), *sapir* (sapphire vs. lapis lazuli), and *shoham* (onyx vs. beryl).
+    The identifications used here follow the most widely cited modern scholarly proposals.
+
+12. **Hebrew Mazzaroth — tribal assignments.** The tribal-to-sign correspondences follow
+    *Bamidbar Rabbah* 2:7. Other rabbinic and kabbalistic sources occasionally differ; in
+    particular, the disposition of the Joseph tribes (Ephraim and Manasseh) varies between
+    traditions. The application uses the *Bamidbar Rabbah* ordering throughout.
+
+13. **Hebrew Mazzaroth — planetary rulerships.** The seven classical planets follow ibn Ezra's
+    *Re'shit Hokhmah* (c. 1148), which itself adapts Ptolemy's *Tetrabiblos* domicile scheme
+    into the Jewish astrological tradition. The outer planets (Uranus, Neptune, Pluto) were
+    unknown in antiquity and are not part of this system.
+
+14. **Hebrew Mazzaroth — Gregorian date boundaries.** The date-range cutoffs for sign lookup
+    by birth date use the standard tropical zodiac boundaries (e.g. Aries: 21 March – 19 April).
+    These are Hellenistic in origin and differ from the sidereal positions of the actual
+    constellations due to the precession of the equinoxes (approximately 1° per 72 years since
+    the 2nd century CE). Classical Jewish astrology was aware of precession; modern practitioners
+    vary on which system to use.
+
+15. **Psi–RNG experiment.** The experiment is provided as an interactive exploration tool, not
     as a validated measurement instrument. Single-trial outcomes — whether early matches or long
     runs without a match — cannot be interpreted as evidence for or against psychokinetic
     influence on the RNG. The reported cumulative probability figures describe how surprising a

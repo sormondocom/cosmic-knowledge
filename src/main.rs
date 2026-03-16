@@ -14,6 +14,7 @@ mod menu;
 mod numerology;
 mod reports;
 mod rng;
+mod zodiac;
 
 // ─── Selective imports ────────────────────────────────────────────────────────
 use std::io::{self, Write};
@@ -29,6 +30,7 @@ use enochian::{run_enochian_session, show_aethyr_info, show_aethyr_table, AETHYR
 use numerology::run_numerology_session;
 use cosmology::run_world_systems_session;
 use rng::run_rng_session;
+use zodiac::run_zodiac_session;
 use menu::{print_angel_banner, show_help, show_loading_screen, show_main_menu, MainMode};
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
@@ -106,7 +108,8 @@ fn main() {
                 }
             }
             MainMode::RngExperiment => run_rng_session(),
-            MainMode::Help => show_help(),
+            MainMode::Zodiac        => run_zodiac_session(),
+            MainMode::Help          => show_help(),
             MainMode::Quit => {
                 if let Some(ref sys) = audio_system {
                     stop_audio(sys);

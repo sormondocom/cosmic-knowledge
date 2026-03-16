@@ -145,6 +145,7 @@ pub enum MainMode {
     WorldSystems,
     Frequencies,
     RngExperiment,
+    Zodiac,
     Help,
     Quit,
 }
@@ -160,7 +161,9 @@ static MAIN_ITEMS: &[MenuItem] = &[
                hint: "Chinese · African · Nine Star Ki · Ifa" },
     MenuItem { key: "5", icon: "🎲", label: "Psi–RNG Experiment",
                hint: "Can intention influence a hardware TRNG?" },
-    MenuItem { key: "6", icon: "❓", label: "Help & Reference",
+    MenuItem { key: "6", icon: "⭐", label: "Zodiac & Astrology",
+               hint: "Hebrew Mazzaroth · Sefer Yetzirah · Twelve Tribes" },
+    MenuItem { key: "7", icon: "❓", label: "Help & Reference",
                hint: "" },
 ];
 
@@ -181,9 +184,10 @@ pub fn show_main_menu() -> MainMode {
             "3"      => return MainMode::Frequencies,
             "4"      => return MainMode::WorldSystems,
             "5"      => return MainMode::RngExperiment,
-            "6"      => return MainMode::Help,
+            "6"      => return MainMode::Zodiac,
+            "7"      => return MainMode::Help,
             "0" | "" => return MainMode::Quit,
-            _        => println!("{}", "  Please enter 0–6.".yellow()),
+            _        => println!("{}", "  Please enter 0–7.".yellow()),
         }
     }
 }
