@@ -1,6 +1,6 @@
 //! Export module — render content as Unicode text, HTML, or PDF.
 //!
-//! Replaces the old `print.rs`.  All OS-printer dispatch has been removed.
+//! OS-printer and browser-based PDF dispatch have been removed in favour of pure-Rust output.
 //! Three output formats are supported:
 //!  - **Text**  — plain UTF-8 saved to `exports/<stem>.txt`
 //!  - **HTML**  — styled single-page HTML saved to `exports/<stem>.html`

@@ -144,6 +144,7 @@ pub enum MainMode {
     Enochian,
     WorldSystems,
     Frequencies,
+    RngExperiment,
     Help,
     Quit,
 }
@@ -155,10 +156,12 @@ static MAIN_ITEMS: &[MenuItem] = &[
                hint: "Alphabet · Aethyrs · Translate · Keys" },
     MenuItem { key: "3", icon: "🎵", label: "Sacred Frequencies & Export",
                hint: "Binaural beats · Solfeggio · WAV export" },
-    MenuItem { key: "4", icon: "❓", label: "Help & Reference",
-               hint: "" },
-    MenuItem { key: "5", icon: "🌏", label: "World Cosmologies",
+    MenuItem { key: "4", icon: "🌏", label: "World Cosmologies",
                hint: "Chinese · African · Nine Star Ki · Ifa" },
+    MenuItem { key: "5", icon: "🎲", label: "Psi–RNG Experiment",
+               hint: "Can intention influence a hardware TRNG?" },
+    MenuItem { key: "6", icon: "❓", label: "Help & Reference",
+               hint: "" },
 ];
 
 static MAIN_MENU: Menu = Menu {
@@ -176,10 +179,11 @@ pub fn show_main_menu() -> MainMode {
             "1"      => return MainMode::Numerology,
             "2"      => return MainMode::Enochian,
             "3"      => return MainMode::Frequencies,
-            "4"      => return MainMode::Help,
-            "5"      => return MainMode::WorldSystems,
+            "4"      => return MainMode::WorldSystems,
+            "5"      => return MainMode::RngExperiment,
+            "6"      => return MainMode::Help,
             "0" | "" => return MainMode::Quit,
-            _        => println!("{}", "  Please enter 0–5.".yellow()),
+            _        => println!("{}", "  Please enter 0–6.".yellow()),
         }
     }
 }

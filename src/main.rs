@@ -13,6 +13,7 @@ mod export;
 mod menu;
 mod numerology;
 mod reports;
+mod rng;
 
 // ─── Selective imports ────────────────────────────────────────────────────────
 use std::io::{self, Write};
@@ -21,12 +22,13 @@ use colored::*;
 
 use audio::{
     create_custom_binaural, export_all_frequencies, export_all_frequencies_cli,
-    export_frequency, get_frequency_name, initialize_audio, start_ambient_frequency,
+    export_frequency, get_frequency_name, initialize_audio, play_intro_chord,
     stop_audio, AudioSystem, SOLFEGGIO_FREQUENCIES,
 };
-use enochian::{run_enochian_session, show_aethyr_info, show_aethyr_table};
+use enochian::{run_enochian_session, show_aethyr_info, show_aethyr_table, AETHYRS, enochian_lookup};
 use numerology::run_numerology_session;
 use cosmology::run_world_systems_session;
+use rng::run_rng_session;
 use menu::{print_angel_banner, show_help, show_loading_screen, show_main_menu, MainMode};
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
@@ -78,8 +80,14 @@ fn main() {
     }
 
     if let Some(ref sys) = audio_system {
-        start_ambient_frequency(sys, 432.0);
-        println!("{}", "🎶 Ambient frequency: 432 Hz (Universal Harmony)".dimmed());
+        let (num, name, desc, freqs) = random_aethyr_chord();
+        println!("  {} Aethyr {} ({}) — {}",
+            "🌌".bright_white(),
+            num.to_string().bright_cyan(),
+            name.bright_yellow(),
+            desc.dimmed(),
+        );
+        play_intro_chord(sys, freqs);
     }
 
     print_angel_banner();
@@ -97,6 +105,7 @@ fn main() {
                     println!("{}", "⚠️  Audio unavailable — run without --silent to enable exports.".yellow());
                 }
             }
+            MainMode::RngExperiment => run_rng_session(),
             MainMode::Help => show_help(),
             MainMode::Quit => {
                 if let Some(ref sys) = audio_system {
@@ -107,6 +116,32 @@ fn main() {
             }
         }
     }
+}
+
+// ─── Aethyr intro chord ───────────────────────────────────────────────────────
+
+/// Pick a random Aethyr and derive three frequencies from its letter ordinals.
+///
+/// Each of the three letters maps to a frequency via 21-TET rooted at 432 Hz:
+///   `f = base × 2^((ordinal − 1) / 21)`
+///
+/// The three notes are placed in successive octaves (base = 216, 432, 864 Hz)
+/// so the chord is always open-voiced across three octave registers.
+///
+/// Returns `(aethyr_number, name, description, [freq0, freq1, freq2])`.
+fn random_aethyr_chord() -> (u32, &'static str, &'static str, [f32; 3]) {
+    let mut buf = [0u8; 1];
+    getrandom::getrandom(&mut buf).unwrap_or(());
+    let (num, name, desc) = AETHYRS[buf[0] as usize % AETHYRS.len()];
+
+    const OCTAVE_BASES: [f32; 3] = [216.0, 432.0, 864.0];
+    let mut freqs = [432.0f32; 3];
+    for (i, c) in name.chars().enumerate().take(3) {
+        let ordinal = enochian_lookup(c).map(|(_, o, _)| o).unwrap_or(1);
+        freqs[i] = OCTAVE_BASES[i] * 2.0f32.powf((ordinal as f32 - 1.0) / 21.0);
+    }
+
+    (num, name, desc, freqs)
 }
 
 // ─── Frequency export menu ────────────────────────────────────────────────────

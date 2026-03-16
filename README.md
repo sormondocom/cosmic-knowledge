@@ -17,11 +17,13 @@ sacred-frequency WAV files.
 | Browse or look up an Aethyr | `cargo run -- --aethyr ZAX` or `cargo run -- --aethyr 10` |
 | Translate a word into Enochian letter names | option **2** → sub-option **4** |
 | Browse the 19 Enochian Keys | option **2** → sub-option **5** |
-| Explore Chinese cosmology | option **3** → sub-option **1** |
-| Explore African traditions | option **3** → sub-option **2** |
 | Export all Solfeggio frequencies as WAV | `cargo run -- --export-all` |
-| Export a single frequency interactively | option **4** → pick a frequency |
-| Create a custom binaural beat | option **4** → sub-option **11** |
+| Export a single frequency interactively | option **3** → pick a frequency |
+| Create a custom binaural beat | option **3** → sub-option **11** |
+| Explore Chinese cosmology | option **4** → sub-option **1** |
+| Explore African traditions | option **4** → sub-option **2** |
+| Run the Psi–RNG experiment | option **5** |
+| Configure range and delay for Psi–RNG | option **5** → enter settings at the prompts |
 | Skip the intro animation | `cargo run -- --fast` |
 | Run silently (no audio) | `cargo run -- --silent` |
 | Run all unit tests | `cargo test` |
@@ -48,9 +50,10 @@ sacred-frequency WAV files.
 | `cosmology/african.rs` | Akan Day Names | Ghanaian | Birth-day soul name system |
 | `cosmology/african.rs` | Kemetic Numbers | Ancient Egyptian | Sacred numerical symbolism |
 | `audio.rs` | Solfeggio / Binaural | Modern esoteric | WAV export; binaural beat synthesis |
+| `rng.rs` | Psi–RNG Experiment | Experimental parapsychology | RDRAND hardware TRNG; configurable range and delay |
 
 **Output formats:** interactive terminal · plain-text reports (`exports/*.txt`) ·
-HTML print reports · WAV audio (`exports/*.wav`)
+HTML reports · PDF reports · WAV audio (`exports/*.wav`)
 
 ---
 
@@ -332,7 +335,7 @@ Aethyr via modulo arithmetic and displays the Aethyr name and description inline
 ### Angelic Calls (Keys)
 
 **Source file:** `src/enochian/messages.rs` (root-number meanings);
-call texts are embedded in `src/main.rs` under `browse_enochian_keys()`
+call texts are embedded in `src/enochian/session.rs` under `browse_enochian_keys()`
 
 The 19 Angelic Keys (Calls) are ritual invocations in the Enochian language received by Dee and
 Kelley between April and July 1584 in Kraków and Prague. The 19th Call is the generic Aethyr
@@ -354,7 +357,7 @@ The texts displayed follow:
 
 ## World Cosmologies
 
-The `cosmology/` module is accessed from the main menu as option **3** and is further divided
+The `cosmology/` module is accessed from the main menu as option **4** and is further divided
 into two sub-sessions: Chinese traditions and African traditions. The top-level dispatcher is
 `run_world_systems_session()` in `cosmology/mod.rs`.
 
@@ -407,9 +410,10 @@ a `ChineseLuckyInfo` struct.
 
 Ifá is the divination system of the Yoruba people of West Africa, transmitted through a corpus
 of 256 Odù (sacred verses), each comprising a major Odù paired with a minor one in a 16×16
-matrix. The function `ifa_odu(number)` returns an `IfaOdu` struct containing the Odù name, its
-Yoruba title, and a description of its themes and counsel. The Odù sequence implemented follows
-Abimbola (1976) Oju Odù ordering.
+matrix. This application implements the **16 principal (Oju) Odù** — the senior corpus from
+which all 256 are derived. The function `ifa_odu(index: u8)` accepts an index 1–16 and returns
+an `IfaOdu` struct containing the Odù name, its associated Orisha, domain, and a description
+of its character. The sequence follows Abimbola (1976) Oju Odù ordering.
 
 #### Akan Day Names (Kra Names)
 
@@ -430,6 +434,100 @@ of the number's sacred significance within the Kemetic tradition.
 - Gyekye, K. *An Essay on African Philosophical Thought: The Akan Conceptual Scheme* (1987, Cambridge)
 - Morenz, S. *Egyptian Religion* (1973, Cornell; trans. Keep)
 - Asante, M.K. *The Egyptian Philosophers* (2000, African American Images)
+
+---
+
+## Psi–RNG Experiment
+
+**Source file:** `src/rng.rs`
+**Main menu:** option **5**
+
+The Psi–RNG module provides an interactive experiment for exploring the hypothesis that focused
+human intention can measurably influence the output of a true hardware random number generator —
+a question investigated experimentally since the 1970s, most extensively by the Princeton
+Engineering Anomalies Research (PEAR) laboratory (1979–2007) under Robert Jahn and Brenda Dunne,
+and before that by physicist Helmut Schmidt using electronic random event generators (REGs).
+
+### Randomness source
+
+The application attempts to use the **RDRAND CPU instruction** at session start. RDRAND is a
+true hardware random number generator built into Intel processors since Ivy Bridge (2012) and
+AMD processors since Ryzen (2017). It samples thermal noise from on-chip circuitry and passes
+the result through a NIST SP 800-90A AES-CTR-DRBG conditioner before delivering a 32-bit value;
+the raw thermal-noise sampling rate is approximately 3 Gbit/s. On CPUs that do not support
+RDRAND, the application falls back silently to OS entropy (`getrandom`, backed by
+`BCryptGenRandom` on Windows, `getrandom(2)` on Linux, or `/dev/urandom` on macOS).
+
+The active source is displayed at the start of each session.
+
+### Configuration
+
+Before each session the user sets two parameters:
+
+| Parameter | Options | Default |
+|-----------|---------|---------|
+| Number range | 1–9 · 1–10 · 1–100 · 1–1,000 · custom | 1–9 |
+| Draw interval | 1–60 seconds (any integer or decimal) | 3 s |
+
+The range is chosen first; then the delay. Both can be changed by starting a new session from
+the main menu.
+
+### Session mechanics
+
+1. The user silently chooses a number within the configured range and holds it in mind.
+2. Numbers are drawn automatically at the configured interval and printed to the terminal — the
+   session does not pause between draws waiting for input.
+3. A background thread reads stdin continuously; the main draw loop calls `recv_timeout` with the
+   configured delay, so user responses are processed within the current draw window without
+   interrupting the automatic timing.
+4. **`Y` + Enter** — confirm that the displayed number matches the held intention. The session
+   ends and statistics are shown.
+5. **`Q` + Enter** — end the session without confirming a match. Statistics are shown.
+
+The user does not declare their number in advance — the acknowledgment of a match is the only
+signal. This mirrors the standard REG protocol used in PEAR lab studies.
+
+### Statistics
+
+After each session the following are reported:
+
+| Statistic | Formula |
+|-----------|---------|
+| Chance expectation | N draws (geometric distribution mean, where N = range size and p = 1/N) |
+| Match on draw k vs. expectation | k compared to N; difference stated in draws |
+| Cumulative probability of a match by draw k | P(X ≤ k) = 1 − ((N − 1) / N)^k |
+| No-match probability over the full session | P(X > total) = ((N − 1) / N)^total |
+
+**Important:** a single trial cannot confirm or refute the psi hypothesis regardless of outcome.
+The cumulative probability figures show how surprising the result would be under pure chance, but
+only a series of independent trials analysed with appropriate statistics (e.g. binomial z-score
+or meta-analytic effect size) constitutes meaningful evidence. The session note reminds users of
+this after every run.
+
+### Scientific context
+
+The psi hypothesis — that conscious intention can shift the statistical output of a physical
+random process — remains controversial in mainstream science. The PEAR lab reported small but
+consistent anomalies in operator-REG studies over 12 years and ~2.5 million trials (Jahn et al.,
+1997), with a mean effect size of approximately 1 part in 10,000. Independent replications have
+produced mixed results; some meta-analyses find a small positive effect (Radin, 1997; Bösch,
+Steinkamp & Boller, 2006), while others attribute the effect to methodological artefact or
+publication bias (Alcock, 2003; Wiseman & Schlitz, 1997).
+
+**Key source texts:**
+- Jahn, R.G. & Dunne, B.J. *Margins of Reality: The Role of Consciousness in the Physical World*
+  (1987, Harcourt Brace) — founding PEAR monograph
+- Jahn, R.G. et al. "Correlations of Random Binary Sequences with Pre-Stated Operator Intention:
+  A Review of a 12-Year Program," *Journal of Scientific Exploration* 11, no. 3 (1997): 345–367
+- Schmidt, H. "PK Tests with a High-Speed Random Number Generator,"
+  *Journal of Parapsychology* 37 (1973): 105–118 — foundational REG experiment
+- Radin, D. *The Conscious Universe: The Scientific Truth of Psychic Phenomena*
+  (1997, HarperCollins) — meta-analytic overview
+- Bösch, H., Steinkamp, F. & Boller, E. "Examining Psychokinesis: The Interaction of Human
+  Intention with Random Number Generators — A Meta-Analysis,"
+  *Psychological Bulletin* 132, no. 4 (2006): 497–523
+- Intel Corporation. *Intel® 64 and IA-32 Architectures Software Developer's Manual*, Vol. 1,
+  §7.3.17 — RDRAND instruction specification
 
 ---
 
@@ -548,14 +646,20 @@ cargo run -- --export-all
 All exported files are written to the `exports/` directory, which is created automatically on
 first save. The directory is not tracked by version control (add it to `.gitignore` if desired).
 
-| File pattern | Content | Trigger |
-|---|---|---|
-| `exports/<word>_numerology.txt` | Plain-text multi-system report with breakdown | Save prompt after analysis |
-| `exports/<word>_enochian_translation.txt` | Letter-by-letter Enochian rendering + gematria | Save prompt after translation |
-| `exports/<word>_enochian_gematria.txt` | Enochian-only gematria report | Save prompt after Enochian analysis |
-| `exports/<frequency>.wav` | Pure-tone Solfeggio WAV file | Frequency export menu or `--export-all` |
-| `exports/binaural_<freq>hz.wav` | Stereo binaural beat WAV | Custom binaural beat export |
-| `exports/print_report.html` | Formatted HTML numerology report | Print option (also dispatched to OS printer) |
+| File pattern | Format | Content | Trigger |
+|---|---|---|---|
+| `exports/numerology_<word>.txt` | Text | Plain-text multi-system report with per-letter breakdown | Save prompt after numerology analysis |
+| `exports/numerology_<word>.html` | HTML | Styled multi-system report with cultural theming | Save prompt after numerology analysis |
+| `exports/numerology_<word>.pdf` | PDF | Printpdf-generated report (Courier, paginated) | Save prompt after numerology analysis |
+| `exports/enochian_translation_<word>.txt` | Text | Letter-by-letter Enochian rendering + gematria | Save prompt after translation |
+| `exports/enochian_translation_<word>.html` | HTML | Styled Enochian translation report | Save prompt after translation |
+| `exports/enochian_gematria_<word>.txt` | Text | Enochian-only gematria values | Save prompt after Enochian gematria |
+| `exports/enochian_gematria_<word>.html` | HTML | Styled Enochian gematria report | Save prompt after Enochian gematria |
+| `exports/enochian_key_<num>.txt` | Text | Full Angelic Key text and translation | Save prompt in Keys browser |
+| `exports/<freq>Hz_<name>_pure_5min.wav` | WAV | 5-minute mono pure-tone Solfeggio | Frequency export → option 1 |
+| `exports/<freq>Hz_<name>_binaural_10min.wav` | WAV | 10-minute stereo binaural beat | Frequency export → option 2, or `--export-all` |
+| `exports/<freq>Hz_<name>_extended_30min.wav` | WAV | 30-minute stereo binaural beat | Frequency export → option 3 |
+| `exports/custom_<base>Hz_<beat>beat_<min>min.wav` | WAV | Custom stereo binaural beat | Custom binaural beat export |
 
 File stems are sanitized to alphanumerics, hyphens, and underscores to prevent path traversal.
 The user may accept the suggested stem or provide a custom name at the save prompt.
@@ -612,6 +716,15 @@ The user may accept the suggested stem or provide a custom name at the save prom
 - Gyekye, K. *An Essay on African Philosophical Thought: The Akan Conceptual Scheme* (1987, Cambridge)
 - Morenz, S. *Egyptian Religion* (1973, Cornell; trans. Keep)
 - Asante, M.K. *The Egyptian Philosophers* (2000, African American Images)
+
+### Psi Research
+
+- Jahn, R.G. & Dunne, B.J. *Margins of Reality: The Role of Consciousness in the Physical World* (1987, Harcourt Brace)
+- Jahn, R.G. et al. "Correlations of Random Binary Sequences with Pre-Stated Operator Intention: A Review of a 12-Year Program," *Journal of Scientific Exploration* 11, no. 3 (1997): 345–367
+- Schmidt, H. "PK Tests with a High-Speed Random Number Generator," *Journal of Parapsychology* 37 (1973): 105–118
+- Radin, D. *The Conscious Universe: The Scientific Truth of Psychic Phenomena* (1997, HarperCollins)
+- Bösch, H., Steinkamp, F. & Boller, E. "Examining Psychokinesis: The Interaction of Human Intention with Random Number Generators — A Meta-Analysis," *Psychological Bulletin* 132, no. 4 (2006): 497–523
+- Intel Corporation. *Intel® 64 and IA-32 Architectures Software Developer's Manual*, Vol. 1, §7.3.17 — RDRAND instruction
 
 ### Sacred Frequencies
 
@@ -674,6 +787,15 @@ approximations, or reflects modern rather than ancient constructions.
     classical solfège (ut-re-mi), which uses a different set of pitches. No peer-reviewed
     biomedical evidence supports DNA repair, pineal activation, or measurable spiritual effects
     at these specific frequencies.
+
+11. **Psi–RNG experiment.** The experiment is provided as an interactive exploration tool, not
+    as a validated measurement instrument. Single-trial outcomes — whether early matches or long
+    runs without a match — cannot be interpreted as evidence for or against psychokinetic
+    influence on the RNG. The reported cumulative probability figures describe how surprising a
+    result would be under pure chance; they are not p-values from a controlled study. Meaningful
+    evidence requires many independent trials, pre-registration of the hypothesis, and analysis
+    with appropriate statistics. The psi hypothesis itself remains scientifically contested (see
+    the Psi Research references above).
 
 ---
 

@@ -59,6 +59,75 @@ impl Source for SineWave {
     fn total_duration(&self) -> Option<Duration> { None }
 }
 
+// ─── Intro chord ──────────────────────────────────────────────────────────────
+
+/// A 5-second three-note chord with a decaying echo envelope.
+///
+/// Amplitude envelope: four overlapping strikes at t = 0.0 s, 0.4 s, 0.8 s,
+/// and 1.2 s, each decaying at rate 1.8 s⁻¹.  The combined envelope fades to
+/// near-silence by ~4.5 s before the source terminates at 5 s.
+///
+/// The three frequencies are supplied by the caller; see [`play_intro_chord`].
+struct IntroChord {
+    freqs:         [f32; 3],
+    sample_rate:   u32,
+    position:      u32,
+    total_samples: u32,
+}
+
+impl IntroChord {
+    fn new(freqs: [f32; 3]) -> Self {
+        Self { freqs, sample_rate: 44100, position: 0, total_samples: 5 * 44100 }
+    }
+}
+
+impl Iterator for IntroChord {
+    type Item = f32;
+
+    fn next(&mut self) -> Option<f32> {
+        if self.position >= self.total_samples { return None; }
+
+        let t   = self.position as f32 / self.sample_rate as f32;
+        let tau = self.position as f64 / self.sample_rate as f64;
+
+        // Four echoes, each an exponentially-decaying strike.
+        const DECAY: f32 = 1.8;
+        const STRIKES: &[(f32, f32)] = &[(0.0, 1.00), (0.4, 0.55), (0.8, 0.30), (1.2, 0.15)];
+        let envelope: f32 = STRIKES.iter()
+            .filter(|&&(onset, _)| t >= onset)
+            .map(|&(onset, amp)| amp * (-(t - onset) * DECAY).exp())
+            .sum();
+
+        let wave: f32 = self.freqs.iter()
+            .map(|&f| (2.0 * std::f64::consts::PI * f as f64 * tau).sin() as f32)
+            .sum();
+
+        self.position += 1;
+        // 0.12 scale keeps peak amplitude (envelope ~1.0 × three in-phase waves)
+        // well below clipping on typical consumer hardware.
+        Some(wave * envelope * 0.12)
+    }
+}
+
+impl Source for IntroChord {
+    fn current_frame_len(&self) -> Option<usize> { None }
+    fn channels(&self)       -> u16 { 1 }
+    fn sample_rate(&self)    -> u32 { self.sample_rate }
+    fn total_duration(&self) -> Option<Duration> { Some(Duration::from_secs(5)) }
+}
+
+/// Play a three-note intro chord at the given frequencies and block until done.
+///
+/// Clears the sink before appending so no stale audio bleeds in.
+pub fn play_intro_chord(system: &AudioSystem, freqs: [f32; 3]) {
+    if let Ok(sink) = system.sink.lock() {
+        sink.stop();
+        sink.append(IntroChord::new(freqs));
+        sink.play();
+    }
+    thread::sleep(Duration::from_secs(5));
+}
+
 // ─── Lifecycle helpers ────────────────────────────────────────────────────────
 
 /// Attempt to open the default audio output device.
@@ -68,15 +137,6 @@ pub fn initialize_audio() -> Result<AudioSystem, Box<dyn std::error::Error>> {
     let (_stream, stream_handle) = OutputStream::try_default()?;
     let sink = Arc::new(Mutex::new(Sink::try_new(&stream_handle)?));
     Ok(AudioSystem { _stream, sink })
-}
-
-/// Begin playing a continuous sine tone at `frequency` Hz.
-pub fn start_ambient_frequency(system: &AudioSystem, frequency: f32) {
-    let wave = SineWave { frequency, sample_rate: 44100.0, phase: 0.0 };
-    if let Ok(sink) = system.sink.lock() {
-        sink.append(wave);
-        sink.play();
-    }
 }
 
 /// Replace the current tone with a new frequency.
