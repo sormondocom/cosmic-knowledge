@@ -8,16 +8,41 @@
 //! because Arabic has 28 letters with no clean 1:1 Latin correspondence.
 //! The number 9 maps to Ṭa (ط) — the emphatic /t/ — approximated here by T.
 
-use std::collections::HashMap;
 use once_cell::sync::Lazy;
+use std::collections::HashMap;
 
-pub(super) static MAP: Lazy<HashMap<char, u32>> = Lazy::new(|| [
-    ('A',  1), ('B',  2), ('C',  3), ('D',  4), ('E',  5), ('F', 80),
-    ('G',  3), ('H',  5), ('I', 10), ('J',  3), ('K', 20), ('L', 30),
-    ('M', 40), ('N', 50), ('O', 70), ('P', 80), ('Q',100), ('R',200),
-    ('S', 60), ('T',400), ('U',  6), ('V',  6), ('W',  6), ('X',600),
-    ('Y', 10), ('Z',  7),
-].into_iter().collect());
+pub(super) static MAP: Lazy<HashMap<char, u32>> = Lazy::new(|| {
+    [
+        ('A', 1),
+        ('B', 2),
+        ('C', 3),
+        ('D', 4),
+        ('E', 5),
+        ('F', 80),
+        ('G', 3),
+        ('H', 5),
+        ('I', 10),
+        ('J', 3),
+        ('K', 20),
+        ('L', 30),
+        ('M', 40),
+        ('N', 50),
+        ('O', 70),
+        ('P', 80),
+        ('Q', 100),
+        ('R', 200),
+        ('S', 60),
+        ('T', 400),
+        ('U', 6),
+        ('V', 6),
+        ('W', 6),
+        ('X', 600),
+        ('Y', 10),
+        ('Z', 7),
+    ]
+    .into_iter()
+    .collect()
+});
 
 /// Abjad root meanings — Sufi / Islamic mystical tradition.
 ///

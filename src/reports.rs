@@ -13,10 +13,13 @@
 
 use chrono::Utc;
 
-use crate::enochian::{enochian_lookup, enochian_substitute, aethyr_lookup, enochian_meaning, enochian_angelic_message};
+use crate::enochian::{
+    aethyr_lookup, enochian_angelic_message, enochian_lookup, enochian_meaning, enochian_substitute,
+};
 use crate::numerology::{
-    numerology, digital_root, meaning_of, isopsephy_meaning, abjad_meaning, vedic_reading,
-    angelic_message, master_numbers_message, check_special_sequences, get_calculation_breakdown,
+    abjad_meaning, angelic_message, check_special_sequences, digital_root,
+    get_calculation_breakdown, isopsephy_meaning, master_numbers_message, meaning_of, numerology,
+    vedic_reading,
 };
 
 // ─── Report builders ─────────────────────────────────────────────────────────
@@ -43,14 +46,17 @@ pub fn build_numerology_report(word: &str, active_systems: &[&str]) -> String {
         let is_enochian = system.starts_with("Enochian");
         let meaning = match &system[..] {
             s if s.starts_with("Enochian") => enochian_meaning(*root),
-            "Greek Isopsephy"              => isopsephy_meaning(*root),
-            "Abjad"                        => abjad_meaning(*root),
-            "Vedic"                        => vedic_reading(*root).meaning,
-            _                              => meaning_of(*root),
+            "Greek Isopsephy" => isopsephy_meaning(*root),
+            "Abjad" => abjad_meaning(*root),
+            "Vedic" => vedic_reading(*root).meaning,
+            _ => meaning_of(*root),
         };
-        let breakdown   = get_calculation_breakdown(word, system);
+        let breakdown = get_calculation_breakdown(word, system);
 
-        out.push_str(&format!("\n{:<20} total={:>5}  root={}\n", system, total, root));
+        out.push_str(&format!(
+            "\n{:<20} total={:>5}  root={}\n",
+            system, total, root
+        ));
         out.push_str(&format!("  Meaning : {}\n", strip_leading_emoji(meaning)));
         if !breakdown.is_empty() {
             out.push_str(&format!("  Calc    : {}\n", breakdown));
@@ -71,12 +77,18 @@ pub fn build_numerology_report(word: &str, active_systems: &[&str]) -> String {
     out.push('\n');
 
     if let Some((_, (_, root))) = results.first() {
-        out.push_str(&format!("\nAngelic Message:\n  {}\n", angelic_message(*root)));
+        out.push_str(&format!(
+            "\nAngelic Message:\n  {}\n",
+            angelic_message(*root)
+        ));
     }
 
-    if active_systems.iter().any(|s| *s == "Enochian Ordinal") {
+    if active_systems.contains(&"Enochian Ordinal") {
         if let Some((_, (_, er))) = all_results.iter().find(|(s, _)| *s == "Enochian Ordinal") {
-            out.push_str(&format!("\nEnochian Call (John Dee):\n  {}\n", enochian_angelic_message(*er)));
+            out.push_str(&format!(
+                "\nEnochian Call (John Dee):\n  {}\n",
+                enochian_angelic_message(*er)
+            ));
         }
     }
 
@@ -104,15 +116,19 @@ pub fn build_enochian_translation_report(word: &str) -> String {
     out.push('\n');
 
     let mut ordinal_total = 0u32;
-    let mut gd_total      = 0u32;
+    let mut gd_total = 0u32;
 
     for ch in word.chars() {
-        let sub        = enochian_substitute(ch);
-        let sub_marker = if sub != ch { format!("->{}", sub) } else { "   ".to_string() };
+        let sub = enochian_substitute(ch);
+        let sub_marker = if sub != ch {
+            format!("->{}", sub)
+        } else {
+            "   ".to_string()
+        };
         match enochian_lookup(ch) {
             Some((name, ord, gd)) => {
                 ordinal_total += ord;
-                gd_total      += gd;
+                gd_total += gd;
                 out.push_str(&format!(
                     "{:<6}  {:<16}  {:<6}  {:>7}  {:>8}\n",
                     ch, name, sub_marker, ord, gd
@@ -129,8 +145,16 @@ pub fn build_enochian_translation_report(word: &str) -> String {
 
     out.push_str(&"-".repeat(52));
     out.push('\n');
-    out.push_str(&format!("Ordinal total : {}  ->  root {}\n", ordinal_total, digital_root(ordinal_total)));
-    out.push_str(&format!("G.D. total    : {}  ->  root {}\n", gd_total, digital_root(gd_total)));
+    out.push_str(&format!(
+        "Ordinal total : {}  ->  root {}\n",
+        ordinal_total,
+        digital_root(ordinal_total)
+    ));
+    out.push_str(&format!(
+        "G.D. total    : {}  ->  root {}\n",
+        gd_total,
+        digital_root(gd_total)
+    ));
 
     let (oa, on, od) = aethyr_lookup(ordinal_total);
     let (ga, gn, gd) = aethyr_lookup(gd_total);
@@ -143,7 +167,8 @@ pub fn build_enochian_translation_report(word: &str) -> String {
     out.push('\n');
     out.push_str(&format!(
         "Enochian Call Fragment (root {}):\n  {}\n",
-        root, enochian_angelic_message(root)
+        root,
+        enochian_angelic_message(root)
     ));
 
     out.push('\n');
@@ -165,11 +190,20 @@ pub fn build_enochian_gematria_report(word: &str) -> String {
     out.push_str(&"─".repeat(60));
     out.push('\n');
 
-    for (system, (total, root)) in all_results.iter().filter(|(s, _)| s.starts_with("Enochian")) {
-        let breakdown          = get_calculation_breakdown(word, system);
+    for (system, (total, root)) in all_results
+        .iter()
+        .filter(|(s, _)| s.starts_with("Enochian"))
+    {
+        let breakdown = get_calculation_breakdown(word, system);
         let (anum, aname, adesc) = aethyr_lookup(*total);
-        out.push_str(&format!("\n{:<20} total={:>5}  root={}\n", system, total, root));
-        out.push_str(&format!("  Meaning : {}\n", strip_leading_emoji(enochian_meaning(*root))));
+        out.push_str(&format!(
+            "\n{:<20} total={:>5}  root={}\n",
+            system, total, root
+        ));
+        out.push_str(&format!(
+            "  Meaning : {}\n",
+            strip_leading_emoji(enochian_meaning(*root))
+        ));
         if !breakdown.is_empty() {
             out.push_str(&format!("  Calc    : {}\n", breakdown));
         }
@@ -210,12 +244,22 @@ pub fn build_enochian_alphabet_report() -> String {
     out.push_str("J, K, W have no Enochian equivalents: J→I  K→C  W→V\n");
     out.push_str(&"─".repeat(60));
     out.push('\n');
-    out.push_str(&format!("{:<10}  {:<14}  {:>7}  {:>8}\n", "Name", "English Chars", "Ordinal", "GD Value"));
+    out.push_str(&format!(
+        "{:<10}  {:<14}  {:>7}  {:>8}\n",
+        "Name", "English Chars", "Ordinal", "GD Value"
+    ));
     out.push_str(&"-".repeat(46));
     out.push('\n');
     for (name, chars, ordinal, gd) in ENOCHIAN_LETTERS {
-        let chars_str: String = chars.iter().map(|c| c.to_string()).collect::<Vec<_>>().join(", ");
-        out.push_str(&format!("{:<10}  {:<14}  {:>7}  {:>8}\n", name, chars_str, ordinal, gd));
+        let chars_str: String = chars
+            .iter()
+            .map(|c| c.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+        out.push_str(&format!(
+            "{:<10}  {:<14}  {:>7}  {:>8}\n",
+            name, chars_str, ordinal, gd
+        ));
     }
     out.push('\n');
     out.push_str(&"═".repeat(60));
@@ -251,8 +295,7 @@ pub fn build_aethyr_info_report(query: &str) -> String {
     use crate::enochian::AETHYRS;
     let query_up = query.to_uppercase();
     let found = AETHYRS.iter().find(|(num, name, _)| {
-        query_up == name.to_string() ||
-        query.parse::<u32>().map(|n| n == *num).unwrap_or(false)
+        query_up == *name || query.parse::<u32>().map(|n| n == *num).unwrap_or(false)
     });
     let mut out = String::new();
     out.push_str("AETHYR LOOKUP REPORT\n");
@@ -278,7 +321,7 @@ pub fn build_aethyr_info_report(query: &str) -> String {
 /// Build a plain-text report for a single Enochian Key (1-19).
 pub fn build_enochian_key_report(num: u32, title: &str, opening: &str, body: &str) -> String {
     use crate::enochian::enochian_meaning;
-    let root = ((num - 1) % 9 + 1) as u32;
+    let root = (num - 1) % 9 + 1;
     let mut out = String::new();
     out.push_str(&format!("ENOCHIAN KEY {} — {}\n", num, title));
     out.push_str(&format!("Generated: {}\n", chrono_now()));
@@ -292,12 +335,17 @@ pub fn build_enochian_key_report(num: u32, title: &str, opening: &str, body: &st
     out.push('\n');
     out.push_str(&"─".repeat(60));
     out.push('\n');
-    out.push_str(&format!("Enochian meaning for root {}: {}\n",
-        root, strip_leading_emoji(enochian_meaning(root))));
+    out.push_str(&format!(
+        "Enochian meaning for root {}: {}\n",
+        root,
+        strip_leading_emoji(enochian_meaning(root))
+    ));
     out.push('\n');
     out.push_str(&"═".repeat(60));
     out.push_str("\nGenerated by Celestial Numerology Analyzer — Enochian Keys\n");
-    out.push_str("Source: Dee's diaries (Cotton MS Appendix XLVI); Crowley's Liber Chanokh (1909)\n");
+    out.push_str(
+        "Source: Dee's diaries (Cotton MS Appendix XLVI); Crowley's Liber Chanokh (1909)\n",
+    );
     out
 }
 
@@ -305,8 +353,7 @@ pub fn build_enochian_key_report(num: u32, title: &str, opening: &str, body: &st
 
 /// Skip any leading non-ASCII-alphabetic characters (emoji, symbols) for plain-text output.
 pub fn strip_leading_emoji(s: &str) -> &str {
-    let mut chars = s.char_indices();
-    while let Some((i, c)) = chars.next() {
+    for (i, c) in s.char_indices() {
         if c.is_ascii_alphabetic() || c == '(' {
             return &s[i..];
         }

@@ -10,24 +10,24 @@
 //!  - `abjad`       — Arabic/Islamic Abjad numerals
 //!  - `vedic`       — Vedic Anka Vidya / Jyotish Navagraha system
 
-pub mod hebrew;
-pub mod pythagorean;
+pub mod abjad;
+pub mod agrippan;
 pub mod chaldean;
 pub mod greek;
-pub mod agrippan;
+pub mod hebrew;
 pub mod ordinal;
-pub mod abjad;
-pub mod vedic;
+pub mod pythagorean;
 pub mod session;
+pub mod vedic;
 
 pub use session::run_numerology_session;
 
-pub use greek::isopsephy_meaning;
 pub use abjad::abjad_meaning;
+pub use greek::isopsephy_meaning;
 pub use vedic::vedic_reading;
 
-use std::collections::HashMap;
 use crate::enochian::{enochian_lookup, enochian_substitute};
+use std::collections::HashMap;
 
 // ─── Core computation ─────────────────────────────────────────────────────────
 
@@ -49,19 +49,19 @@ pub fn numerology(word: &str) -> Vec<(&'static str, (u32, u32))> {
     // Standard map-based systems — shared static tables, no per-call allocation.
     let mut results: Vec<(&'static str, (u32, u32))> = [
         ("Hebrew Gematria", &*hebrew::MAP),
-        ("Pythagorean",     &*pythagorean::MAP),
-        ("Chaldean",        &*chaldean::MAP),
+        ("Pythagorean", &*pythagorean::MAP),
+        ("Chaldean", &*chaldean::MAP),
         ("Greek Isopsephy", &*greek::MAP),
-        ("Agrippan",        &*agrippan::MAP),
-        ("Simple Ordinal",  &*ordinal::SIMPLE_MAP),
+        ("Agrippan", &*agrippan::MAP),
+        ("Simple Ordinal", &*ordinal::SIMPLE_MAP),
         ("Reverse Ordinal", &*ordinal::REVERSE_MAP),
-        ("Abjad",           &*abjad::MAP),
-        ("Vedic",           &*vedic::MAP),
+        ("Abjad", &*abjad::MAP),
+        ("Vedic", &*vedic::MAP),
     ]
     .iter()
     .map(|(name, map)| {
         let total = word.chars().filter_map(|c| map.get(&c)).sum::<u32>();
-        let root  = digital_root(total);
+        let root = digital_root(total);
         (*name, (total, root))
     })
     .collect();
@@ -127,15 +127,25 @@ pub fn angelic_message(root: u32) -> &'static str {
 pub fn master_numbers_message(total: u32) -> Option<&'static str> {
     match total {
         11 => Some("🔥 MASTER NUMBER 11: Spiritual messenger, intuitive insights, enlightenment"),
-        22 => Some("🏛️ MASTER NUMBER 22: Master builder, turning dreams into reality, divine architect"),
-        33 => Some("👼 MASTER NUMBER 33: Master teacher, Christ consciousness, divine love in action"),
-        44 => Some("⚡ MASTER NUMBER 44: Master healer, spiritual warrior, earthly and cosmic balance"),
-        55 => Some("🌊 MASTER NUMBER 55: Freedom seeker, life path changes, spiritual transformation"),
+        22 => Some(
+            "🏛️ MASTER NUMBER 22: Master builder, turning dreams into reality, divine architect",
+        ),
+        33 => {
+            Some("👼 MASTER NUMBER 33: Master teacher, Christ consciousness, divine love in action")
+        }
+        44 => Some(
+            "⚡ MASTER NUMBER 44: Master healer, spiritual warrior, earthly and cosmic balance",
+        ),
+        55 => {
+            Some("🌊 MASTER NUMBER 55: Freedom seeker, life path changes, spiritual transformation")
+        }
         66 => Some("💖 MASTER NUMBER 66: Cosmic parent, unconditional love, healing for all"),
         77 => Some("🌟 MASTER NUMBER 77: Spiritual perfection, higher wisdom, divine knowledge"),
         88 => Some("♾️ MASTER NUMBER 88: Material mastery, karmic balance, infinite abundance"),
-        99 => Some("🌍 MASTER NUMBER 99: Universal consciousness, completion, humanitarian leadership"),
-        _  => None,
+        99 => Some(
+            "🌍 MASTER NUMBER 99: Universal consciousness, completion, humanitarian leadership",
+        ),
+        _ => None,
     }
 }
 
@@ -156,19 +166,33 @@ pub fn check_special_sequences(total: u32) -> Option<&'static str> {
             '7' => Some("Spiritual awakening and mystical experiences await"),
             '8' => Some("Material and financial abundance is flowing to you"),
             '9' => Some("A cycle is completing - prepare for new beginnings"),
-            _   => None,
+            _ => None,
         };
     }
 
     // Sequential sub-patterns
     let num_str = total.to_string();
-    if num_str.contains("123") { return Some("Step-by-step progress - you're on the right path!"); }
-    if num_str.contains("321") { return Some("Release and let go - clearing the way for new opportunities"); }
-    if num_str.contains("111") { return Some("Gateway opening - make a wish, manifestation is powerful now!"); }
-    if num_str.contains("222") { return Some("Everything is in perfect divine order - have faith!"); }
-    if num_str.contains("333") { return Some("Mind, body, spirit alignment - you are fully supported!"); }
-    if num_str.contains("444") { return Some("Angels are everywhere around you - you are safe and loved!"); }
-    if num_str.contains("555") { return Some("Buckle up! Major positive changes are accelerating!"); }
+    if num_str.contains("123") {
+        return Some("Step-by-step progress - you're on the right path!");
+    }
+    if num_str.contains("321") {
+        return Some("Release and let go - clearing the way for new opportunities");
+    }
+    if num_str.contains("111") {
+        return Some("Gateway opening - make a wish, manifestation is powerful now!");
+    }
+    if num_str.contains("222") {
+        return Some("Everything is in perfect divine order - have faith!");
+    }
+    if num_str.contains("333") {
+        return Some("Mind, body, spirit alignment - you are fully supported!");
+    }
+    if num_str.contains("444") {
+        return Some("Angels are everywhere around you - you are safe and loved!");
+    }
+    if num_str.contains("555") {
+        return Some("Buckle up! Major positive changes are accelerating!");
+    }
 
     None
 }
@@ -189,15 +213,15 @@ pub fn get_calculation_breakdown(word: &str, system_name: &str) -> String {
 
     let map: &HashMap<char, u32> = match system_name {
         "Hebrew Gematria" => &hebrew::MAP,
-        "Pythagorean"     => &pythagorean::MAP,
-        "Chaldean"        => &chaldean::MAP,
+        "Pythagorean" => &pythagorean::MAP,
+        "Chaldean" => &chaldean::MAP,
         "Greek Isopsephy" => &greek::MAP,
-        "Agrippan"        => &agrippan::MAP,
-        "Simple Ordinal"  => &ordinal::SIMPLE_MAP,
+        "Agrippan" => &agrippan::MAP,
+        "Simple Ordinal" => &ordinal::SIMPLE_MAP,
         "Reverse Ordinal" => &ordinal::REVERSE_MAP,
-        "Abjad"           => &abjad::MAP,
-        "Vedic"           => &vedic::MAP,
-        _                 => return String::new(),
+        "Abjad" => &abjad::MAP,
+        "Vedic" => &vedic::MAP,
+        _ => return String::new(),
     };
 
     let parts: Vec<String> = word
@@ -205,7 +229,11 @@ pub fn get_calculation_breakdown(word: &str, system_name: &str) -> String {
         .filter_map(|c| map.get(&c).map(|&v| format!("{}={}", c, v)))
         .collect();
 
-    if parts.len() > 1 { parts.join(" + ") } else { String::new() }
+    if parts.len() > 1 {
+        parts.join(" + ")
+    } else {
+        String::new()
+    }
 }
 
 /// Internal helper: build an Enochian breakdown using a value-selector closure.
@@ -227,7 +255,11 @@ where
             })
         })
         .collect();
-    if parts.len() > 1 { parts.join(" + ") } else { String::new() }
+    if parts.len() > 1 {
+        parts.join(" + ")
+    } else {
+        String::new()
+    }
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -247,10 +279,10 @@ mod tests {
 
     #[test]
     fn digital_root_two_digits() {
-        assert_eq!(digital_root(10), 1);  // 1+0=1
-        assert_eq!(digital_root(19), 1);  // 1+9=10 → 1+0=1
-        assert_eq!(digital_root(29), 2);  // 2+9=11 → 1+1=2
-        assert_eq!(digital_root(99), 9);  // 9+9=18 → 1+8=9
+        assert_eq!(digital_root(10), 1); // 1+0=1
+        assert_eq!(digital_root(19), 1); // 1+9=10 → 1+0=1
+        assert_eq!(digital_root(29), 2); // 2+9=11 → 1+1=2
+        assert_eq!(digital_root(99), 9); // 9+9=18 → 1+8=9
     }
 
     #[test]
@@ -276,10 +308,17 @@ mod tests {
         assert_eq!(results.len(), 11);
         let names: Vec<&str> = results.iter().map(|(n, _)| *n).collect();
         for expected in &[
-            "Hebrew Gematria", "Pythagorean", "Chaldean",
-            "Enochian Ordinal", "Enochian G.D.",
-            "Greek Isopsephy", "Agrippan", "Simple Ordinal",
-            "Reverse Ordinal", "Abjad", "Vedic",
+            "Hebrew Gematria",
+            "Pythagorean",
+            "Chaldean",
+            "Enochian Ordinal",
+            "Enochian G.D.",
+            "Greek Isopsephy",
+            "Agrippan",
+            "Simple Ordinal",
+            "Reverse Ordinal",
+            "Abjad",
+            "Vedic",
         ] {
             assert!(names.contains(expected), "Missing system: {}", expected);
         }
@@ -290,8 +329,8 @@ mod tests {
         // A=1, B=2, C=3 → total=6, root=6 (same letter values as Chaldean)
         let results = numerology("ABC");
         let v = results.iter().find(|(n, _)| *n == "Vedic").unwrap();
-        assert_eq!(v.1.0, 6);
-        assert_eq!(v.1.1, 6);
+        assert_eq!(v.1 .0, 6);
+        assert_eq!(v.1 .1, 6);
     }
 
     // ── new systems ───────────────────────────────────────────────────────────
@@ -300,30 +339,42 @@ mod tests {
     fn simple_ordinal_abc() {
         // A=1, B=2, C=3 → total=6, root=6
         let results = numerology("ABC");
-        let so = results.iter().find(|(n, _)| *n == "Simple Ordinal").unwrap();
-        assert_eq!(so.1.0, 6);
-        assert_eq!(so.1.1, 6);
+        let so = results
+            .iter()
+            .find(|(n, _)| *n == "Simple Ordinal")
+            .unwrap();
+        assert_eq!(so.1 .0, 6);
+        assert_eq!(so.1 .1, 6);
     }
 
     #[test]
     fn simple_ordinal_z_is_26() {
         let results = numerology("Z");
-        let so = results.iter().find(|(n, _)| *n == "Simple Ordinal").unwrap();
-        assert_eq!(so.1.0, 26);
+        let so = results
+            .iter()
+            .find(|(n, _)| *n == "Simple Ordinal")
+            .unwrap();
+        assert_eq!(so.1 .0, 26);
     }
 
     #[test]
     fn reverse_ordinal_a_is_26() {
         let results = numerology("A");
-        let ro = results.iter().find(|(n, _)| *n == "Reverse Ordinal").unwrap();
-        assert_eq!(ro.1.0, 26);
+        let ro = results
+            .iter()
+            .find(|(n, _)| *n == "Reverse Ordinal")
+            .unwrap();
+        assert_eq!(ro.1 .0, 26);
     }
 
     #[test]
     fn reverse_ordinal_z_is_1() {
         let results = numerology("Z");
-        let ro = results.iter().find(|(n, _)| *n == "Reverse Ordinal").unwrap();
-        assert_eq!(ro.1.0, 1);
+        let ro = results
+            .iter()
+            .find(|(n, _)| *n == "Reverse Ordinal")
+            .unwrap();
+        assert_eq!(ro.1 .0, 1);
     }
 
     #[test]
@@ -332,8 +383,13 @@ mod tests {
         for c in 'A'..='Z' {
             let word = c.to_string();
             let r = numerology(&word);
-            let so = r.iter().find(|(n, _)| *n == "Simple Ordinal").unwrap().1.0;
-            let ro = r.iter().find(|(n, _)| *n == "Reverse Ordinal").unwrap().1.0;
+            let so = r.iter().find(|(n, _)| *n == "Simple Ordinal").unwrap().1 .0;
+            let ro = r
+                .iter()
+                .find(|(n, _)| *n == "Reverse Ordinal")
+                .unwrap()
+                .1
+                 .0;
             assert_eq!(so + ro, 27, "Letter {} sums to {} not 27", c, so + ro);
         }
     }
@@ -343,8 +399,12 @@ mod tests {
         // A–I in Agrippan are 1–9, same as in Hebrew Gematria.
         for (c, expected) in ('A'..='I').zip(1u32..=9) {
             let results = numerology(&c.to_string());
-            let ag = results.iter().find(|(n, _)| *n == "Agrippan").unwrap().1.0;
-            assert_eq!(ag, expected, "Agrippan {} = {}, expected {}", c, ag, expected);
+            let ag = results.iter().find(|(n, _)| *n == "Agrippan").unwrap().1 .0;
+            assert_eq!(
+                ag, expected,
+                "Agrippan {} = {}, expected {}",
+                c, ag, expected
+            );
         }
     }
 
@@ -352,8 +412,11 @@ mod tests {
     fn isopsephy_o_is_70() {
         // O → Omicron = 70 (not 60 as in Pythagorean mod-9)
         let results = numerology("O");
-        let iso = results.iter().find(|(n, _)| *n == "Greek Isopsephy").unwrap();
-        assert_eq!(iso.1.0, 70);
+        let iso = results
+            .iter()
+            .find(|(n, _)| *n == "Greek Isopsephy")
+            .unwrap();
+        assert_eq!(iso.1 .0, 70);
     }
 
     #[test]
@@ -361,7 +424,7 @@ mod tests {
         // L → Lam = 30
         let results = numerology("L");
         let ab = results.iter().find(|(n, _)| *n == "Abjad").unwrap();
-        assert_eq!(ab.1.0, 30);
+        assert_eq!(ab.1 .0, 30);
     }
 
     #[test]
@@ -369,17 +432,20 @@ mod tests {
         // L=3, O=6, V=4, E=5 → total=18 → root=9
         let results = numerology("LOVE");
         let py = results.iter().find(|(n, _)| *n == "Pythagorean").unwrap();
-        assert_eq!(py.1.0, 18);
-        assert_eq!(py.1.1, 9);
+        assert_eq!(py.1 .0, 18);
+        assert_eq!(py.1 .1, 9);
     }
 
     #[test]
     fn numerology_hebrew_single_letter() {
         // A=1 in Hebrew
         let results = numerology("A");
-        let heb = results.iter().find(|(n, _)| *n == "Hebrew Gematria").unwrap();
-        assert_eq!(heb.1.0, 1);
-        assert_eq!(heb.1.1, 1);
+        let heb = results
+            .iter()
+            .find(|(n, _)| *n == "Hebrew Gematria")
+            .unwrap();
+        assert_eq!(heb.1 .0, 1);
+        assert_eq!(heb.1 .1, 1);
     }
 
     #[test]
@@ -387,8 +453,8 @@ mod tests {
         // A=1, B=2, C=3 → total=6, root=6
         let results = numerology("ABC");
         let ch = results.iter().find(|(n, _)| *n == "Chaldean").unwrap();
-        assert_eq!(ch.1.0, 6);
-        assert_eq!(ch.1.1, 6);
+        assert_eq!(ch.1 .0, 6);
+        assert_eq!(ch.1 .1, 6);
     }
 
     // ── special sequences ─────────────────────────────────────────────────────
@@ -415,7 +481,11 @@ mod tests {
     #[test]
     fn master_numbers_all_recognised() {
         for n in [11u32, 22, 33, 44, 55, 66, 77, 88, 99] {
-            assert!(master_numbers_message(n).is_some(), "Master number {} not recognised", n);
+            assert!(
+                master_numbers_message(n).is_some(),
+                "Master number {} not recognised",
+                n
+            );
         }
     }
 

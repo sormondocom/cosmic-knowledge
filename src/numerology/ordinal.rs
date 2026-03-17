@@ -7,13 +7,19 @@
 //! Reverse Ordinal: the mirror complement of Simple Ordinal.  Commonly paired
 //! with it for comparative analysis.  A=26, B=25 … Z=1.
 
-use std::collections::HashMap;
 use once_cell::sync::Lazy;
+use std::collections::HashMap;
 
 pub(super) static SIMPLE_MAP: Lazy<HashMap<char, u32>> = Lazy::new(|| {
-    ('A'..='Z').enumerate().map(|(i, c)| (c, i as u32 + 1)).collect()
+    ('A'..='Z')
+        .enumerate()
+        .map(|(i, c)| (c, i as u32 + 1))
+        .collect()
 });
 
 pub(super) static REVERSE_MAP: Lazy<HashMap<char, u32>> = Lazy::new(|| {
-    ('A'..='Z').enumerate().map(|(i, c)| (c, 26 - i as u32)).collect()
+    ('A'..='Z')
+        .enumerate()
+        .map(|(i, c)| (c, 26 - i as u32))
+        .collect()
 });

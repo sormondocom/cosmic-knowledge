@@ -6,14 +6,14 @@
 //!  - `messages`  — Root-number meanings, angelic call fragments, and the 19 Enochian Keys
 //!  - `session`   — Interactive terminal session (menus, translation, gematria browser)
 
-pub mod alphabet;
 pub mod aethyrs;
+pub mod alphabet;
 pub mod messages;
 pub mod session;
 
-pub use alphabet::{ENOCHIAN_LETTERS, enochian_substitute, enochian_lookup, show_enochian_table};
-pub use aethyrs::{AETHYRS, aethyr_lookup, show_aethyr_table, show_aethyr_info};
-pub use messages::{enochian_meaning, enochian_angelic_message, ENOCHIAN_KEYS};
+pub use aethyrs::{aethyr_lookup, show_aethyr_info, show_aethyr_table, AETHYRS};
+pub use alphabet::{enochian_lookup, enochian_substitute, show_enochian_table, ENOCHIAN_LETTERS};
+pub use messages::{enochian_angelic_message, enochian_meaning, ENOCHIAN_KEYS};
 pub use session::run_enochian_session;
 
 // ─── Aethyr intro chord ───────────────────────────────────────────────────────

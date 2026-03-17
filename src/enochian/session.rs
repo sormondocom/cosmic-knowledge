@@ -6,16 +6,17 @@
 //!  - `enochian_gematria_lookup`— Ordinal + G.D. analysis loop
 //!  - `browse_enochian_keys`    — 19-key browser
 
-use std::io::{self, Write};
 use colored::*;
+use std::io::{self, Write};
 
-use crate::export::{self, handle_export, prompt_export_format, export_text, export_html, export_pdf, ExportChoice};
-use crate::menu::{Menu, MenuItem, MenuColor};
-use crate::numerology::{digital_root, numerology, get_calculation_breakdown};
+use crate::export::{
+    self, export_html, export_pdf, export_text, handle_export, prompt_export_format, ExportChoice,
+};
+use crate::menu::{Menu, MenuColor, MenuItem};
+use crate::numerology::{digital_root, get_calculation_breakdown, numerology};
 use crate::reports::{
-    build_enochian_alphabet_report, build_aethyr_table_report,
-    build_aethyr_info_report, build_enochian_key_report,
-    build_enochian_translation_report, build_enochian_gematria_report,
+    build_aethyr_info_report, build_aethyr_table_report, build_enochian_alphabet_report,
+    build_enochian_gematria_report, build_enochian_key_report, build_enochian_translation_report,
 };
 
 use super::{
@@ -26,26 +27,50 @@ use super::{
 // ─── Sub-menu definition ──────────────────────────────────────────────────────
 
 static ENOCHIAN_ITEMS: &[MenuItem] = &[
-    MenuItem { key: "1", icon: "🔤", label: "Enochian Alphabet & Gematria Table",
-               hint: "All 21 letters · Ordinal & GD values" },
-    MenuItem { key: "2", icon: "🌌", label: "Browse the 30 Aethyrs",
-               hint: "Full table of all celestial realms" },
-    MenuItem { key: "3", icon: "🔍", label: "Look Up a Specific Aethyr",
-               hint: "Search by number (1-30) or name (TEX, LIL...)" },
-    MenuItem { key: "4", icon: "🔤", label: "Translate Word into Enochian",
-               hint: "Letter-by-letter Enochian name rendering" },
-    MenuItem { key: "5", icon: "🗝", label: "Browse the Enochian Keys (Calls)",
-               hint: "The 19 angelic calls as recorded by Dee" },
-    MenuItem { key: "6", icon: "🔢", label: "Enochian Gematria — Analyze a Word",
-               hint: "Ordinal + G.D. values with Aethyr resonance" },
+    MenuItem {
+        key: "1",
+        icon: "🔤",
+        label: "Enochian Alphabet & Gematria Table",
+        hint: "All 21 letters · Ordinal & GD values",
+    },
+    MenuItem {
+        key: "2",
+        icon: "🌌",
+        label: "Browse the 30 Aethyrs",
+        hint: "Full table of all celestial realms",
+    },
+    MenuItem {
+        key: "3",
+        icon: "🔍",
+        label: "Look Up a Specific Aethyr",
+        hint: "Search by number (1-30) or name (TEX, LIL...)",
+    },
+    MenuItem {
+        key: "4",
+        icon: "🔤",
+        label: "Translate Word into Enochian",
+        hint: "Letter-by-letter Enochian name rendering",
+    },
+    MenuItem {
+        key: "5",
+        icon: "🗝",
+        label: "Browse the Enochian Keys (Calls)",
+        hint: "The 19 angelic calls as recorded by Dee",
+    },
+    MenuItem {
+        key: "6",
+        icon: "🔢",
+        label: "Enochian Gematria — Analyze a Word",
+        hint: "Ordinal + G.D. values with Aethyr resonance",
+    },
 ];
 
 static ENOCHIAN_MENU: Menu = Menu {
-    title:        "📜  ENOCHIAN ANGELOLOGY  (John Dee)",
+    title: "📜  ENOCHIAN ANGELOLOGY  (John Dee)",
     border_color: MenuColor::Cyan,
-    items:        ENOCHIAN_ITEMS,
-    back_key:     "0",
-    back_label:   "Back to Main Menu",
+    items: ENOCHIAN_ITEMS,
+    back_key: "0",
+    back_label: "Back to Main Menu",
 };
 
 // ─── Session entry point ──────────────────────────────────────────────────────
@@ -58,20 +83,23 @@ pub fn run_enochian_session() {
                 show_enochian_table();
                 handle_export(
                     "enochian_alphabet",
-                    || build_enochian_alphabet_report(),
-                    || export::build_enochian_alphabet_html(),
+                    build_enochian_alphabet_report,
+                    export::build_enochian_alphabet_html,
                 );
             }
             "2" => {
                 show_aethyr_table();
                 handle_export(
                     "aethyr_table",
-                    || build_aethyr_table_report(),
-                    || export::build_aethyr_table_html(),
+                    build_aethyr_table_report,
+                    export::build_aethyr_table_html,
                 );
             }
             "3" => {
-                print!("{}", "\n  ▸ Enter Aethyr number (1-30) or name (e.g. ZAX): ".cyan());
+                print!(
+                    "{}",
+                    "\n  ▸ Enter Aethyr number (1-30) or name (e.g. ZAX): ".cyan()
+                );
                 io::stdout().flush().unwrap_or(());
                 let mut q = String::new();
                 if io::stdin().read_line(&mut q).is_ok() && !q.trim().is_empty() {
@@ -97,12 +125,19 @@ pub fn run_enochian_session() {
 
 fn enochian_translate_word() {
     println!();
-    print!("{}", "  ▸ Enter a word or phrase to render in Enochian letter names: ".cyan());
+    print!(
+        "{}",
+        "  ▸ Enter a word or phrase to render in Enochian letter names: ".cyan()
+    );
     io::stdout().flush().unwrap_or(());
     let mut input = String::new();
-    if io::stdin().read_line(&mut input).is_err() { return; }
+    if io::stdin().read_line(&mut input).is_err() {
+        return;
+    }
     let input = input.trim();
-    if input.is_empty() { return; }
+    if input.is_empty() {
+        return;
+    }
 
     let word: String = input
         .chars()
@@ -116,73 +151,145 @@ fn enochian_translate_word() {
     }
 
     println!();
-    println!("{}", "  ╔═══════════════════════════════════════════════════════╗".bright_cyan());
-    println!("  {}", format!("║  🔤  Enochian rendering of  '{}'", word).bold().bright_cyan());
-    println!("{}", "  ╠═══════════════════════════════════════════════════════╣".bright_cyan());
-    println!("{}", "  ║  Char   Enochian Name   Sub?   Ordinal   GD Value     ║".bold().bright_white());
-    println!("{}", "  ╠═══════════════════════════════════════════════════════╣".bright_cyan());
+    println!(
+        "{}",
+        "  ╔═══════════════════════════════════════════════════════╗".bright_cyan()
+    );
+    println!(
+        "  {}",
+        format!("║  🔤  Enochian rendering of  '{}'", word)
+            .bold()
+            .bright_cyan()
+    );
+    println!(
+        "{}",
+        "  ╠═══════════════════════════════════════════════════════╣".bright_cyan()
+    );
+    println!(
+        "{}",
+        "  ║  Char   Enochian Name   Sub?   Ordinal   GD Value     ║"
+            .bold()
+            .bright_white()
+    );
+    println!(
+        "{}",
+        "  ╠═══════════════════════════════════════════════════════╣".bright_cyan()
+    );
 
     let mut ordinal_total = 0u32;
-    let mut gd_total      = 0u32;
+    let mut gd_total = 0u32;
 
     for ch in word.chars() {
-        let sub        = enochian_substitute(ch);
-        let sub_marker = if sub != ch { format!("→{}", sub) } else { "   ".to_string() };
+        let sub = enochian_substitute(ch);
+        let sub_marker = if sub != ch {
+            format!("→{}", sub)
+        } else {
+            "   ".to_string()
+        };
         match enochian_lookup(ch) {
             Some((name, ord, gd)) => {
                 ordinal_total += ord;
-                gd_total      += gd;
-                println!("  {}",
-                    format!("║   {:<5}  {:<16} {:<6}    {:>3}       {:>5}      ║",
-                        ch, name, sub_marker, ord, gd)
-                    .bright_white());
+                gd_total += gd;
+                println!(
+                    "  {}",
+                    format!(
+                        "║   {:<5}  {:<16} {:<6}    {:>3}       {:>5}      ║",
+                        ch, name, sub_marker, ord, gd
+                    )
+                    .bright_white()
+                );
             }
             None => {
-                println!("  {}",
-                    format!("║   {:<5}  {:<16} {:<6}    ---       -----      ║",
-                        ch, "(no glyph)", "")
-                    .dimmed());
+                println!(
+                    "  {}",
+                    format!(
+                        "║   {:<5}  {:<16} {:<6}    ---       -----      ║",
+                        ch, "(no glyph)", ""
+                    )
+                    .dimmed()
+                );
             }
         }
     }
 
-    println!("{}", "  ╠═══════════════════════════════════════════════════════╣".bright_cyan());
-    println!("  {}",
-        format!("║  Ordinal total: {:>5}   ->  root {}                      ║",
-            ordinal_total, digital_root(ordinal_total))
-        .bold().bright_yellow());
-    println!("  {}",
-        format!("║  G.D. total:    {:>5}   ->  root {}                      ║",
-            gd_total, digital_root(gd_total))
-        .bold().bright_yellow());
+    println!(
+        "{}",
+        "  ╠═══════════════════════════════════════════════════════╣".bright_cyan()
+    );
+    println!(
+        "  {}",
+        format!(
+            "║  Ordinal total: {:>5}   ->  root {}                      ║",
+            ordinal_total,
+            digital_root(ordinal_total)
+        )
+        .bold()
+        .bright_yellow()
+    );
+    println!(
+        "  {}",
+        format!(
+            "║  G.D. total:    {:>5}   ->  root {}                      ║",
+            gd_total,
+            digital_root(gd_total)
+        )
+        .bold()
+        .bright_yellow()
+    );
 
     let (oa, on, od) = aethyr_lookup(ordinal_total);
     let (ga, gn, gd) = aethyr_lookup(gd_total);
-    println!("{}", "  ╠═══════════════════════════════════════════════════════╣".bright_cyan());
-    println!("  {}",
-        format!("║  Ordinal Aethyr: {:>2} ({})                               ║", oa, on)
-        .italic().bright_cyan());
+    println!(
+        "{}",
+        "  ╠═══════════════════════════════════════════════════════╣".bright_cyan()
+    );
+    println!(
+        "  {}",
+        format!(
+            "║  Ordinal Aethyr: {:>2} ({})                               ║",
+            oa, on
+        )
+        .italic()
+        .bright_cyan()
+    );
     let ds: String = od.chars().take(46).collect();
-    println!("  {}", format!("║    {}  ║", format!("{:<49}", ds)).dimmed());
-    println!("  {}",
-        format!("║  G.D. Aethyr:    {:>2} ({})                               ║", ga, gn)
-        .italic().bright_cyan());
+    println!("  {}", format!("║    {:<49}  ║", ds).dimmed());
+    println!(
+        "  {}",
+        format!(
+            "║  G.D. Aethyr:    {:>2} ({})                               ║",
+            ga, gn
+        )
+        .italic()
+        .bright_cyan()
+    );
     let ds2: String = gd.chars().take(46).collect();
-    println!("  {}", format!("║    {}  ║", format!("{:<49}", ds2)).dimmed());
-    println!("{}", "  ╚═══════════════════════════════════════════════════════╝".bright_cyan());
+    println!("  {}", format!("║    {:<49}  ║", ds2).dimmed());
+    println!(
+        "{}",
+        "  ╚═══════════════════════════════════════════════════════╝".bright_cyan()
+    );
 
     let root = digital_root(ordinal_total);
     println!();
     println!("  {}", "📜 Enochian Call Fragment:".bold().yellow());
-    println!("  {}", format!("   {}", enochian_angelic_message(root)).italic().bright_yellow());
+    println!(
+        "  {}",
+        format!("   {}", enochian_angelic_message(root))
+            .italic()
+            .bright_yellow()
+    );
     println!();
 
-    let stem            = format!("enochian_translation_{}", word.to_lowercase());
+    let stem = format!("enochian_translation_{}", word.to_lowercase());
     let enochian_systems: &[&str] = &["Enochian Ordinal", "Enochian G.D."];
     match prompt_export_format() {
         ExportChoice::Text => export_text(&stem, &build_enochian_translation_report(&word)),
-        ExportChoice::Html => export_html(&stem, &export::build_numerology_html(&word, enochian_systems)),
-        ExportChoice::Pdf  => export_pdf(&stem, &build_enochian_translation_report(&word)),
+        ExportChoice::Html => export_html(
+            &stem,
+            &export::build_numerology_html(&word, enochian_systems),
+        ),
+        ExportChoice::Pdf => export_pdf(&stem, &build_enochian_translation_report(&word)),
         ExportChoice::Skip => {}
     }
 }
@@ -191,9 +298,20 @@ fn enochian_translate_word() {
 
 fn enochian_gematria_lookup() {
     println!();
-    println!("{}", "  ─────────────────────────────────────────────────────────".dimmed());
-    println!("{}", "  🔢  Enochian Gematria — Analyze a Word".bold().bright_white());
-    println!("{}", "  ─────────────────────────────────────────────────────────".dimmed());
+    println!(
+        "{}",
+        "  ─────────────────────────────────────────────────────────".dimmed()
+    );
+    println!(
+        "{}",
+        "  🔢  Enochian Gematria — Analyze a Word"
+            .bold()
+            .bright_white()
+    );
+    println!(
+        "{}",
+        "  ─────────────────────────────────────────────────────────".dimmed()
+    );
     println!("{}", "  (empty line → back)".dimmed());
     println!();
 
@@ -201,9 +319,13 @@ fn enochian_gematria_lookup() {
         print!("{}", "  ▸ Enter word or phrase: ".bold().cyan());
         io::stdout().flush().unwrap_or(());
         let mut input = String::new();
-        if io::stdin().read_line(&mut input).is_err() { break; }
+        if io::stdin().read_line(&mut input).is_err() {
+            break;
+        }
         let input = input.trim();
-        if input.is_empty() { break; }
+        if input.is_empty() {
+            break;
+        }
 
         let word: String = input
             .chars()
@@ -217,11 +339,17 @@ fn enochian_gematria_lookup() {
         }
 
         let all_results = numerology(&word);
-        println!("\n  {}", format!("Enochian results for '{}':", word).bold().green());
+        println!(
+            "\n  {}",
+            format!("Enochian results for '{}':", word).bold().green()
+        );
         println!("{}", "  ─────────────────────────────────────────".dimmed());
 
-        for (system, (total, root)) in all_results.iter().filter(|(s, _)| s.starts_with("Enochian")) {
-            let breakdown          = get_calculation_breakdown(&word, system);
+        for (system, (total, root)) in all_results
+            .iter()
+            .filter(|(s, _)| s.starts_with("Enochian"))
+        {
+            let breakdown = get_calculation_breakdown(&word, system);
             let (an, aname, adesc) = aethyr_lookup(*total);
             println!(
                 "  {} {:>5} → root {}: {}",
@@ -233,8 +361,12 @@ fn enochian_gematria_lookup() {
             if !breakdown.is_empty() {
                 println!("      {}", format!("Calculation: {}", breakdown).dimmed());
             }
-            println!("      {}",
-                format!("⟁ Aethyr {:>2} ({}) — {}", an, aname, adesc).italic().bright_cyan());
+            println!(
+                "      {}",
+                format!("⟁ Aethyr {:>2} ({}) — {}", an, aname, adesc)
+                    .italic()
+                    .bright_cyan()
+            );
         }
 
         let enochian_root = all_results
@@ -244,15 +376,23 @@ fn enochian_gematria_lookup() {
             .unwrap_or(1);
 
         println!("\n  {}", "📜 Enochian Call:".bold().yellow());
-        println!("  {}", format!("   {}", enochian_angelic_message(enochian_root)).italic().bright_yellow());
+        println!(
+            "  {}",
+            format!("   {}", enochian_angelic_message(enochian_root))
+                .italic()
+                .bright_yellow()
+        );
         println!("{}", "  ─────────────────────────────────────────".dimmed());
 
-        let stem            = format!("enochian_gematria_{}", word.to_lowercase());
+        let stem = format!("enochian_gematria_{}", word.to_lowercase());
         let enochian_systems: &[&str] = &["Enochian Ordinal", "Enochian G.D."];
         match prompt_export_format() {
             ExportChoice::Text => export_text(&stem, &build_enochian_gematria_report(&word)),
-            ExportChoice::Html => export_html(&stem, &export::build_numerology_html(&word, enochian_systems)),
-            ExportChoice::Pdf  => export_pdf(&stem, &build_enochian_gematria_report(&word)),
+            ExportChoice::Html => export_html(
+                &stem,
+                &export::build_numerology_html(&word, enochian_systems),
+            ),
+            ExportChoice::Pdf => export_pdf(&stem, &build_enochian_gematria_report(&word)),
             ExportChoice::Skip => {}
         }
         println!();
@@ -266,35 +406,88 @@ fn browse_enochian_keys() {
 
     loop {
         println!();
-        println!("{}", "  ╔═══════════════════════════════════════════════════════╗".bright_yellow());
-        println!("{}", "  ║      🗝  THE 19 ENOCHIAN KEYS (CALLS) — John Dee      ║".bold().bright_yellow());
-        println!("{}", "  ╠═══════════════════════════════════════════════════════╣".bright_yellow());
+        println!(
+            "{}",
+            "  ╔═══════════════════════════════════════════════════════╗".bright_yellow()
+        );
+        println!(
+            "{}",
+            "  ║      🗝  THE 19 ENOCHIAN KEYS (CALLS) — John Dee      ║"
+                .bold()
+                .bright_yellow()
+        );
+        println!(
+            "{}",
+            "  ╠═══════════════════════════════════════════════════════╣".bright_yellow()
+        );
         for (num, title, _, _) in ENOCHIAN_KEYS {
-            println!("  {}", format!("║   {:>2}.  {:<49}║", num, title).bright_white());
+            println!(
+                "  {}",
+                format!("║   {:>2}.  {:<49}║", num, title).bright_white()
+            );
         }
-        println!("{}", "  ╠═══════════════════════════════════════════════════════╣".bright_yellow());
-        println!("{}", "  ║    0.  <- Back                                        ║".dimmed());
-        println!("{}", "  ╚═══════════════════════════════════════════════════════╝".bright_yellow());
+        println!(
+            "{}",
+            "  ╠═══════════════════════════════════════════════════════╣".bright_yellow()
+        );
+        println!(
+            "{}",
+            "  ║    0.  <- Back                                        ║".dimmed()
+        );
+        println!(
+            "{}",
+            "  ╚═══════════════════════════════════════════════════════╝".bright_yellow()
+        );
         println!();
 
-        print!("{}", "  ▸ Enter key number (1-19) to read, or 0 to go back: ".cyan());
+        print!(
+            "{}",
+            "  ▸ Enter key number (1-19) to read, or 0 to go back: ".cyan()
+        );
         io::stdout().flush().unwrap_or(());
         let mut input = String::new();
-        if io::stdin().read_line(&mut input).is_err() { break; }
+        if io::stdin().read_line(&mut input).is_err() {
+            break;
+        }
         let trimmed = input.trim();
-        if trimmed == "0" || trimmed.is_empty() { break; }
+        if trimmed == "0" || trimmed.is_empty() {
+            break;
+        }
 
         if let Ok(n) = trimmed.parse::<usize>() {
             if n >= 1 && n <= ENOCHIAN_KEYS.len() {
                 let (num, title, opening, body) = ENOCHIAN_KEYS[n - 1];
                 println!();
-                println!("{}", "  ╔═══════════════════════════════════════════════════════╗".bright_cyan());
-                println!("  {}", format!("║  🗝  Key {:>2} — {}  ║", num, title).bold().bright_cyan());
-                println!("{}", "  ╠═══════════════════════════════════════════════════════╣".bright_cyan());
-                println!("  {}", "║  Opening words (Enochian):                            ║".dimmed());
-                println!("  {}", format!("║    {:<51}║", opening).italic().bright_magenta());
-                println!("{}", "  ╠═══════════════════════════════════════════════════════╣".bright_cyan());
-                println!("  {}", "║  Translation / Dee's English rendering:               ║".dimmed());
+                println!(
+                    "{}",
+                    "  ╔═══════════════════════════════════════════════════════╗".bright_cyan()
+                );
+                println!(
+                    "  {}",
+                    format!("║  🗝  Key {:>2} — {}  ║", num, title)
+                        .bold()
+                        .bright_cyan()
+                );
+                println!(
+                    "{}",
+                    "  ╠═══════════════════════════════════════════════════════╣".bright_cyan()
+                );
+                println!(
+                    "  {}",
+                    "║  Opening words (Enochian):                            ║".dimmed()
+                );
+                println!(
+                    "  {}",
+                    format!("║    {:<51}║", opening).italic().bright_magenta()
+                );
+                println!(
+                    "{}",
+                    "  ╠═══════════════════════════════════════════════════════╣".bright_cyan()
+                );
+                println!(
+                    "  {}",
+                    "║  Translation / Dee's English rendering:               ║".dimmed()
+                );
 
                 let words: Vec<&str> = body.split_whitespace().collect();
                 let mut line = String::new();
@@ -303,7 +496,9 @@ fn browse_enochian_keys() {
                         println!("  {}", format!("║  {:<53}║", line).bright_white());
                         line = word.to_string();
                     } else {
-                        if !line.is_empty() { line.push(' '); }
+                        if !line.is_empty() {
+                            line.push(' ');
+                        }
                         line.push_str(word);
                     }
                 }
@@ -311,12 +506,29 @@ fn browse_enochian_keys() {
                     println!("  {}", format!("║  {:<53}║", line).bright_white());
                 }
 
-                let root = ((num - 1) % 9 + 1) as u32;
-                println!("{}", "  ╠═══════════════════════════════════════════════════════╣".bright_cyan());
-                println!("  {}", format!("║  Enochian meaning for root {}:                         ║", root).italic().dimmed());
+                let root = (num - 1) % 9 + 1;
+                println!(
+                    "{}",
+                    "  ╠═══════════════════════════════════════════════════════╣".bright_cyan()
+                );
+                println!(
+                    "  {}",
+                    format!(
+                        "║  Enochian meaning for root {}:                         ║",
+                        root
+                    )
+                    .italic()
+                    .dimmed()
+                );
                 let em_short: String = enochian_meaning(root).chars().take(51).collect();
-                println!("  {}", format!("║    {:<51}║", em_short).italic().bright_yellow());
-                println!("{}", "  ╚═══════════════════════════════════════════════════════╝".bright_cyan());
+                println!(
+                    "  {}",
+                    format!("║    {:<51}║", em_short).italic().bright_yellow()
+                );
+                println!(
+                    "{}",
+                    "  ╚═══════════════════════════════════════════════════════╝".bright_cyan()
+                );
                 println!();
                 let key_stem = format!("enochian_key_{}", num);
                 handle_export(

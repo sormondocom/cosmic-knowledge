@@ -7,16 +7,41 @@
 //!   W → Omega(800)  |  F → Digamma(6)   |  Q → Qoppa(90)
 //! For native Greek Unicode input see the module-level doc comment.
 
-use std::collections::HashMap;
 use once_cell::sync::Lazy;
+use std::collections::HashMap;
 
-pub(super) static MAP: Lazy<HashMap<char, u32>> = Lazy::new(|| [
-    ('A',  1), ('B',  2), ('C',  3), ('D',  4), ('E',  5), ('F',  6),
-    ('G',  3), ('H',  8), ('I',  9), ('J', 10), ('K', 20), ('L', 30),
-    ('M', 40), ('N', 50), ('O', 70), ('P', 80), ('Q', 90), ('R',100),
-    ('S',200), ('T',300), ('U',400), ('V',400), ('W',800), ('X', 60),
-    ('Y',400), ('Z',  7),
-].into_iter().collect());
+pub(super) static MAP: Lazy<HashMap<char, u32>> = Lazy::new(|| {
+    [
+        ('A', 1),
+        ('B', 2),
+        ('C', 3),
+        ('D', 4),
+        ('E', 5),
+        ('F', 6),
+        ('G', 3),
+        ('H', 8),
+        ('I', 9),
+        ('J', 10),
+        ('K', 20),
+        ('L', 30),
+        ('M', 40),
+        ('N', 50),
+        ('O', 70),
+        ('P', 80),
+        ('Q', 90),
+        ('R', 100),
+        ('S', 200),
+        ('T', 300),
+        ('U', 400),
+        ('V', 400),
+        ('W', 800),
+        ('X', 60),
+        ('Y', 400),
+        ('Z', 7),
+    ]
+    .into_iter()
+    .collect()
+});
 
 /// Greek Isopsephy root meanings — Neoplatonic / Pythagorean cosmology.
 ///

@@ -55,25 +55,25 @@ CREATE TABLE IF NOT EXISTS rng_sessions (
 
 /// A registered user record.
 pub struct UserRecord {
-    pub id:   String,
+    pub id: String,
     pub name: String,
 }
 
 /// Aggregate statistics computed over all of a user's RNG sessions.
 pub struct CumulativeStats {
     /// Total sessions recorded (both match and stopped).
-    pub total_sessions:    u32,
+    pub total_sessions: u32,
     /// Mean number of draws across all sessions.
-    pub mean_draws:        f64,
+    pub mean_draws: f64,
     /// Fewest draws to a confirmed match (`None` if no matches yet).
-    pub best_match_draw:   Option<u32>,
+    pub best_match_draw: Option<u32>,
     /// Sessions where `draws < range_size` (beat chance expectation).
     pub beat_chance_count: u32,
     /// `mean(draws / range_size)` across all sessions.
     ///
     /// A ratio < 1.0 means the user tends to match earlier than chance;
     /// > 1.0 means later.  Exactly 1.0 is at chance expectation.
-    pub tendency_ratio:    f64,
+    pub tendency_ratio: f64,
 }
 
 // ─── Database connection ──────────────────────────────────────────────────────
@@ -104,14 +104,20 @@ fn new_uuid() -> String {
         u16::from_be_bytes(b[8..10].try_into().unwrap()),
         {
             let n = &b[10..16];
-            (n[0] as u64) << 40 | (n[1] as u64) << 32 | (n[2] as u64) << 24
-                | (n[3] as u64) << 16 | (n[4] as u64) << 8 | n[5] as u64
+            (n[0] as u64) << 40
+                | (n[1] as u64) << 32
+                | (n[2] as u64) << 24
+                | (n[3] as u64) << 16
+                | (n[4] as u64) << 8
+                | n[5] as u64
         },
     )
 }
 
 fn now_utc() -> String {
-    chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string()
+    chrono::Utc::now()
+        .format("%Y-%m-%d %H:%M:%S UTC")
+        .to_string()
 }
 
 // ─── User operations ──────────────────────────────────────────────────────────
@@ -129,14 +135,26 @@ pub fn get_or_create_user(conn: &Connection, name: &str) -> rusqlite::Result<(Us
     );
 
     match existing {
-        Ok((id, canonical)) => Ok((UserRecord { id, name: canonical }, false)),
+        Ok((id, canonical)) => Ok((
+            UserRecord {
+                id,
+                name: canonical,
+            },
+            false,
+        )),
         Err(rusqlite::Error::QueryReturnedNoRows) => {
             let id = new_uuid();
             conn.execute(
                 "INSERT INTO users (id, name, created_at) VALUES (?1, ?2, ?3)",
                 params![id, name, now_utc()],
             )?;
-            Ok((UserRecord { id, name: name.to_string() }, true))
+            Ok((
+                UserRecord {
+                    id,
+                    name: name.to_string(),
+                },
+                true,
+            ))
         }
         Err(e) => Err(e),
     }
@@ -145,15 +163,16 @@ pub fn get_or_create_user(conn: &Connection, name: &str) -> rusqlite::Result<(Us
 // ─── Session recording ────────────────────────────────────────────────────────
 
 /// Persist one completed RNG experiment session.
+#[allow(clippy::too_many_arguments)]
 pub fn record_session(
-    conn:        &Connection,
-    user_id:     &str,
-    started_at:  &str,
-    range_min:   u32,
-    range_max:   u32,
-    delay_secs:  f64,
-    outcome:     &str,
-    draws:       u32,
+    conn: &Connection,
+    user_id: &str,
+    started_at: &str,
+    range_min: u32,
+    range_max: u32,
+    delay_secs: f64,
+    outcome: &str,
+    draws: u32,
     beat_chance: bool,
 ) -> rusqlite::Result<()> {
     conn.execute(
@@ -161,9 +180,14 @@ pub fn record_session(
          (user_id, started_at, range_min, range_max, delay_secs, outcome, draws, beat_chance) \
          VALUES (?1,?2,?3,?4,?5,?6,?7,?8)",
         params![
-            user_id, started_at,
-            range_min, range_max, delay_secs,
-            outcome, draws, beat_chance as i32,
+            user_id,
+            started_at,
+            range_min,
+            range_max,
+            delay_secs,
+            outcome,
+            draws,
+            beat_chance as i32,
         ],
     )?;
     Ok(())
@@ -187,11 +211,11 @@ pub fn get_stats(conn: &Connection, user_id: &str) -> rusqlite::Result<Cumulativ
     )?;
 
     Ok(CumulativeStats {
-        total_sessions:    row.0,
-        mean_draws:        row.1.unwrap_or(0.0),
-        best_match_draw:   row.2,
+        total_sessions: row.0,
+        mean_draws: row.1.unwrap_or(0.0),
+        best_match_draw: row.2,
         beat_chance_count: row.3.unwrap_or(0),
-        tendency_ratio:    row.4.unwrap_or(1.0),
+        tendency_ratio: row.4.unwrap_or(1.0),
     })
 }
 
@@ -241,7 +265,18 @@ mod tests {
         // Match on draw 4 in a 1-9 range — beats chance (mean = 9)
         record_session(&conn, &user.id, "2024-01-01", 1, 9, 3.0, "match", 4, true).unwrap();
         // Stopped after 12 draws — does not beat chance
-        record_session(&conn, &user.id, "2024-01-02", 1, 9, 3.0, "stopped", 12, false).unwrap();
+        record_session(
+            &conn,
+            &user.id,
+            "2024-01-02",
+            1,
+            9,
+            3.0,
+            "stopped",
+            12,
+            false,
+        )
+        .unwrap();
 
         let stats = get_stats(&conn, &user.id).unwrap();
         assert_eq!(stats.total_sessions, 2);
@@ -258,10 +293,24 @@ mod tests {
 
         // Three very early matches in a 1-100 range (mean = 100)
         for draw in [5u32, 8, 3] {
-            record_session(&conn, &user.id, "2024-01-01", 1, 100, 3.0, "match", draw, true)
-                .unwrap();
+            record_session(
+                &conn,
+                &user.id,
+                "2024-01-01",
+                1,
+                100,
+                3.0,
+                "match",
+                draw,
+                true,
+            )
+            .unwrap();
         }
         let stats = get_stats(&conn, &user.id).unwrap();
-        assert!(stats.tendency_ratio < 0.95, "ratio was {}", stats.tendency_ratio);
+        assert!(
+            stats.tendency_ratio < 0.95,
+            "ratio was {}",
+            stats.tendency_ratio
+        );
     }
 }

@@ -25,18 +25,18 @@
 //! | African traditions  | Earth-toned Yoruba/Akan           |
 //! | Mixed / default     | Celestial purple (app default)    |
 
-use std::io::{self, Write};
-use std::fs;
 use colored::*;
+use std::fs;
+use std::io::{self, Write};
 
 use crate::enochian::{
     aethyr_lookup, enochian_angelic_message, enochian_meaning, AETHYRS, ENOCHIAN_LETTERS,
 };
 use crate::numerology::{
-    numerology, meaning_of, isopsephy_meaning, abjad_meaning, vedic_reading,
-    angelic_message, master_numbers_message, check_special_sequences, get_calculation_breakdown,
+    abjad_meaning, angelic_message, check_special_sequences, get_calculation_breakdown,
+    isopsephy_meaning, master_numbers_message, meaning_of, numerology, vedic_reading,
 };
-use crate::reports::{strip_leading_emoji, chrono_now};
+use crate::reports::{chrono_now, strip_leading_emoji};
 
 // ─── Export choice ────────────────────────────────────────────────────────────
 
@@ -51,7 +51,10 @@ pub enum ExportChoice {
 
 /// Print the format prompt and read the user's choice.
 pub fn prompt_export_format() -> ExportChoice {
-    print!("{}", "  \u{25b8} Save as text (t), HTML (h), PDF (p), or skip (Enter): ".cyan());
+    print!(
+        "{}",
+        "  \u{25b8} Save as text (t), HTML (h), PDF (p), or skip (Enter): ".cyan()
+    );
     io::stdout().flush().unwrap_or(());
     let mut line = String::new();
     if io::stdin().read_line(&mut line).is_err() {
@@ -60,8 +63,8 @@ pub fn prompt_export_format() -> ExportChoice {
     match line.trim().to_lowercase().as_str() {
         "t" | "text" => ExportChoice::Text,
         "h" | "html" => ExportChoice::Html,
-        "p" | "pdf"  => ExportChoice::Pdf,
-        _            => ExportChoice::Skip,
+        "p" | "pdf" => ExportChoice::Pdf,
+        _ => ExportChoice::Skip,
     }
 }
 
@@ -72,7 +75,7 @@ pub fn export_text(stem: &str, content: &str) {
     fs::create_dir_all("exports").ok();
     let path = format!("exports/{}.txt", stem);
     match fs::write(&path, content) {
-        Ok(_)  => println!("  {}", format!("Saved to: {}", path).bright_green()),
+        Ok(_) => println!("  {}", format!("Saved to: {}", path).bright_green()),
         Err(e) => println!("  {}", format!("Could not write file: {}", e).bright_red()),
     }
 }
@@ -82,8 +85,11 @@ pub fn export_html(stem: &str, html: &str) {
     fs::create_dir_all("exports").ok();
     let path = format!("exports/{}.html", stem);
     match fs::write(&path, html) {
-        Ok(_)  => println!("  {}", format!("HTML saved to: {}", path).bright_green()),
-        Err(e) => println!("  {}", format!("Could not write HTML file: {}", e).bright_red()),
+        Ok(_) => println!("  {}", format!("HTML saved to: {}", path).bright_green()),
+        Err(e) => println!(
+            "  {}",
+            format!("Could not write HTML file: {}", e).bright_red()
+        ),
     }
 }
 
@@ -98,17 +104,16 @@ pub fn export_pdf(stem: &str, text: &str) {
     let sanitized = sanitize_for_pdf(text);
     let lines: Vec<&str> = sanitized.lines().collect();
 
-    const FONT_SIZE:     f32 = 9.5;
-    const HEADER_SIZE:   f32 = 10.5;
-    const LINE_H:        f32 = 4.2;   // mm between baselines
-    const MARGIN_LEFT:   f32 = 20.0;
-    const MARGIN_TOP:    f32 = 277.0; // 297 - 20 mm
+    const FONT_SIZE: f32 = 9.5;
+    const HEADER_SIZE: f32 = 10.5;
+    const LINE_H: f32 = 4.2; // mm between baselines
+    const MARGIN_LEFT: f32 = 20.0;
+    const MARGIN_TOP: f32 = 277.0; // 297 - 20 mm
     const MARGIN_BOTTOM: f32 = 20.0;
-    const PW:            f32 = 210.0;
-    const PH:            f32 = 297.0;
+    const PW: f32 = 210.0;
+    const PH: f32 = 297.0;
 
-    let (doc, first_page, first_layer) =
-        PdfDocument::new(stem, Mm(PW), Mm(PH), "Content");
+    let (doc, first_page, first_layer) = PdfDocument::new(stem, Mm(PW), Mm(PH), "Content");
     let font_r = doc.add_builtin_font(BuiltinFont::Courier).unwrap();
     let font_b = doc.add_builtin_font(BuiltinFont::CourierBold).unwrap();
 
@@ -126,7 +131,11 @@ pub fn export_pdf(stem: &str, text: &str) {
             // Detect all-caps header lines
             let alpha: Vec<char> = line.chars().filter(|c| c.is_alphabetic()).collect();
             let is_header = !alpha.is_empty() && alpha.iter().all(|c| c.is_uppercase());
-            let (font, size) = if is_header { (&font_b, HEADER_SIZE) } else { (&font_r, FONT_SIZE) };
+            let (font, size) = if is_header {
+                (&font_b, HEADER_SIZE)
+            } else {
+                (&font_r, FONT_SIZE)
+            };
             layer.use_text(*line, size, Mm(MARGIN_LEFT), Mm(y), font);
         }
 
@@ -134,28 +143,33 @@ pub fn export_pdf(stem: &str, text: &str) {
     }
 
     let file = match fs::File::create(&path) {
-        Ok(f)  => f,
-        Err(e) => { println!("  {}", format!("Could not create PDF: {}", e).bright_red()); return; }
+        Ok(f) => f,
+        Err(e) => {
+            println!("  {}", format!("Could not create PDF: {}", e).bright_red());
+            return;
+        }
     };
     match doc.save(&mut BufWriter::new(file)) {
-        Ok(_)  => println!("  {}", format!("PDF saved to: {}", path).bright_green()),
+        Ok(_) => println!("  {}", format!("PDF saved to: {}", path).bright_green()),
         Err(e) => println!("  {}", format!("Could not write PDF: {}", e).bright_red()),
     }
 }
 
 /// Replace box-drawing and non-Latin-1 characters so printpdf's built-in Courier font renders them.
 fn sanitize_for_pdf(s: &str) -> String {
-    s.chars().map(|c| match c {
-        '═' | '━'                       => '=',
-        '─' | '\u{2014}' | '\u{2013}'   => '-',
-        '║' | '│'                       => '|',
-        '╔'|'╗'|'╚'|'╝'|'╠'|'╣'|'╦'|'╩'|'╬' => '+',
-        '\u{201C}' | '\u{201D}'         => '"',
-        '\u{2018}' | '\u{2019}'         => '\'',
-        '\u{25b8}' | '\u{27c1}' | '\u{2726}' | '\u{2192}' => '>',
-        c if (c as u32) <= 0xFF         => c,
-        _                               => ' ',
-    }).collect()
+    s.chars()
+        .map(|c| match c {
+            '═' | '━' => '=',
+            '─' | '\u{2014}' | '\u{2013}' => '-',
+            '║' | '│' => '|',
+            '╔' | '╗' | '╚' | '╝' | '╠' | '╣' | '╦' | '╩' | '╬' => '+',
+            '\u{201C}' | '\u{201D}' => '"',
+            '\u{2018}' | '\u{2019}' => '\'',
+            '\u{25b8}' | '\u{27c1}' | '\u{2726}' | '\u{2192}' => '>',
+            c if (c as u32) <= 0xFF => c,
+            _ => ' ',
+        })
+        .collect()
 }
 
 // ─── Generic export helper ────────────────────────────────────────────────────
@@ -171,7 +185,7 @@ where
     match prompt_export_format() {
         ExportChoice::Text => export_text(stem, &build_text()),
         ExportChoice::Html => export_html(stem, &build_html()),
-        ExportChoice::Pdf  => export_pdf(stem, &build_text()),
+        ExportChoice::Pdf => export_pdf(stem, &build_text()),
         ExportChoice::Skip => {}
     }
 }
@@ -184,9 +198,9 @@ where
 pub fn wrap_html(title: &str, body_html: &str, tradition_key: &str) -> String {
     let theme = theme_for_key(tradition_key);
     let font_imports = theme.font_imports;
-    let css_vars     = theme.css_vars;
-    let tradition    = theme.tradition;
-    let timestamp    = chrono_now();
+    let css_vars = theme.css_vars;
+    let tradition = theme.tradition;
+    let timestamp = chrono_now();
 
     format!(
         r#"<!DOCTYPE html>
@@ -288,13 +302,13 @@ pub fn wrap_html(title: &str, body_html: &str, tradition_key: &str) -> String {
 
 </body>
 </html>"#,
-        title      = html_escape(title),
+        title = html_escape(title),
         font_imports = font_imports,
-        css_vars     = css_vars,
-        body_html    = body_html,
-        tradition    = tradition,
-        timestamp    = timestamp,
-        timestamp2   = timestamp,
+        css_vars = css_vars,
+        body_html = body_html,
+        tradition = tradition,
+        timestamp = timestamp,
+        timestamp2 = timestamp,
     )
 }
 
@@ -303,14 +317,13 @@ pub fn wrap_html(title: &str, body_html: &str, tradition_key: &str) -> String {
 /// Build a styled HTML report for a numerology word analysis.
 pub fn build_numerology_html(word: &str, active_systems: &[&str]) -> String {
     let tradition_key = tradition_key_for_systems(active_systems);
-    let html_body     = build_numerology_html_body(word, active_systems);
+    let html_body = build_numerology_html_body(word, active_systems);
     let all_results = numerology(word);
 
     // Angelic message block
     let first_root = all_results
         .iter()
-        .filter(|(name, _)| active_systems.iter().any(|s| s == name))
-        .next()
+        .find(|(name, _)| active_systems.iter().any(|s| s == name))
         .map(|(_, (_, r))| *r);
 
     let angelic_html = if let Some(root) = first_root {
@@ -320,13 +333,13 @@ pub fn build_numerology_html(word: &str, active_systems: &[&str]) -> String {
                <em>{msg}</em>
              </div>"#,
             root = root,
-            msg  = html_escape(angelic_message(root)),
+            msg = html_escape(angelic_message(root)),
         )
     } else {
         String::new()
     };
 
-    let enochian_call_html = if active_systems.iter().any(|s| *s == "Enochian Ordinal") {
+    let enochian_call_html = if active_systems.contains(&"Enochian Ordinal") {
         if let Some((_, (_, er))) = all_results.iter().find(|(s, _)| *s == "Enochian Ordinal") {
             format!(
                 r#"<div class="block-note" style="border-left-color:var(--aethyr-color);margin-top:5pt;">
@@ -334,7 +347,7 @@ pub fn build_numerology_html(word: &str, active_systems: &[&str]) -> String {
                    <em>{msg}</em>
                  </div>"#,
                 root = er,
-                msg  = html_escape(enochian_angelic_message(*er)),
+                msg = html_escape(enochian_angelic_message(*er)),
             )
         } else {
             String::new()
@@ -352,10 +365,10 @@ pub fn build_numerology_html(word: &str, active_systems: &[&str]) -> String {
            {table}
            {angelic}
            {enochian_call}"#,
-        word         = html_escape(word),
-        systems      = html_escape(&systems_joined),
-        table        = html_body,
-        angelic      = angelic_html,
+        word = html_escape(word),
+        systems = html_escape(&systems_joined),
+        table = html_body,
+        angelic = angelic_html,
         enochian_call = enochian_call_html,
     );
 
@@ -375,20 +388,22 @@ fn build_numerology_html_body(word: &str, active_systems: &[&str]) -> String {
         let is_enochian = system.starts_with("Enochian");
         let meaning_raw = match *system {
             s if s.starts_with("Enochian") => enochian_meaning(*root),
-            "Greek Isopsephy"              => isopsephy_meaning(*root),
-            "Abjad"                        => abjad_meaning(*root),
-            "Vedic"                        => vedic_reading(*root).meaning,
-            _                              => meaning_of(*root),
+            "Greek Isopsephy" => isopsephy_meaning(*root),
+            "Abjad" => abjad_meaning(*root),
+            "Vedic" => vedic_reading(*root).meaning,
+            _ => meaning_of(*root),
         };
-        let meaning   = strip_leading_emoji(meaning_raw);
+        let meaning = strip_leading_emoji(meaning_raw);
         let breakdown = get_calculation_breakdown(word, system);
 
         let master_html = if !is_enochian {
             master_numbers_message(*total)
-                .map(|m| format!(
-                    "<div class=\"master\">{}</div>",
-                    html_escape(strip_leading_emoji(m))
-                ))
+                .map(|m| {
+                    format!(
+                        "<div class=\"master\">{}</div>",
+                        html_escape(strip_leading_emoji(m))
+                    )
+                })
                 .unwrap_or_default()
         } else {
             String::new()
@@ -398,7 +413,9 @@ fn build_numerology_html_body(word: &str, active_systems: &[&str]) -> String {
             let (an, aname, adesc) = aethyr_lookup(*total);
             format!(
                 "<div class=\"aethyr\">\u{27c1} Aethyr {} ({}) \u{2014} {}</div>",
-                an, aname, html_escape(adesc)
+                an,
+                aname,
+                html_escape(adesc)
             )
         } else {
             String::new()
@@ -456,7 +473,11 @@ fn build_numerology_html_body(word: &str, active_systems: &[&str]) -> String {
 pub fn build_enochian_alphabet_html() -> String {
     let mut rows = String::new();
     for (name, chars, ordinal, gd) in ENOCHIAN_LETTERS {
-        let chars_str: String = chars.iter().map(|c| c.to_string()).collect::<Vec<_>>().join(", ");
+        let chars_str: String = chars
+            .iter()
+            .map(|c| c.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
         rows.push_str(&format!(
             r#"<tr>
               <td class="sys">{name}</td>
@@ -464,10 +485,10 @@ pub fn build_enochian_alphabet_html() -> String {
               <td class="num">{ordinal}</td>
               <td class="num">{gd}</td>
             </tr>"#,
-            name    = html_escape(name),
-            chars   = html_escape(&chars_str),
+            name = html_escape(name),
+            chars = html_escape(&chars_str),
             ordinal = ordinal,
-            gd      = gd,
+            gd = gd,
         ));
     }
 
@@ -503,7 +524,7 @@ pub fn build_aethyr_table_html() -> String {
               <td class="sys">{name}</td>
               <td class="meaning">{desc}</td>
             </tr>"#,
-            num  = num,
+            num = num,
             name = html_escape(name),
             desc = html_escape(desc),
         ));
@@ -534,12 +555,14 @@ pub fn build_aethyr_table_html() -> String {
 pub fn build_aethyr_info_html(query: &str) -> String {
     let query_up = query.to_uppercase();
     let found = AETHYRS.iter().find(|(num, name, _)| {
-        query_up == name.to_string() ||
-        query.parse::<u32>().map(|n| n == *num).unwrap_or(false)
+        query_up == *name || query.parse::<u32>().map(|n| n == *num).unwrap_or(false)
     });
 
     let body = match found {
-        None => format!("<p>No Aethyr found for query: <em>{}</em></p>", html_escape(query)),
+        None => format!(
+            "<p>No Aethyr found for query: <em>{}</em></p>",
+            html_escape(query)
+        ),
         Some((num, name, desc)) => format!(
             r#"<table>
              <tbody>
@@ -548,7 +571,7 @@ pub fn build_aethyr_info_html(query: &str) -> String {
                <tr><td class="sys">Description</td><td class="meaning">{desc}</td></tr>
              </tbody>
            </table>"#,
-            num  = num,
+            num = num,
             name = html_escape(name),
             desc = html_escape(desc),
         ),
@@ -560,7 +583,7 @@ pub fn build_aethyr_info_html(query: &str) -> String {
 
 /// Build a styled HTML page for a single Enochian Key.
 pub fn build_enochian_key_html(num: u32, title: &str, opening: &str, body: &str) -> String {
-    let root = ((num - 1) % 9 + 1) as u32;
+    let root = (num - 1) % 9 + 1;
     let em = enochian_meaning(root);
 
     let html_body = format!(
@@ -584,10 +607,10 @@ pub fn build_enochian_key_html(num: u32, title: &str, opening: &str, body: &str)
            </tr>
          </tbody>
        </table>"#,
-        num     = num,
+        num = num,
         opening = html_escape(opening),
-        body    = html_escape(body),
-        root    = root,
+        body = html_escape(body),
+        root = root,
         meaning = html_escape(strip_leading_emoji(em)),
     );
 
@@ -599,24 +622,24 @@ pub fn build_enochian_key_html(num: u32, title: &str, opening: &str, body: &str)
 
 struct CulturalTheme {
     font_imports: &'static str,
-    css_vars:     &'static str,
-    tradition:    &'static str,
+    css_vars: &'static str,
+    tradition: &'static str,
 }
 
 /// Select a theme by an explicit tradition key string.
 fn theme_for_key(key: &str) -> CulturalTheme {
     match key {
-        "hebrew"      => theme_hebrew(),
+        "hebrew" => theme_hebrew(),
         "pythagorean" => theme_pythagorean(),
-        "chaldean"    => theme_chaldean(),
-        "greek"       => theme_greek(),
-        "agrippan"    => theme_agrippan(),
-        "ordinal"     => theme_ordinal(),
-        "abjad"       => theme_abjad(),
-        "enochian"    => theme_enochian(),
-        "chinese"     => theme_chinese(),
-        "african"     => theme_african(),
-        _             => theme_default(),
+        "chaldean" => theme_chaldean(),
+        "greek" => theme_greek(),
+        "agrippan" => theme_agrippan(),
+        "ordinal" => theme_ordinal(),
+        "abjad" => theme_abjad(),
+        "enochian" => theme_enochian(),
+        "chinese" => theme_chinese(),
+        "african" => theme_african(),
+        _ => theme_default(),
     }
 }
 
@@ -628,19 +651,29 @@ fn tradition_key_for_systems(systems: &[&str]) -> &'static str {
     let mut groups: std::collections::HashSet<&str> = std::collections::HashSet::new();
     for s in systems {
         let g = match *s {
-            "Hebrew Gematria"                          => "hebrew",
-            "Pythagorean"                              => "pythagorean",
-            "Chaldean"                                 => "chaldean",
-            "Greek Isopsephy"                          => "greek",
-            "Agrippan"                                 => "agrippan",
-            "Simple Ordinal" | "Reverse Ordinal"       => "ordinal",
-            "Abjad"                                    => "abjad",
-            s if s.starts_with("Enochian")             => "enochian",
-            s if s.starts_with("Nine Star") || s.starts_with("Wu Xing")
-              || s.starts_with("Ba Gua") || s.starts_with("Chinese") => "chinese",
-            s if s.starts_with("Ifa") || s.starts_with("Yoruba")
-              || s.starts_with("Akan") || s.starts_with("Kemetic")
-              || s.starts_with("African") => "african",
+            "Hebrew Gematria" => "hebrew",
+            "Pythagorean" => "pythagorean",
+            "Chaldean" => "chaldean",
+            "Greek Isopsephy" => "greek",
+            "Agrippan" => "agrippan",
+            "Simple Ordinal" | "Reverse Ordinal" => "ordinal",
+            "Abjad" => "abjad",
+            s if s.starts_with("Enochian") => "enochian",
+            s if s.starts_with("Nine Star")
+                || s.starts_with("Wu Xing")
+                || s.starts_with("Ba Gua")
+                || s.starts_with("Chinese") =>
+            {
+                "chinese"
+            }
+            s if s.starts_with("Ifa")
+                || s.starts_with("Yoruba")
+                || s.starts_with("Akan")
+                || s.starts_with("Kemetic")
+                || s.starts_with("African") =>
+            {
+                "african"
+            }
             _ => "default",
         };
         groups.insert(g);
@@ -648,7 +681,9 @@ fn tradition_key_for_systems(systems: &[&str]) -> &'static str {
 
     if groups.len() == 1 {
         let key = *groups.iter().next().unwrap();
-        if key != "default" { return key; }
+        if key != "default" {
+            return key;
+        }
     }
     ""
 }
@@ -925,7 +960,7 @@ fn theme_default() -> CulturalTheme {
 
 fn html_escape(s: &str) -> String {
     s.replace('&', "&amp;")
-     .replace('<', "&lt;")
-     .replace('>', "&gt;")
-     .replace('"', "&quot;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
 }

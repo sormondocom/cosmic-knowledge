@@ -13,18 +13,18 @@
 //!  - Wilkinson, R. *The Complete Gods and Goddesses of Ancient Egypt* (2003, Thames & Hudson)
 //!  - Faulkner, R. *The Ancient Egyptian Book of the Dead* (1972, British Museum Press)
 
-use std::io::{self, Write};
+use crate::export::{export_text, prompt_export_format, ExportChoice};
 use colored::*;
-use crate::export::{prompt_export_format, export_text, ExportChoice};
+use std::io::{self, Write};
 
 // ─── African: Yoruba Ifá — 16 Principal Odù ───────────────────────────────────
 
 pub struct IfaOdu {
-    pub index:    u8,         // 1–16
-    pub name:     &'static str,
-    pub orisha:   &'static str,   // associated deity
-    pub domain:   &'static str,
-    pub quality:  &'static str,
+    pub index: u8, // 1–16
+    pub name: &'static str,
+    pub orisha: &'static str, // associated deity
+    pub domain: &'static str,
+    pub quality: &'static str,
 }
 
 /// Return the Ifá Odù for an index 1–16.
@@ -33,70 +33,90 @@ pub struct IfaOdu {
 /// Source: Wande Abimbola, *Ifá: An Exposition of Ifá Literary Corpus* (1976, OUP Nigeria).
 pub fn ifa_odu(index: u8) -> Option<IfaOdu> {
     match index {
-        1  => Some(IfaOdu { index: 1,  name: "Ogbe (Ògbè)",
+        1 => Some(IfaOdu {
+            index: 1,
+            name: "Ogbe (Ògbè)",
             orisha: "Orunmila / Ọrunmìlà (Ifá himself)",
             domain: "Prosperity, dawn, new beginnings, divine wisdom",
             quality: "The first and most senior Odù; associated with light, \
                       abundance, and the direct voice of Orunmila. All single \
                       marks (||||): maximum yang energy",
         }),
-        2  => Some(IfaOdu { index: 2,  name: "Oyeku (Òyèkú)",
+        2 => Some(IfaOdu {
+            index: 2,
+            name: "Oyeku (Òyèkú)",
             orisha: "Iku (Death) / Egungun (Ancestors)",
             domain: "Death, endings, transformation, ancestral wisdom",
             quality: "The counterpart of Ogbe — all double marks (!!). Represents \
                       night, the ancestors, and the completion of cycles. Feared \
                       but also revered as the wisdom that comes from endings",
         }),
-        3  => Some(IfaOdu { index: 3,  name: "Iwori (Ìwòrì)",
+        3 => Some(IfaOdu {
+            index: 3,
+            name: "Iwori (Ìwòrì)",
             orisha: "Ogún (Iron) and Elégba (Crossroads)",
             domain: "Inner sight, introspection, self-knowledge, hidden truth",
             quality: "The Odù of seeing within. Governs dreams, \
                       meditation, and the exploration of one's own nature. \
                       Warns against self-deception",
         }),
-        4  => Some(IfaOdu { index: 4,  name: "Odi (Òdí)",
+        4 => Some(IfaOdu {
+            index: 4,
+            name: "Odi (Òdí)",
             orisha: "Yemoja (Waters / Mother of Waters)",
             domain: "Secrets, gestation, the womb, hidden power",
             quality: "The Odù of that which is concealed and growing. \
                       Associated with pregnancy, plans not yet revealed, \
                       and the deep creative potential before manifestation",
         }),
-        5  => Some(IfaOdu { index: 5,  name: "Irosun (Ìròsùn)",
+        5 => Some(IfaOdu {
+            index: 5,
+            name: "Irosun (Ìròsùn)",
             orisha: "Ọṣun (Love, Fertility, Sweet Water)",
             domain: "Blood, women, fertility, love, wealth",
             quality: "The Odù of Osun — governs relationships, women's power, \
                       sensuality, abundance, and the flow of vital force. \
                       Named for the red dye *osun* (camwood)",
         }),
-        6  => Some(IfaOdu { index: 6,  name: "Owonrin (Òwónrín)",
+        6 => Some(IfaOdu {
+            index: 6,
+            name: "Owonrin (Òwónrín)",
             orisha: "Eṣu / Elégba (Trickster, Divine Messenger)",
             domain: "Unpredictability, chaos, sudden change, crossroads",
             quality: "The most unpredictable Odù — governs sudden reversals, \
                       unexpected opportunities, and the role of the trickster. \
                       Associated with Eshu and lightning",
         }),
-        7  => Some(IfaOdu { index: 7,  name: "Obara (Òbàrà)",
+        7 => Some(IfaOdu {
+            index: 7,
+            name: "Obara (Òbàrà)",
             orisha: "Ṣàngó (Thunder, Lightning, Justice)",
             domain: "Royalty, pride, leadership, charisma",
             quality: "The Odù of kings. Governs power, authority, and the \
                       responsibility that comes with greatness. \
                       Warns against arrogance",
         }),
-        8  => Some(IfaOdu { index: 8,  name: "Okanran (Òkànràn)",
+        8 => Some(IfaOdu {
+            index: 8,
+            name: "Okanran (Òkànràn)",
             orisha: "Ògún (Iron, War, Labour)",
             domain: "Conflict, fire, impatience, raw power",
             quality: "The Odù of sudden action and conflict. Governs battles, \
                       arguments, and impulsive decisions. Advises patience \
                       and careful planning before acting",
         }),
-        9  => Some(IfaOdu { index: 9,  name: "Ogunda (Ògúndá)",
+        9 => Some(IfaOdu {
+            index: 9,
+            name: "Ogunda (Ògúndá)",
             orisha: "Ògún (Iron, Clearing the Path)",
             domain: "Iron, clearing obstacles, new pathways, surgery",
             quality: "The path-clearing Odù. Governs the removal of obstacles \
                       through direct action. Associated with surgery, farming, \
                       and any work with iron or sharp implements",
         }),
-        10 => Some(IfaOdu { index: 10, name: "Osa (Òsá)",
+        10 => Some(IfaOdu {
+            index: 10,
+            name: "Osa (Òsá)",
             orisha: "Ọya (Wind, Storms, Change)",
             domain: "Sudden reversals, storms, witchcraft, transformation",
             quality: "The Odù of sudden and often violent change. \
@@ -104,42 +124,54 @@ pub fn ifa_odu(index: u8) -> Option<IfaOdu> {
                       from trees. Danger from enemies; but also radical \
                       liberation",
         }),
-        11 => Some(IfaOdu { index: 11, name: "Ika (Ìká)",
+        11 => Some(IfaOdu {
+            index: 11,
+            name: "Ika (Ìká)",
             orisha: "Ọbàtálá (Creation, Purity, White Cloth)",
             domain: "Stubbornness, pride, creative power, wisdom",
             quality: "The Odù governing creative but inflexible energy. \
                       Warns against stubbornness blocking one's own blessing. \
                       Associated with the artist and the visionary",
         }),
-        12 => Some(IfaOdu { index: 12, name: "Oturupon (Òtúrúpọ̀n)",
+        12 => Some(IfaOdu {
+            index: 12,
+            name: "Oturupon (Òtúrúpọ̀n)",
             orisha: "Ọbàtálá and Ọya",
             domain: "Transformation, liminality, what is hidden becoming revealed",
             quality: "The Odù of threshold states — between life and death, \
                       waking and dreaming. Governs radical transformation and \
                       the point of no return",
         }),
-        13 => Some(IfaOdu { index: 13, name: "Otura (Òtúrá)",
+        13 => Some(IfaOdu {
+            index: 13,
+            name: "Otura (Òtúrá)",
             orisha: "Ọbàtálá (the Creator)",
             domain: "Creation, Obatala, white cloth, the sky, purity",
             quality: "The Odù of divine creation and purity. \
                       Associated with Obatala who sculpts human form. \
                       Governs purity of intent, spiritual elevation",
         }),
-        14 => Some(IfaOdu { index: 14, name: "Irete (Ìrẹtẹ̀)",
+        14 => Some(IfaOdu {
+            index: 14,
+            name: "Irete (Ìrẹtẹ̀)",
             orisha: "Ọlọdùmarè (the Supreme Being) and Orunmila",
             domain: "Long life, stability, spiritual mastery, the elder",
             quality: "The Odù of the wise elder. Governs long life, \
                       accumulated wisdom, and spiritual mastery. \
                       Associated with patience and the long view",
         }),
-        15 => Some(IfaOdu { index: 15, name: "Ose (Òsẹ̀)",
+        15 => Some(IfaOdu {
+            index: 15,
+            name: "Ose (Òsẹ̀)",
             orisha: "Ọṣun (Love) and Orisa Oko (Agriculture)",
             domain: "Fertility, wealth, children, abundance of the earth",
             quality: "The Odù of material and spiritual abundance. \
                       Governs fertility of the land, women, and business. \
                       Associated with the sweetness of life",
         }),
-        16 => Some(IfaOdu { index: 16, name: "Ofun (Òfún)",
+        16 => Some(IfaOdu {
+            index: 16,
+            name: "Ofun (Òfún)",
             orisha: "Yemọja (Ocean, Mother of Waters)",
             domain: "Death, rebirth, the deep ocean, the supreme mystery",
             quality: "The 16th and final principal Odù — the complete cycle \
@@ -154,12 +186,12 @@ pub fn ifa_odu(index: u8) -> Option<IfaOdu> {
 // ─── African: Akan Day Names ───────────────────────────────────────────────────
 
 pub struct AkanDay {
-    pub day_en:        &'static str,
-    pub day_akan:      &'static str,
-    pub male_name:     &'static str,
-    pub female_name:   &'static str,
-    pub orisa:         &'static str,   // associated deity/spiritual force
-    pub qualities:     &'static str,
+    pub day_en: &'static str,
+    pub day_akan: &'static str,
+    pub male_name: &'static str,
+    pub female_name: &'static str,
+    pub orisa: &'static str, // associated deity/spiritual force
+    pub qualities: &'static str,
 }
 
 /// Return the Akan day name for a day-of-week index.
@@ -169,46 +201,67 @@ pub struct AkanDay {
 ///         Opoku, K.A. *West African Traditional Religion* (1978, FEP International).
 pub fn akan_day_name(weekday: u8) -> AkanDay {
     match weekday % 7 {
-        0 => AkanDay { day_en: "Sunday",    day_akan: "Kwasida",
-            male_name: "Kwasi",  female_name: "Akosua",
+        0 => AkanDay {
+            day_en: "Sunday",
+            day_akan: "Kwasida",
+            male_name: "Kwasi",
+            female_name: "Akosua",
             orisa: "Nyankopong (the High God, the Sun)",
             qualities: "Noble, spiritual, creative, solar energy; natural leaders \
                         with strong moral compass",
         },
-        1 => AkanDay { day_en: "Monday",    day_akan: "Dwowda",
-            male_name: "Kwadwo", female_name: "Adwoa",
+        1 => AkanDay {
+            day_en: "Monday",
+            day_akan: "Dwowda",
+            male_name: "Kwadwo",
+            female_name: "Adwoa",
             orisa: "The Moon",
             qualities: "Peaceful, calm, diplomatic, introspective; gifted \
                         mediators and peacemakers",
         },
-        2 => AkanDay { day_en: "Tuesday",   day_akan: "Benada",
-            male_name: "Kwabena", female_name: "Abena",
+        2 => AkanDay {
+            day_en: "Tuesday",
+            day_akan: "Benada",
+            male_name: "Kwabena",
+            female_name: "Abena",
             orisa: "The Ocean / Sea spirits",
             qualities: "Bold, warrior-spirit, energetic, courageous; \
                         natural athletes and defenders",
         },
-        3 => AkanDay { day_en: "Wednesday", day_akan: "Wukuda",
-            male_name: "Kwaku",  female_name: "Akua",
+        3 => AkanDay {
+            day_en: "Wednesday",
+            day_akan: "Wukuda",
+            male_name: "Kwaku",
+            female_name: "Akua",
             orisa: "Anansi (Spider) — the divine trickster",
             qualities: "Clever, versatile, mischievous, quick-witted; \
                         natural storytellers and problem-solvers. Wednesday \
                         is Anansi's day — expect the unexpected",
         },
-        4 => AkanDay { day_en: "Thursday",  day_akan: "Yawda",
-            male_name: "Yaw",    female_name: "Yaa",
+        4 => AkanDay {
+            day_en: "Thursday",
+            day_akan: "Yawda",
+            male_name: "Yaw",
+            female_name: "Yaa",
             orisa: "Earth Goddess (Asase Yaa)",
             qualities: "Patient, powerful, generous, connected to the earth; \
                         strong sense of justice and perseverance",
         },
-        5 => AkanDay { day_en: "Friday",    day_akan: "Fida",
-            male_name: "Kofi",   female_name: "Afua / Efua",
+        5 => AkanDay {
+            day_en: "Friday",
+            day_akan: "Fida",
+            male_name: "Kofi",
+            female_name: "Afua / Efua",
             orisa: "The River",
             qualities: "Adventurous, warm, loving, sociable; diplomatic \
                         and versatile; known for their charm and charisma. \
                         (Kofi Annan — born Friday)",
         },
-        _ => AkanDay { day_en: "Saturday",  day_akan: "Memenda",
-            male_name: "Kwame",  female_name: "Ama",
+        _ => AkanDay {
+            day_en: "Saturday",
+            day_akan: "Memenda",
+            male_name: "Kwame",
+            female_name: "Ama",
             orisa: "Nyame (the Supreme Being, sky god)",
             qualities: "Responsible, spiritual, deeply connected to the divine; \
                         Saturday is Nyame's day — those born on it carry \
@@ -263,26 +316,72 @@ pub fn kemetic_meaning(number: u32) -> Option<&'static str> {
 pub fn run_african_session() {
     loop {
         println!();
-        println!("{}", "╔══════════════════════════════════════════════════════════╗".bright_cyan());
-        println!("{}", "║           🌍  AFRICAN COSMOLOGICAL SYSTEMS               ║".bold().bright_cyan());
-        println!("{}", "╠══════════════════════════════════════════════════════════╣".bright_cyan());
-        println!("{}", "║   1.  🎋  Yoruba Ifá — The 16 Principal Odù              ║".bright_white());
-        println!("{}", "║          Orisha · domain · divinatory quality            ║".dimmed());
-        println!("{}", "║                                                          ║".bright_cyan());
-        println!("{}", "║   2.  🌅  Akan Day Names — Birth Day Soul Name           ║".bright_white());
-        println!("{}", "║          Kra name, qualities, and spiritual guardian     ║".dimmed());
-        println!("{}", "║                                                          ║".bright_cyan());
-        println!("{}", "║   3.  ☥  Kemetic Numbers — Ancient Egyptian Meanings     ║".bright_white());
-        println!("{}", "║          Ogdoad, Ennead, Ma'at, and sacred numbers       ║".dimmed());
-        println!("{}", "║                                                          ║".bright_cyan());
-        println!("{}", "║   0.  ←  Back                                            ║".dimmed());
-        println!("{}", "╚══════════════════════════════════════════════════════════╝".bright_cyan());
+        println!(
+            "{}",
+            "╔══════════════════════════════════════════════════════════╗".bright_cyan()
+        );
+        println!(
+            "{}",
+            "║           🌍  AFRICAN COSMOLOGICAL SYSTEMS               ║"
+                .bold()
+                .bright_cyan()
+        );
+        println!(
+            "{}",
+            "╠══════════════════════════════════════════════════════════╣".bright_cyan()
+        );
+        println!(
+            "{}",
+            "║   1.  🎋  Yoruba Ifá — The 16 Principal Odù              ║".bright_white()
+        );
+        println!(
+            "{}",
+            "║          Orisha · domain · divinatory quality            ║".dimmed()
+        );
+        println!(
+            "{}",
+            "║                                                          ║".bright_cyan()
+        );
+        println!(
+            "{}",
+            "║   2.  🌅  Akan Day Names — Birth Day Soul Name           ║".bright_white()
+        );
+        println!(
+            "{}",
+            "║          Kra name, qualities, and spiritual guardian     ║".dimmed()
+        );
+        println!(
+            "{}",
+            "║                                                          ║".bright_cyan()
+        );
+        println!(
+            "{}",
+            "║   3.  ☥  Kemetic Numbers — Ancient Egyptian Meanings     ║".bright_white()
+        );
+        println!(
+            "{}",
+            "║          Ogdoad, Ennead, Ma'at, and sacred numbers       ║".dimmed()
+        );
+        println!(
+            "{}",
+            "║                                                          ║".bright_cyan()
+        );
+        println!(
+            "{}",
+            "║   0.  ←  Back                                            ║".dimmed()
+        );
+        println!(
+            "{}",
+            "╚══════════════════════════════════════════════════════════╝".bright_cyan()
+        );
         println!();
 
         print!("{}", "▸ Enter choice: ".bold().cyan());
         io::stdout().flush().unwrap_or(());
         let mut input = String::new();
-        if io::stdin().read_line(&mut input).is_err() { break; }
+        if io::stdin().read_line(&mut input).is_err() {
+            break;
+        }
 
         match input.trim() {
             "1" => ifa_odu_session(),
@@ -296,37 +395,90 @@ pub fn run_african_session() {
 
 fn ifa_odu_session() {
     println!();
-    println!("{}", "  ╔═══════════════════════════════════════════════════════╗".bright_cyan());
-    println!("{}", "  ║    🎋 THE 16 PRINCIPAL ODÙ OF IFÁ — Wande Abimbola    ║".bold().bright_cyan());
-    println!("{}", "  ║    Source: Yoruba, Benin, Nigeria · UNESCO ICH 2008   ║".dimmed());
-    println!("{}", "  ╠═══════════════════════════════════════════════════════╣".bright_cyan());
+    println!(
+        "{}",
+        "  ╔═══════════════════════════════════════════════════════╗".bright_cyan()
+    );
+    println!(
+        "{}",
+        "  ║    🎋 THE 16 PRINCIPAL ODÙ OF IFÁ — Wande Abimbola    ║"
+            .bold()
+            .bright_cyan()
+    );
+    println!(
+        "{}",
+        "  ║    Source: Yoruba, Benin, Nigeria · UNESCO ICH 2008   ║".dimmed()
+    );
+    println!(
+        "{}",
+        "  ╠═══════════════════════════════════════════════════════╣".bright_cyan()
+    );
     for i in 1u8..=16 {
         if let Some(odu) = ifa_odu(i) {
-            println!("  {}", format!("║  {:>2}.  {:<49}║", i, odu.name).bright_white());
+            println!(
+                "  {}",
+                format!("║  {:>2}.  {:<49}║", i, odu.name).bright_white()
+            );
         }
     }
-    println!("{}", "  ╠═══════════════════════════════════════════════════════╣".bright_cyan());
-    println!("{}", "  ║    0.  ← Back                                         ║".dimmed());
-    println!("{}", "  ╚═══════════════════════════════════════════════════════╝".bright_cyan());
+    println!(
+        "{}",
+        "  ╠═══════════════════════════════════════════════════════╣".bright_cyan()
+    );
+    println!(
+        "{}",
+        "  ║    0.  ← Back                                         ║".dimmed()
+    );
+    println!(
+        "{}",
+        "  ╚═══════════════════════════════════════════════════════╝".bright_cyan()
+    );
     println!();
 
     loop {
         print!("{}", "  ▸ Enter Odù number (1-16) or 0 to go back: ".cyan());
         io::stdout().flush().unwrap_or(());
         let mut buf = String::new();
-        if io::stdin().read_line(&mut buf).is_err() { break; }
+        if io::stdin().read_line(&mut buf).is_err() {
+            break;
+        }
         let trimmed = buf.trim();
-        if trimmed == "0" || trimmed.is_empty() { break; }
+        if trimmed == "0" || trimmed.is_empty() {
+            break;
+        }
 
         if let Ok(n) = trimmed.parse::<u8>() {
             if let Some(odu) = ifa_odu(n) {
                 println!();
-                println!("{}", "  ╔═══════════════════════════════════════════════════════╗".bright_yellow());
-                println!("  {}", format!("║  🎋 {:>2}. {}                                    ║", odu.index, odu.name).bold().bright_yellow());
-                println!("{}", "  ╠═══════════════════════════════════════════════════════╣".bright_yellow());
-                println!("  {}", format!("║  Orisha : {:<45}║", odu.orisha).bright_cyan());
-                println!("  {}", format!("║  Domain : {:<45}║", odu.domain).bright_white());
-                println!("{}", "  ╠═══════════════════════════════════════════════════════╣".bright_yellow());
+                println!(
+                    "{}",
+                    "  ╔═══════════════════════════════════════════════════════╗".bright_yellow()
+                );
+                println!(
+                    "  {}",
+                    format!(
+                        "║  🎋 {:>2}. {}                                    ║",
+                        odu.index, odu.name
+                    )
+                    .bold()
+                    .bright_yellow()
+                );
+                println!(
+                    "{}",
+                    "  ╠═══════════════════════════════════════════════════════╣".bright_yellow()
+                );
+                println!(
+                    "  {}",
+                    format!("║  Orisha : {:<45}║", odu.orisha).bright_cyan()
+                );
+                println!(
+                    "  {}",
+                    format!("║  Domain : {:<45}║", odu.domain).bright_white()
+                );
+                println!(
+                    "{}",
+                    "  ╠═══════════════════════════════════════════════════════╣".bright_yellow()
+                );
                 let words: Vec<&str> = odu.quality.split_whitespace().collect();
                 let mut line = String::new();
                 for word in &words {
@@ -334,14 +486,19 @@ fn ifa_odu_session() {
                         println!("  {}", format!("║  {:<53}║", line).bright_white());
                         line = word.to_string();
                     } else {
-                        if !line.is_empty() { line.push(' '); }
+                        if !line.is_empty() {
+                            line.push(' ');
+                        }
                         line.push_str(word);
                     }
                 }
                 if !line.is_empty() {
                     println!("  {}", format!("║  {:<53}║", line).bright_white());
                 }
-                println!("{}", "  ╚═══════════════════════════════════════════════════════╝".bright_yellow());
+                println!(
+                    "{}",
+                    "  ╚═══════════════════════════════════════════════════════╝".bright_yellow()
+                );
                 println!();
 
                 let stem = format!("ifa_odu_{}", n);
@@ -354,7 +511,11 @@ fn ifa_odu_session() {
                         // TODO: HTML builder for African cosmology
                         let report = build_ifa_odu_report(n, &odu);
                         export_text(&stem, &report);
-                        println!("{}", "  (HTML/PDF not yet supported for this report — saved as text)".dimmed());
+                        println!(
+                            "{}",
+                            "  (HTML/PDF not yet supported for this report — saved as text)"
+                                .dimmed()
+                        );
                     }
                     ExportChoice::Skip => {}
                 }
@@ -369,8 +530,14 @@ fn ifa_odu_session() {
 
 fn akan_day_session() {
     println!();
-    println!("{}", "  Enter a day of the week to find the Akan soul name (Kra din).".dimmed());
-    println!("{}", "  (0=Sunday  1=Monday  2=Tuesday  3=Wednesday".dimmed());
+    println!(
+        "{}",
+        "  Enter a day of the week to find the Akan soul name (Kra din).".dimmed()
+    );
+    println!(
+        "{}",
+        "  (0=Sunday  1=Monday  2=Tuesday  3=Wednesday".dimmed()
+    );
     println!("{}", "   4=Thursday  5=Friday  6=Saturday)".dimmed());
     println!("{}", "  (empty line → back)".dimmed());
 
@@ -378,18 +545,29 @@ fn akan_day_session() {
         print!("{}", "\n  ▸ Enter day number (0–6): ".bold().cyan());
         io::stdout().flush().unwrap_or(());
         let mut buf = String::new();
-        if io::stdin().read_line(&mut buf).is_err() { break; }
+        if io::stdin().read_line(&mut buf).is_err() {
+            break;
+        }
         let trimmed = buf.trim();
-        if trimmed.is_empty() { break; }
+        if trimmed.is_empty() {
+            break;
+        }
 
         let Ok(d) = trimmed.parse::<u8>() else {
-            println!("{}", "  ⚠️  Enter 0 (Sunday) through 6 (Saturday).".yellow());
+            println!(
+                "{}",
+                "  ⚠️  Enter 0 (Sunday) through 6 (Saturday).".yellow()
+            );
             continue;
         };
 
         let day = akan_day_name(d);
         println!();
-        println!("  {} — {}", day.day_en.bold().bright_yellow(), day.day_akan.bright_cyan());
+        println!(
+            "  {} — {}",
+            day.day_en.bold().bright_yellow(),
+            day.day_akan.bright_cyan()
+        );
         println!("  Male name   : {}", day.male_name.bold().bright_white());
         println!("  Female name : {}", day.female_name.bold().bright_white());
         println!("  Guardian    : {}", day.orisa.italic().bright_magenta());
@@ -405,7 +583,10 @@ fn akan_day_session() {
                 // TODO: HTML builder for African cosmology
                 let report = build_akan_day_report(d, &day);
                 export_text(&stem, &report);
-                println!("{}", "  (HTML/PDF not yet supported for this report — saved as text)".dimmed());
+                println!(
+                    "{}",
+                    "  (HTML/PDF not yet supported for this report — saved as text)".dimmed()
+                );
             }
             ExportChoice::Skip => {}
         }
@@ -414,7 +595,10 @@ fn akan_day_session() {
 
 fn kemetic_session() {
     println!();
-    println!("{}", "  Enter a number to see its Ancient Egyptian / Kemetic significance.".dimmed());
+    println!(
+        "{}",
+        "  Enter a number to see its Ancient Egyptian / Kemetic significance.".dimmed()
+    );
     println!("{}", "  Notable numbers: 1 2 3 4 5 6 7 8 9 42 360".dimmed());
     println!("{}", "  (empty line → back)".dimmed());
 
@@ -422,9 +606,13 @@ fn kemetic_session() {
         print!("{}", "\n  ▸ Enter number: ".bold().cyan());
         io::stdout().flush().unwrap_or(());
         let mut buf = String::new();
-        if io::stdin().read_line(&mut buf).is_err() { break; }
+        if io::stdin().read_line(&mut buf).is_err() {
+            break;
+        }
         let trimmed = buf.trim();
-        if trimmed.is_empty() { break; }
+        if trimmed.is_empty() {
+            break;
+        }
 
         let Ok(n) = trimmed.parse::<u32>() else {
             println!("{}", "  ⚠️  Please enter a positive integer.".yellow());
@@ -432,10 +620,23 @@ fn kemetic_session() {
         };
 
         match kemetic_meaning(n) {
-            None => println!("{}", format!("  ℹ️  {} has no specific Kemetic significance in this database.", n).dimmed()),
+            None => println!(
+                "{}",
+                format!(
+                    "  ℹ️  {} has no specific Kemetic significance in this database.",
+                    n
+                )
+                .dimmed()
+            ),
             Some(meaning) => {
                 println!();
-                println!("  {} {}", "☥ ".bold().bright_yellow(), format!("Kemetic significance of {}:", n).bold().bright_yellow());
+                println!(
+                    "  {} {}",
+                    "☥ ".bold().bright_yellow(),
+                    format!("Kemetic significance of {}:", n)
+                        .bold()
+                        .bright_yellow()
+                );
                 println!("  {}", meaning.bright_white());
 
                 let stem = format!("kemetic_{}", n);
@@ -448,7 +649,11 @@ fn kemetic_session() {
                         // TODO: HTML builder for African cosmology
                         let report = build_kemetic_report(n, meaning);
                         export_text(&stem, &report);
-                        println!("{}", "  (HTML/PDF not yet supported for this report — saved as text)".dimmed());
+                        println!(
+                            "{}",
+                            "  (HTML/PDF not yet supported for this report — saved as text)"
+                                .dimmed()
+                        );
                     }
                     ExportChoice::Skip => {}
                 }
@@ -501,7 +706,9 @@ fn build_akan_day_report(d: u8, day: &AkanDay) -> String {
     out.push('\n');
     out.push_str(&"═".repeat(60));
     out.push_str("\nGenerated by Celestial Numerology Analyzer — African Cosmology\n");
-    out.push_str("Source: Gyekye, K. An Essay on African Philosophical Thought (1987, Cambridge)\n");
+    out.push_str(
+        "Source: Gyekye, K. An Essay on African Philosophical Thought (1987, Cambridge)\n",
+    );
     out
 }
 

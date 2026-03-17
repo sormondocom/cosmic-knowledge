@@ -11,7 +11,12 @@ use std::thread;
 use std::time::Duration;
 
 use colored::*;
-use crossterm::{cursor::{Hide, MoveTo, Show}, execute, style::Print, terminal::{Clear, ClearType}};
+use crossterm::{
+    cursor::{Hide, MoveTo, Show},
+    execute,
+    style::Print,
+    terminal::{Clear, ClearType},
+};
 
 use crate::audio::SOLFEGGIO_FREQUENCIES;
 
@@ -20,13 +25,13 @@ use crate::audio::SOLFEGGIO_FREQUENCIES;
 /// One selectable entry in a [`Menu`].
 pub struct MenuItem {
     /// Key the user types to select this item (e.g. `"1"`, `"2"`).
-    pub key:   &'static str,
+    pub key: &'static str,
     /// Emoji or symbol shown beside the label (assumed 2 display columns).
-    pub icon:  &'static str,
+    pub icon: &'static str,
     /// Primary label text (max ~47 chars; truncated if longer).
     pub label: &'static str,
     /// Dimmed sub-line hint below the label.  Empty string = no hint line.
-    pub hint:  &'static str,
+    pub hint: &'static str,
 }
 
 /// A renderable 60-column box-drawing menu.
@@ -35,15 +40,15 @@ pub struct MenuItem {
 /// trimmed input, or [`Menu::show`] just to print it.
 pub struct Menu {
     /// Centred title in the header row.
-    pub title:        &'static str,
+    pub title: &'static str,
     /// Colour applied to the box border lines.
     pub border_color: MenuColor,
     /// Selectable items rendered in order.
-    pub items:        &'static [MenuItem],
+    pub items: &'static [MenuItem],
     /// Key string for the back / exit footer entry.
-    pub back_key:     &'static str,
+    pub back_key: &'static str,
     /// Label for the back / exit footer entry.
-    pub back_label:   &'static str,
+    pub back_label: &'static str,
 }
 
 /// Border colour variants for [`Menu`].
@@ -59,18 +64,18 @@ pub enum MenuColor {
 // Total display width of a menu line (border walls included).
 const LINE_W: usize = 60;
 // Inner display width between the two ║ walls.
-const INNER:  usize = LINE_W - 2; // 58
+const INNER: usize = LINE_W - 2; // 58
 
 impl Menu {
     /// Print the menu to stdout.
     pub fn show(&self) {
         let b = |s: &str| -> ColoredString {
             match self.border_color {
-                MenuColor::Yellow  => s.bright_yellow(),
-                MenuColor::Cyan    => s.bright_cyan(),
-                MenuColor::White   => s.bright_white(),
+                MenuColor::Yellow => s.bright_yellow(),
+                MenuColor::Cyan => s.bright_cyan(),
+                MenuColor::White => s.bright_white(),
                 MenuColor::Magenta => s.bright_magenta(),
-                MenuColor::Green   => s.bright_green(),
+                MenuColor::Green => s.bright_green(),
             }
         };
 
@@ -84,7 +89,10 @@ impl Menu {
 
         for item in self.items {
             println!("{}", b(&empty));
-            println!("{}", item_line(item.key, item.icon, item.label).bright_white());
+            println!(
+                "{}",
+                item_line(item.key, item.icon, item.label).bright_white()
+            );
             if !item.hint.is_empty() {
                 println!("{}", hint_line(item.hint).dimmed());
             }
@@ -92,7 +100,10 @@ impl Menu {
 
         println!("{}", b(&empty));
         println!("{}", b(&format!("╠{}╣", horiz)));
-        println!("{}", item_line(self.back_key, "←", self.back_label).dimmed());
+        println!(
+            "{}",
+            item_line(self.back_key, "←", self.back_label).dimmed()
+        );
         println!("{}", b(&empty));
         println!("{}", b(&format!("╚{}╝", horiz)));
         println!();
@@ -118,7 +129,7 @@ fn centre_pad(text: &str, width: usize) -> String {
         return text.chars().take(width).collect();
     }
     let total = width - len;
-    let left  = total / 2;
+    let left = total / 2;
     let right = total - left;
     format!("{}{}{}", " ".repeat(left), text, " ".repeat(right))
 }
@@ -153,43 +164,71 @@ pub enum MainMode {
 }
 
 static MAIN_ITEMS: &[MenuItem] = &[
-    MenuItem { key: "1", icon: "🔢", label: "Gematria & Numerology",
-               hint: "Analyze words across all eleven systems" },
-    MenuItem { key: "2", icon: "📜", label: "Enochian Angelology",
-               hint: "Alphabet · Aethyrs · Translate · Keys" },
-    MenuItem { key: "3", icon: "🎵", label: "Sacred Frequencies & Export",
-               hint: "Binaural beats · Solfeggio · WAV export" },
-    MenuItem { key: "4", icon: "🌏", label: "World Cosmologies",
-               hint: "Chinese · African · Nine Star Ki · Ifa" },
-    MenuItem { key: "5", icon: "🎲", label: "Psi–RNG Experiment",
-               hint: "Can intention influence a hardware TRNG?" },
-    MenuItem { key: "6", icon: "⭐", label: "Zodiac & Astrology",
-               hint: "Hebrew Mazzaroth · Sefer Yetzirah · Twelve Tribes" },
-    MenuItem { key: "7", icon: "❓", label: "Help & Reference",
-               hint: "" },
+    MenuItem {
+        key: "1",
+        icon: "🔢",
+        label: "Gematria & Numerology",
+        hint: "Analyze words across all eleven systems",
+    },
+    MenuItem {
+        key: "2",
+        icon: "📜",
+        label: "Enochian Angelology",
+        hint: "Alphabet · Aethyrs · Translate · Keys",
+    },
+    MenuItem {
+        key: "3",
+        icon: "🎵",
+        label: "Sacred Frequencies & Export",
+        hint: "Binaural beats · Solfeggio · WAV export",
+    },
+    MenuItem {
+        key: "4",
+        icon: "🌏",
+        label: "World Cosmologies",
+        hint: "Chinese · African · Nine Star Ki · Ifa",
+    },
+    MenuItem {
+        key: "5",
+        icon: "🎲",
+        label: "Psi–RNG Experiment",
+        hint: "Can intention influence a hardware TRNG?",
+    },
+    MenuItem {
+        key: "6",
+        icon: "⭐",
+        label: "Zodiac & Astrology",
+        hint: "Hebrew Mazzaroth · Sefer Yetzirah · Twelve Tribes",
+    },
+    MenuItem {
+        key: "7",
+        icon: "❓",
+        label: "Help & Reference",
+        hint: "",
+    },
 ];
 
 static MAIN_MENU: Menu = Menu {
-    title:        "✦  CHOOSE YOUR PATH  ✦",
+    title: "✦  CHOOSE YOUR PATH  ✦",
     border_color: MenuColor::Yellow,
-    items:        MAIN_ITEMS,
-    back_key:     "0",
-    back_label:   "Exit",
+    items: MAIN_ITEMS,
+    back_key: "0",
+    back_label: "Exit",
 };
 
 /// Display the top-level menu and return the user's selection.
 pub fn show_main_menu() -> MainMode {
     loop {
         match MAIN_MENU.show_and_read().as_str() {
-            "1"      => return MainMode::Numerology,
-            "2"      => return MainMode::Enochian,
-            "3"      => return MainMode::Frequencies,
-            "4"      => return MainMode::WorldSystems,
-            "5"      => return MainMode::RngExperiment,
-            "6"      => return MainMode::Zodiac,
-            "7"      => return MainMode::Help,
+            "1" => return MainMode::Numerology,
+            "2" => return MainMode::Enochian,
+            "3" => return MainMode::Frequencies,
+            "4" => return MainMode::WorldSystems,
+            "5" => return MainMode::RngExperiment,
+            "6" => return MainMode::Zodiac,
+            "7" => return MainMode::Help,
             "0" | "" => return MainMode::Quit,
-            _        => println!("{}", "  Please enter 0–7.".yellow()),
+            _ => println!("{}", "  Please enter 0–7.".yellow()),
         }
     }
 }
@@ -213,9 +252,22 @@ pub fn print_angel_banner() {
     "#;
     println!("{}", angel.bright_white());
     println!("{}", "CELESTIAL NUMEROLOGY ANALYZER".bold().bright_yellow());
-    println!("{}", "Hebrew · Pythagorean · Chaldean · Greek Isopsephy · Agrippan".italic().bright_blue());
-    println!("{}", "Simple Ordinal · Reverse Ordinal · Abjad · Enochian (John Dee)".italic().bright_blue());
-    println!("{}", "──────────────────────────────────────────────────────────".dimmed());
+    println!(
+        "{}",
+        "Hebrew · Pythagorean · Chaldean · Greek Isopsephy · Agrippan"
+            .italic()
+            .bright_blue()
+    );
+    println!(
+        "{}",
+        "Simple Ordinal · Reverse Ordinal · Abjad · Enochian (John Dee)"
+            .italic()
+            .bright_blue()
+    );
+    println!(
+        "{}",
+        "──────────────────────────────────────────────────────────".dimmed()
+    );
 }
 
 // ─── Loading screen ───────────────────────────────────────────────────────────
@@ -229,17 +281,17 @@ pub fn show_loading_screen() {
     // ── Canvas geometry ───────────────────────────────────────────────────────
     // All coordinates are 0-indexed (col, row).
     // crossterm::MoveTo(col, row) is column-first — opposite of ANSI row;col.
-    const CANVAS_W:     i32 = 71;
-    const CANVAS_H:     i32 = 37;
-    const CENTRE_COL:   f64 = 35.0;
-    const CENTRE_ROW:   f64 = 18.0;
+    const CANVAS_W: i32 = 71;
+    const CANVAS_H: i32 = 37;
+    const CENTRE_COL: f64 = 35.0;
+    const CENTRE_ROW: f64 = 18.0;
     // Ellipse semi-axes for each symbolic ring (col-radius, row-radius).
     const R_ZODIAC_COL: f64 = 13.5; // outer  — 12 Mazzaroth signs
-    const R_ZODIAC_ROW: f64 =  6.5;
-    const R_HEBREW_COL: f64 =  9.0; // middle — 22 Hebrew letters
-    const R_HEBREW_ROW: f64 =  4.5;
-    const R_INNER_COL:  f64 =  6.0; // inner  — Ba Gua trigrams
-    const R_INNER_ROW:  f64 =  3.0;
+    const R_ZODIAC_ROW: f64 = 6.5;
+    const R_HEBREW_COL: f64 = 9.0; // middle — 22 Hebrew letters
+    const R_HEBREW_ROW: f64 = 4.5;
+    const R_INNER_COL: f64 = 6.0; // inner  — Ba Gua trigrams
+    const R_INNER_ROW: f64 = 3.0;
 
     // Place `s` at 0-indexed (col, row); clips silently if out of bounds.
     let put = |row: i32, col: i32, s: &str| {
@@ -252,8 +304,7 @@ pub fn show_loading_screen() {
     /// ellipse with semi-axes (r_col, r_row), starting at the top (−π/2)
     /// and advancing clockwise.
     fn ring_pos(r_col: f64, r_row: f64, i: usize, n: usize) -> (i32, i32) {
-        let a = -std::f64::consts::PI / 2.0
-            + i as f64 * 2.0 * std::f64::consts::PI / n as f64;
+        let a = -std::f64::consts::PI / 2.0 + i as f64 * 2.0 * std::f64::consts::PI / n as f64;
         let col = (CENTRE_COL + r_col * a.cos()).round() as i32;
         let row = (CENTRE_ROW + r_row * a.sin()).round() as i32;
         (col, row)
@@ -267,14 +318,42 @@ pub fn show_loading_screen() {
 
     // ── PHASE 0 · Starfield (scattered background stars) ──────────────────
     let stars: &[(i32, i32, &str)] = &[
-        ( 4, 0,"·"),(12, 1,"✦"),(23, 0,"·"),(34, 1,"✧"),(47, 0,"·"),
-        (55, 1,"✦"),(64, 0,"·"),(68, 3,"·"),( 0, 7,"✦"),( 1,18,"·"),
-        ( 2,27,"·"),( 5,35,"✧"),(65, 7,"·"),(69,18,"✦"),(67,27,"·"),
-        (63,35,"·"),(14,36,"·"),(27,36,"✧"),(44,36,"·"),(54,36,"✦"),
-        ( 7, 4,"·"),(59, 4,"·"),( 9,31,"✧"),(58,30,"·"),
-        (18, 5,"·"),(49, 5,"✦"),(20,30,"·"),(50,30,"·"),
-        (15,11,"·"),(53,11,"·"),(16,24,"·"),(52,24,"·"),
-        ( 3,14,"·"),(61,22,"✦"),(10,20,"·"),(58,14,"·"),
+        (4, 0, "·"),
+        (12, 1, "✦"),
+        (23, 0, "·"),
+        (34, 1, "✧"),
+        (47, 0, "·"),
+        (55, 1, "✦"),
+        (64, 0, "·"),
+        (68, 3, "·"),
+        (0, 7, "✦"),
+        (1, 18, "·"),
+        (2, 27, "·"),
+        (5, 35, "✧"),
+        (65, 7, "·"),
+        (69, 18, "✦"),
+        (67, 27, "·"),
+        (63, 35, "·"),
+        (14, 36, "·"),
+        (27, 36, "✧"),
+        (44, 36, "·"),
+        (54, 36, "✦"),
+        (7, 4, "·"),
+        (59, 4, "·"),
+        (9, 31, "✧"),
+        (58, 30, "·"),
+        (18, 5, "·"),
+        (49, 5, "✦"),
+        (20, 30, "·"),
+        (50, 30, "·"),
+        (15, 11, "·"),
+        (53, 11, "·"),
+        (16, 24, "·"),
+        (52, 24, "·"),
+        (3, 14, "·"),
+        (61, 22, "✦"),
+        (10, 20, "·"),
+        (58, 14, "·"),
     ];
     for &(col, row, s) in stars {
         put(row, col, &s.dimmed().to_string());
@@ -285,7 +364,7 @@ pub fn show_loading_screen() {
     // ── PHASE 1 · Outer zodiac ring (Mazzaroth) ────────────────────────────
     // 12 signs materialise clockwise, one per tick  (rcol=13.5, rrow=6.5)
     let zodiac: &[char] = &[
-        '♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓',
+        '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓',
     ];
     for (i, &sign) in zodiac.iter().enumerate() {
         let (col, row) = ring_pos(R_ZODIAC_COL, R_ZODIAC_ROW, i, 12);
@@ -298,8 +377,8 @@ pub fn show_loading_screen() {
     // ── PHASE 2 · Hebrew ring (22 letters, א–ת) ────────────────────────────
     // (rcol=9.0, rrow=4.5)
     let hebrew: &[char] = &[
-        'א','ב','ג','ד','ה','ו','ז','ח','ט','י','כ','ל',
-        'מ','נ','ס','ע','פ','צ','ק','ר','ש','ת',
+        'א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע', 'פ', 'צ',
+        'ק', 'ר', 'ש', 'ת',
     ];
     for (i, &letter) in hebrew.iter().enumerate() {
         let (col, row) = ring_pos(R_HEBREW_COL, R_HEBREW_ROW, i, 22);
@@ -310,7 +389,7 @@ pub fn show_loading_screen() {
     thread::sleep(Duration::from_millis(180));
 
     // ── PHASE 3a · Ba Gua inner ring (rcol=6.0, rrow=3.0) ──────────────────
-    let bagua: &[char] = &['☰','☱','☲','☳','☴','☵','☶','☷'];
+    let bagua: &[char] = &['☰', '☱', '☲', '☳', '☴', '☵', '☶', '☷'];
     for (i, &tri) in bagua.iter().enumerate() {
         let (col, row) = ring_pos(R_INNER_COL, R_INNER_ROW, i, 8);
         put(row, col, &tri.to_string().bright_yellow().to_string());
@@ -321,13 +400,13 @@ pub fn show_loading_screen() {
     // ── PHASE 3b · Classical planet symbols (SVG-proportional positions) ───
     // Derived from the SVG's r≈147 px ring, scaled to terminal coords.
     let planets: &[(i32, i32, char)] = &[
-        (37, 15, '☉'),   // Sun      — upper-right
-        (40, 17, '☽'),   // Moon     — right
-        (39, 19, '♂'),   // Mars     — lower-right
-        (36, 20, '♀'),   // Venus    — lower-centre-right
-        (31, 20, '♃'),   // Jupiter  — lower-centre-left
-        (28, 19, '♄'),   // Saturn   — lower-left
-        (27, 17, '☿'),   // Mercury  — left
+        (37, 15, '☉'), // Sun      — upper-right
+        (40, 17, '☽'), // Moon     — right
+        (39, 19, '♂'), // Mars     — lower-right
+        (36, 20, '♀'), // Venus    — lower-centre-right
+        (31, 20, '♃'), // Jupiter  — lower-centre-left
+        (28, 19, '♄'), // Saturn   — lower-left
+        (27, 17, '☿'), // Mercury  — left
     ];
     for &(col, row, sym) in planets {
         put(row, col, &sym.to_string().red().to_string());
@@ -351,8 +430,8 @@ pub fn show_loading_screen() {
     put(18, 32, &"╰─────╯".bright_white().bold().to_string());
 
     for (glyph, delay) in [("·", 200u64), ("○", 180), ("◉", 160)] {
-        put(17, 33, &"  ".to_string()); // clear inner
-        put(17, 36, &"  ".to_string());
+        put(17, 33, "  "); // clear inner
+        put(17, 36, "  ");
         put(17, 35, &glyph.bold().bright_yellow().to_string());
         flush();
         thread::sleep(Duration::from_millis(delay));
@@ -366,7 +445,7 @@ pub fn show_loading_screen() {
     thread::sleep(Duration::from_millis(400));
 
     // ── PHASE 5 · Title ────────────────────────────────────────────────────
-    let title    = "✦  C O S M I C   K N O W L E D G E  ✦";
+    let title = "✦  C O S M I C   K N O W L E D G E  ✦";
     let subtitle = "Celestial Numerology · Sacred Wisdom";
     let t_col = ((CANVAS_W - title.chars().count() as i32) / 2).max(0);
     let s_col = ((CANVAS_W - subtitle.chars().count() as i32) / 2).max(0);
@@ -386,49 +465,138 @@ pub fn show_loading_screen() {
 
 /// Print the full help and reference screen.
 pub fn show_help() {
-    println!("{}", "╔════════════════════════════════════════════════════════╗".bright_cyan());
-    println!("{}", "║          🌟 CELESTIAL NUMEROLOGY ANALYZER 🌟           ║".bright_cyan());
-    println!("{}", "║              Sacred Frequency Generator               ║".bright_cyan());
-    println!("{}", "╚════════════════════════════════════════════════════════╝".bright_cyan());
+    println!(
+        "{}",
+        "╔════════════════════════════════════════════════════════╗".bright_cyan()
+    );
+    println!(
+        "{}",
+        "║          🌟 CELESTIAL NUMEROLOGY ANALYZER 🌟           ║".bright_cyan()
+    );
+    println!(
+        "{}",
+        "║              Sacred Frequency Generator               ║".bright_cyan()
+    );
+    println!(
+        "{}",
+        "╚════════════════════════════════════════════════════════╝".bright_cyan()
+    );
     println!();
     println!("{}", "USAGE:".bold());
-    println!("{}", "  cargo run [FLAGS]");
+    println!("  cargo run [FLAGS]");
     println!();
     println!("{}", "FLAGS:".bold());
-    println!("{}", "  -f, --fast              Skip the mystical loading animation".bright_white());
-    println!("{}", "  -s, --silent            Disable audio frequencies".bright_white());
-    println!("{}", "  --export-all            Export all Solfeggio frequencies to WAV files".bright_white());
-    println!("{}", "  --aethyr <n|name>       Look up a specific Aethyr (e.g. --aethyr 10 or --aethyr ZAX)".bright_white());
-    println!("{}", "  --aethyr                Show all 30 Aethyrs".bright_white());
-    println!("{}", "  -h, --help              Show this help message".bright_white());
+    println!(
+        "{}",
+        "  -f, --fast              Skip the mystical loading animation".bright_white()
+    );
+    println!(
+        "{}",
+        "  -s, --silent            Disable audio frequencies".bright_white()
+    );
+    println!(
+        "{}",
+        "  --export-all            Export all Solfeggio frequencies to WAV files".bright_white()
+    );
+    println!(
+        "{}",
+        "  --aethyr <n|name>       Look up a specific Aethyr (e.g. --aethyr 10 or --aethyr ZAX)"
+            .bright_white()
+    );
+    println!(
+        "{}",
+        "  --aethyr                Show all 30 Aethyrs".bright_white()
+    );
+    println!(
+        "{}",
+        "  -h, --help              Show this help message".bright_white()
+    );
     println!();
     println!("{}", "NUMEROLOGICAL SYSTEMS:".bold());
-    println!("{}", "  Hebrew Gematria   — Traditional letter-values (A=1 … Z=900, Mispar Hechrachi)".bright_white());
-    println!("{}", "  Pythagorean       — Western 1-9 cyclical mapping (mod-9 of alphabet position)".bright_white());
-    println!("{}", "  Chaldean          — Ancient Babylonian vibrational system (9 sacred, unassigned)".bright_white());
-    println!("{}", "  Greek Isopsephy   — Classical Greek letter-number system (Neoplatonic tradition)".bright_white());
-    println!("{}", "  Agrippan          — Cornelius Agrippa/Francis Barrett Latin gematria (c.1531/1801)".bright_white());
-    println!("{}", "  Simple Ordinal    — Direct alphabetical position 1-26 (modern English Gematria)".bright_white());
-    println!("{}", "  Reverse Ordinal   — Mirror complement: Z=1 … A=26".bright_white());
-    println!("{}", "  Abjad             — Arabic/Islamic letter-number system (hisab al-jumal)".bright_white());
-    println!("{}", "  Enochian Ordinal  — John Dee's angelic alphabet, positional values 1-21".bright_white());
-    println!("{}", "  Enochian G.D.     — Golden Dawn's Hebrew-mapped Enochian values".bright_white());
+    println!(
+        "{}",
+        "  Hebrew Gematria   — Traditional letter-values (A=1 … Z=900, Mispar Hechrachi)"
+            .bright_white()
+    );
+    println!(
+        "{}",
+        "  Pythagorean       — Western 1-9 cyclical mapping (mod-9 of alphabet position)"
+            .bright_white()
+    );
+    println!(
+        "{}",
+        "  Chaldean          — Ancient Babylonian vibrational system (9 sacred, unassigned)"
+            .bright_white()
+    );
+    println!(
+        "{}",
+        "  Greek Isopsephy   — Classical Greek letter-number system (Neoplatonic tradition)"
+            .bright_white()
+    );
+    println!(
+        "{}",
+        "  Agrippan          — Cornelius Agrippa/Francis Barrett Latin gematria (c.1531/1801)"
+            .bright_white()
+    );
+    println!(
+        "{}",
+        "  Simple Ordinal    — Direct alphabetical position 1-26 (modern English Gematria)"
+            .bright_white()
+    );
+    println!(
+        "{}",
+        "  Reverse Ordinal   — Mirror complement: Z=1 … A=26".bright_white()
+    );
+    println!(
+        "{}",
+        "  Abjad             — Arabic/Islamic letter-number system (hisab al-jumal)".bright_white()
+    );
+    println!(
+        "{}",
+        "  Enochian Ordinal  — John Dee's angelic alphabet, positional values 1-21".bright_white()
+    );
+    println!(
+        "{}",
+        "  Enochian G.D.     — Golden Dawn's Hebrew-mapped Enochian values".bright_white()
+    );
     println!();
     println!("{}", "SOLFEGGIO FREQUENCIES:".bold());
     for (freq, _, icon) in SOLFEGGIO_FREQUENCIES {
         let name = crate::audio::get_frequency_name(*freq);
-        println!("{}", format!("  {} {} Hz — {}", icon, *freq as u32, name).bright_magenta());
+        println!(
+            "{}",
+            format!("  {} {} Hz — {}", icon, *freq as u32, name).bright_magenta()
+        );
     }
     println!();
     println!("{}", "EXPORT FORMATS:".bold());
     println!("{}", "  • WAV files (44.1 kHz, 16-bit)".bright_white());
-    println!("{}", "  • Pure tones (mono) or Binaural beats (stereo)".bright_white());
+    println!(
+        "{}",
+        "  • Pure tones (mono) or Binaural beats (stereo)".bright_white()
+    );
     println!("{}", "  • Durations: 5, 10, or 30 minutes".bright_white());
-    println!("{}", "  • Custom frequency combinations available".bright_white());
+    println!(
+        "{}",
+        "  • Custom frequency combinations available".bright_white()
+    );
     println!();
     println!("{}", "WORLD COSMOLOGIES:".bold());
-    println!("{}", "  Chinese     — Nine Star Ki natal star, Wu Xing Five Elements, lucky/unlucky numbers".bright_white());
-    println!("{}", "  African     — Yoruba Ifa (16 Odu), Akan day-soul names, Kemetic sacred numbers".bright_white());
+    println!(
+        "{}",
+        "  Chinese     — Nine Star Ki natal star, Wu Xing Five Elements, lucky/unlucky numbers"
+            .bright_white()
+    );
+    println!(
+        "{}",
+        "  African     — Yoruba Ifa (16 Odu), Akan day-soul names, Kemetic sacred numbers"
+            .bright_white()
+    );
     println!();
-    println!("{}", "Visit the interactive mode to analyze words and export personalized frequencies!".italic().bright_blue());
+    println!(
+        "{}",
+        "Visit the interactive mode to analyze words and export personalized frequencies!"
+            .italic()
+            .bright_blue()
+    );
 }

@@ -9,10 +9,10 @@
 //!  - Interactive export-all and custom-binaural-beat helpers
 
 use std::f32::consts::PI;
+use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use std::io::{self, Write};
 
 use colored::*;
 use rodio::{OutputStream, Sink, Source};
@@ -53,10 +53,18 @@ impl Iterator for SineWave {
 }
 
 impl Source for SineWave {
-    fn current_frame_len(&self) -> Option<usize> { None }
-    fn channels(&self)       -> u16 { 1 }
-    fn sample_rate(&self)    -> u32 { self.sample_rate as u32 }
-    fn total_duration(&self) -> Option<Duration> { None }
+    fn current_frame_len(&self) -> Option<usize> {
+        None
+    }
+    fn channels(&self) -> u16 {
+        1
+    }
+    fn sample_rate(&self) -> u32 {
+        self.sample_rate as u32
+    }
+    fn total_duration(&self) -> Option<Duration> {
+        None
+    }
 }
 
 // ─── Intro chord ──────────────────────────────────────────────────────────────
@@ -74,21 +82,21 @@ impl Source for SineWave {
 ///  - 0.7 → 6.0 s: full sustain
 ///  - 6.0 → 8.0 s: linear release to silence
 struct IntroChord {
-    freqs:         [f32; 3],
-    sample_rate:   u32,
-    position:      u32,
+    freqs: [f32; 3],
+    sample_rate: u32,
+    position: u32,
     total_samples: u32,
 }
 
 impl IntroChord {
     const SAMPLE_RATE: u32 = 44100;
-    const DURATION_S:  u32 = 8;
+    const DURATION_S: u32 = 8;
 
     fn new(freqs: [f32; 3]) -> Self {
         Self {
             freqs,
-            sample_rate:   Self::SAMPLE_RATE,
-            position:      0,
+            sample_rate: Self::SAMPLE_RATE,
+            position: 0,
             total_samples: Self::DURATION_S * Self::SAMPLE_RATE,
         }
     }
@@ -98,15 +106,17 @@ impl Iterator for IntroChord {
     type Item = f32;
 
     fn next(&mut self) -> Option<f32> {
-        if self.position >= self.total_samples { return None; }
+        if self.position >= self.total_samples {
+            return None;
+        }
 
-        let t   = self.position as f32 / self.sample_rate as f32;
+        let t = self.position as f32 / self.sample_rate as f32;
         let tau = self.position as f64 / self.sample_rate as f64;
 
         // ── Global amplitude envelope ─────────────────────────────────────────
-        const ATTACK_S:        f32 = 0.7;
+        const ATTACK_S: f32 = 0.7;
         const RELEASE_START_S: f32 = 6.0;
-        const TOTAL_S:         f32 = IntroChord::DURATION_S as f32;
+        const TOTAL_S: f32 = IntroChord::DURATION_S as f32;
 
         let envelope = if t < ATTACK_S {
             // Raised-cosine (Hann) fade-in: 0 → 1 over ATTACK_S seconds.
@@ -121,17 +131,17 @@ impl Iterator for IntroChord {
         // ── Vibrato LFO (delayed onset, slow ramp-in) ─────────────────────────
         // Ramps from 0 to ±2 Hz over 0.8 s, starting at 1.5 s into the chord.
         const VIB_ONSET_S: f64 = 1.5;
-        const VIB_RAMP_S:  f64 = 0.8;
+        const VIB_RAMP_S: f64 = 0.8;
         const VIB_DEPTH_HZ: f64 = 2.0;
-        const VIB_RATE_HZ:  f64 = 4.5;
+        const VIB_RATE_HZ: f64 = 4.5;
 
         let vib_amount = if tau > VIB_ONSET_S {
             ((tau - VIB_ONSET_S) / VIB_RAMP_S).min(1.0)
         } else {
             0.0
         };
-        let lfo = (2.0 * std::f64::consts::PI * VIB_RATE_HZ * tau).sin()
-            * VIB_DEPTH_HZ * vib_amount;
+        let lfo =
+            (2.0 * std::f64::consts::PI * VIB_RATE_HZ * tau).sin() * VIB_DEPTH_HZ * vib_amount;
 
         // ── Oscillator mix per note ───────────────────────────────────────────
         // Detuned pair at ±5 Hz + weak 2nd harmonic (15 %) → warm pad timbre.
@@ -139,13 +149,17 @@ impl Iterator for IntroChord {
         const HARM2_AMP: f64 = 0.15;
         let pi2 = 2.0 * std::f64::consts::PI;
 
-        let wave: f32 = self.freqs.iter().map(|&f| {
-            let f = f as f64;
-            let lo   = (pi2 * (f - DETUNE_HZ + lfo) * tau).sin();
-            let hi   = (pi2 * (f + DETUNE_HZ + lfo) * tau).sin();
-            let harm = (pi2 * (f * 2.0  + lfo) * tau).sin() * HARM2_AMP;
-            (lo + hi + harm) as f32
-        }).sum();
+        let wave: f32 = self
+            .freqs
+            .iter()
+            .map(|&f| {
+                let f = f as f64;
+                let lo = (pi2 * (f - DETUNE_HZ + lfo) * tau).sin();
+                let hi = (pi2 * (f + DETUNE_HZ + lfo) * tau).sin();
+                let harm = (pi2 * (f * 2.0 + lfo) * tau).sin() * HARM2_AMP;
+                (lo + hi + harm) as f32
+            })
+            .sum();
 
         self.position += 1;
 
@@ -155,9 +169,15 @@ impl Iterator for IntroChord {
 }
 
 impl Source for IntroChord {
-    fn current_frame_len(&self) -> Option<usize> { None }
-    fn channels(&self)       -> u16 { 1 }
-    fn sample_rate(&self)    -> u32 { self.sample_rate }
+    fn current_frame_len(&self) -> Option<usize> {
+        None
+    }
+    fn channels(&self) -> u16 {
+        1
+    }
+    fn sample_rate(&self) -> u32 {
+        self.sample_rate
+    }
     fn total_duration(&self) -> Option<Duration> {
         Some(Duration::from_secs(IntroChord::DURATION_S as u64))
     }
@@ -195,7 +215,11 @@ pub fn change_frequency(system: &AudioSystem, frequency: f32) {
         sink.stop();
     }
     thread::sleep(Duration::from_millis(100));
-    let wave = SineWave { frequency, sample_rate: 44100.0, phase: 0.0 };
+    let wave = SineWave {
+        frequency,
+        sample_rate: 44100.0,
+        phase: 0.0,
+    };
     if let Ok(sink) = system.sink.lock() {
         sink.append(wave);
         sink.play();
@@ -214,16 +238,16 @@ pub fn stop_audio(system: &AudioSystem) {
 /// Map a digital root (1-9) to its corresponding Solfeggio frequency in Hz.
 pub fn get_frequency_for_number(root: u32) -> f32 {
     match root {
-        1 => 396.0,  // Liberation from fear and guilt
-        2 => 417.0,  // Undoing situations and facilitating change
-        3 => 528.0,  // Love frequency / DNA repair
-        4 => 639.0,  // Connecting relationships
-        5 => 741.0,  // Awakening intuition
-        6 => 852.0,  // Returning to spiritual order
-        7 => 963.0,  // God consciousness / pineal gland activation
-        8 => 432.0,  // Universal harmony / natural tuning
-        9 => 285.0,  // Healing and regeneration
-        _ => 432.0,  // Default
+        1 => 396.0, // Liberation from fear and guilt
+        2 => 417.0, // Undoing situations and facilitating change
+        3 => 528.0, // Love frequency / DNA repair
+        4 => 639.0, // Connecting relationships
+        5 => 741.0, // Awakening intuition
+        6 => 852.0, // Returning to spiritual order
+        7 => 963.0, // God consciousness / pineal gland activation
+        8 => 432.0, // Universal harmony / natural tuning
+        9 => 285.0, // Healing and regeneration
+        _ => 432.0, // Default
     }
 }
 
@@ -239,7 +263,7 @@ pub fn get_frequency_name(frequency: f32) -> &'static str {
         741 => "Awakening Intuition",
         852 => "Returning to Spiritual Order",
         963 => "God Consciousness",
-        _   => "Sacred Frequency",
+        _ => "Sacred Frequency",
     }
 }
 
@@ -261,22 +285,22 @@ pub fn generate_audio_file(
     std::fs::create_dir_all("exports")?;
     let filepath = format!("exports/{}", filename);
     let spec = hound::WavSpec {
-        channels:        if binaural { 2 } else { 1 },
-        sample_rate:     44100,
+        channels: if binaural { 2 } else { 1 },
+        sample_rate: 44100,
         bits_per_sample: 16,
-        sample_format:   hound::SampleFormat::Int,
+        sample_format: hound::SampleFormat::Int,
     };
 
     let mut writer = hound::WavWriter::create(&filepath, spec)?;
-    let sample_rate   = 44100.0_f32;
+    let sample_rate = 44100.0_f32;
     let total_samples = duration_seconds * 44100;
 
     for i in 0..total_samples {
         let t = i as f32 / sample_rate;
         if binaural {
-            let left  = (2.0 * PI * frequency               * t).sin();
-            let right = (2.0 * PI * (frequency + beat_hz)   * t).sin();
-            writer.write_sample((left  * 0.3 * i16::MAX as f32) as i16)?;
+            let left = (2.0 * PI * frequency * t).sin();
+            let right = (2.0 * PI * (frequency + beat_hz) * t).sin();
+            writer.write_sample((left * 0.3 * i16::MAX as f32) as i16)?;
             writer.write_sample((right * 0.3 * i16::MAX as f32) as i16)?;
         } else {
             let sample = (2.0 * PI * frequency * t).sin();
@@ -300,16 +324,16 @@ pub fn generate_binaural_beat(
     std::fs::create_dir_all("exports")?;
     let filepath = format!("exports/{}", filename);
     let spec = hound::WavSpec {
-        channels:        2,
-        sample_rate:     44100,
+        channels: 2,
+        sample_rate: 44100,
         bits_per_sample: 16,
-        sample_format:   hound::SampleFormat::Int,
+        sample_format: hound::SampleFormat::Int,
     };
 
     let mut writer = hound::WavWriter::create(&filepath, spec)?;
-    let sample_rate   = 44100.0_f32;
+    let sample_rate = 44100.0_f32;
     let total_samples = duration_seconds * 44100;
-    let fade_samples  = sample_rate as u32; // 1-second fade
+    let fade_samples = sample_rate as u32; // 1-second fade
 
     for i in 0..total_samples {
         let t = i as f32 / sample_rate;
@@ -326,10 +350,10 @@ pub fn generate_binaural_beat(
             1.0_f32
         };
 
-        let left  = (2.0 * PI * base_freq               * t).sin();
+        let left = (2.0 * PI * base_freq * t).sin();
         let right = (2.0 * PI * (base_freq + beat_freq) * t).sin();
 
-        writer.write_sample((left  * 0.3 * fade_factor * i16::MAX as f32) as i16)?;
+        writer.write_sample((left * 0.3 * fade_factor * i16::MAX as f32) as i16)?;
         writer.write_sample((right * 0.3 * fade_factor * i16::MAX as f32) as i16)?;
     }
     writer.finalize()?;
@@ -340,15 +364,15 @@ pub fn generate_binaural_beat(
 
 /// The full Solfeggio set used throughout export menus.
 pub const SOLFEGGIO_FREQUENCIES: &[(f32, &str, &str)] = &[
-    (285.0, "Healing_Regeneration",       "🌿"),
-    (396.0, "Liberation_Fear",            "🛡️"),
-    (417.0, "Facilitating_Change",        "🦋"),
-    (432.0, "Universal_Harmony",          "🌌"),
-    (528.0, "Love_DNA_Repair",            "💖"),
-    (639.0, "Connecting_Relationships",   "🤝"),
-    (741.0, "Awakening_Intuition",        "🔮"),
-    (852.0, "Spiritual_Order",            "👼"),
-    (963.0, "God_Consciousness",          "🌟"),
+    (285.0, "Healing_Regeneration", "🌿"),
+    (396.0, "Liberation_Fear", "🛡️"),
+    (417.0, "Facilitating_Change", "🦋"),
+    (432.0, "Universal_Harmony", "🌌"),
+    (528.0, "Love_DNA_Repair", "💖"),
+    (639.0, "Connecting_Relationships", "🤝"),
+    (741.0, "Awakening_Intuition", "🔮"),
+    (852.0, "Spiritual_Order", "👼"),
+    (963.0, "God_Consciousness", "🌟"),
 ];
 
 /// Export a single frequency with the user's choice of duration and mono/binaural type.
@@ -362,26 +386,43 @@ pub fn export_frequency(frequency: f32, name: &str) {
     io::stdout().flush().unwrap_or(());
 
     let mut export_type = String::new();
-    if io::stdin().read_line(&mut export_type).is_err() { return; }
+    if io::stdin().read_line(&mut export_type).is_err() {
+        return;
+    }
 
     let (duration, suffix, binaural) = match export_type.trim() {
-        "1" => (300,  "_pure_5min",       false),
-        "2" => (600,  "_binaural_10min",  true),
-        "3" => (1800, "_extended_30min",  true),
-        _   => {
-            println!("{}", "Invalid choice. Using default 10-minute binaural.".yellow());
+        "1" => (300, "_pure_5min", false),
+        "2" => (600, "_binaural_10min", true),
+        "3" => (1800, "_extended_30min", true),
+        _ => {
+            println!(
+                "{}",
+                "Invalid choice. Using default 10-minute binaural.".yellow()
+            );
             (600, "_binaural_10min", true)
         }
     };
 
     let filename = format!("{}Hz_{}{}.wav", frequency as u32, name, suffix);
-    println!("\n{}", format!("🎶 Generating {} Hz frequency…", frequency).bright_magenta());
+    println!(
+        "\n{}",
+        format!("🎶 Generating {} Hz frequency…", frequency).bright_magenta()
+    );
 
     match generate_audio_file(frequency, duration, &filename, binaural, 6.0) {
         Ok(_) => {
-            println!("{}", format!("✅ Successfully exported: {}", filename).bright_green());
-            println!("{}", format!("   Duration: {} minutes", duration / 60).dimmed());
-            println!("{}", format!("   Location: ./exports/{}", filename).dimmed());
+            println!(
+                "{}",
+                format!("✅ Successfully exported: {}", filename).bright_green()
+            );
+            println!(
+                "{}",
+                format!("   Duration: {} minutes", duration / 60).dimmed()
+            );
+            println!(
+                "{}",
+                format!("   Location: ./exports/{}", filename).dimmed()
+            );
         }
         Err(e) => println!("{}", format!("❌ Export failed: {}", e).bright_red()),
     }
@@ -389,15 +430,26 @@ pub fn export_frequency(frequency: f32, name: &str) {
 
 /// Export all nine Solfeggio frequencies as 10-minute binaural WAV files.
 pub fn export_all_frequencies() {
-    println!("\n{}", "🌟 Exporting Complete Solfeggio Set…".bold().bright_magenta());
+    println!(
+        "\n{}",
+        "🌟 Exporting Complete Solfeggio Set…"
+            .bold()
+            .bright_magenta()
+    );
     let (mut ok, mut fail) = (0u32, 0u32);
     for (freq, name, _) in SOLFEGGIO_FREQUENCIES {
         let filename = format!("{}Hz_{}_binaural_10min.wav", *freq as u32, name);
         print!("{}", format!("Generating {} Hz… ", freq).dimmed());
         io::stdout().flush().unwrap_or(());
         match generate_audio_file(*freq, 600, &filename, true, 6.0) {
-            Ok(_)  => { println!("{}", "✅".bright_green());  ok   += 1; }
-            Err(_) => { println!("{}", "❌".bright_red());    fail += 1; }
+            Ok(_) => {
+                println!("{}", "✅".bright_green());
+                ok += 1;
+            }
+            Err(_) => {
+                println!("{}", "❌".bright_red());
+                fail += 1;
+            }
         }
     }
     println!("\n{}", "📊 Export Summary:".bold());
@@ -412,35 +464,66 @@ pub fn export_all_frequencies() {
 pub fn export_all_frequencies_cli() {
     println!("\n{}", "Creating exports directory…".dimmed());
     if let Err(e) = std::fs::create_dir_all("exports") {
-        println!("{}", format!("❌ Failed to create exports directory: {}", e).bright_red());
+        println!(
+            "{}",
+            format!("❌ Failed to create exports directory: {}", e).bright_red()
+        );
         return;
     }
     let (mut ok, mut fail) = (0u32, 0u32);
     for (freq, name, _) in SOLFEGGIO_FREQUENCIES {
         let filename = format!("{}Hz_{}_binaural_10min.wav", *freq as u32, name);
-        print!("{}", format!("🎶 Generating {} Hz ({})… ", freq, name.replace('_', " ")).bright_cyan());
+        print!(
+            "{}",
+            format!("🎶 Generating {} Hz ({})… ", freq, name.replace('_', " ")).bright_cyan()
+        );
         io::stdout().flush().unwrap_or(());
         match generate_audio_file(*freq, 600, &filename, true, 6.0) {
-            Ok(_)  => { println!("{}", "✅".bright_green()); ok   += 1; }
-            Err(e) => { println!("{}", format!("❌ Error: {}", e).bright_red()); fail += 1; }
+            Ok(_) => {
+                println!("{}", "✅".bright_green());
+                ok += 1;
+            }
+            Err(e) => {
+                println!("{}", format!("❌ Error: {}", e).bright_red());
+                fail += 1;
+            }
         }
     }
     println!("\n{}", "🎉 Export Complete!".bold().bright_green());
-    println!("{}", format!("   ✅ Successful: {} files", ok).bright_green());
+    println!(
+        "{}",
+        format!("   ✅ Successful: {} files", ok).bright_green()
+    );
     if fail > 0 {
         println!("{}", format!("   ❌ Failed: {} files", fail).bright_red());
     }
     println!("{}", "   📁 Location: ./exports/".bright_blue());
-    println!("{}", "   🎧 Ready for meditation, sleep, or spiritual practice!".italic());
+    println!(
+        "{}",
+        "   🎧 Ready for meditation, sleep, or spiritual practice!".italic()
+    );
 }
 
 /// Interactive custom binaural-beat creator (prompts for base freq, beat, duration).
 pub fn create_custom_binaural() {
-    println!("\n{}", "🎨 Custom Binaural Beat Creator".bold().bright_yellow());
+    println!(
+        "\n{}",
+        "🎨 Custom Binaural Beat Creator".bold().bright_yellow()
+    );
     println!();
 
-    let base_freq = prompt_f32("Enter base frequency (Hz, e.g., 432): ", 20.0, 20000.0, 432.0);
-    let beat_freq = prompt_f32("Enter beat frequency (Hz, e.g., 6 for theta waves): ", 0.1, 50.0, 6.0);
+    let base_freq = prompt_f32(
+        "Enter base frequency (Hz, e.g., 432): ",
+        20.0,
+        20000.0,
+        432.0,
+    );
+    let beat_freq = prompt_f32(
+        "Enter beat frequency (Hz, e.g., 6 for theta waves): ",
+        0.1,
+        50.0,
+        6.0,
+    );
     let duration_minutes = prompt_u32("Enter duration in minutes (e.g., 15): ", 1, 120, 15);
 
     let filename = format!(
@@ -449,14 +532,23 @@ pub fn create_custom_binaural() {
     );
 
     println!("\n{}", "🎶 Creating custom binaural beat…".bright_magenta());
-    println!("{}", format!("   Base: {} Hz",     base_freq).dimmed());
-    println!("{}", format!("   Beat: {} Hz",     beat_freq).dimmed());
-    println!("{}", format!("   Duration: {} minutes", duration_minutes).dimmed());
+    println!("{}", format!("   Base: {} Hz", base_freq).dimmed());
+    println!("{}", format!("   Beat: {} Hz", beat_freq).dimmed());
+    println!(
+        "{}",
+        format!("   Duration: {} minutes", duration_minutes).dimmed()
+    );
 
     match generate_binaural_beat(base_freq, beat_freq, duration_minutes * 60, &filename) {
         Ok(_) => {
-            println!("{}", format!("✅ Custom binaural beat created: {}", filename).bright_green());
-            println!("{}", format!("   Location: ./exports/{}", filename).dimmed());
+            println!(
+                "{}",
+                format!("✅ Custom binaural beat created: {}", filename).bright_green()
+            );
+            println!(
+                "{}",
+                format!("   Location: ./exports/{}", filename).dimmed()
+            );
         }
         Err(e) => println!("{}", format!("❌ Creation failed: {}", e).bright_red()),
     }
@@ -466,15 +558,28 @@ pub fn create_custom_binaural() {
 
 /// Present the interactive frequency-export sub-menu and handle the user's choice.
 pub fn show_frequency_menu() {
-    println!("\n{}", "╔════════════════════════════════════════════════╗".bright_cyan());
-    println!("{}", "║             🎵 FREQUENCY EXPORT 🎵             ║".bright_cyan());
-    println!("{}", "╚════════════════════════════════════════════════╝".bright_cyan());
+    println!(
+        "\n{}",
+        "╔════════════════════════════════════════════════╗".bright_cyan()
+    );
+    println!(
+        "{}",
+        "║             🎵 FREQUENCY EXPORT 🎵             ║".bright_cyan()
+    );
+    println!(
+        "{}",
+        "╚════════════════════════════════════════════════╝".bright_cyan()
+    );
     println!();
-    println!("{}", "Choose frequencies to export as binaural beats:".bold());
+    println!(
+        "{}",
+        "Choose frequencies to export as binaural beats:".bold()
+    );
     println!();
 
     for (i, (freq, _, icon)) in SOLFEGGIO_FREQUENCIES.iter().enumerate() {
-        println!("{} {} Hz — {} {}",
+        println!(
+            "{} {} Hz — {} {}",
             format!("{}.", i + 1).cyan(),
             (*freq as u32).to_string().bright_blue(),
             get_frequency_name(*freq).bright_white(),
@@ -483,7 +588,10 @@ pub fn show_frequency_menu() {
     }
 
     println!();
-    println!("{}", "10. Export All Solfeggio Frequencies".bright_magenta());
+    println!(
+        "{}",
+        "10. Export All Solfeggio Frequencies".bright_magenta()
+    );
     println!("{}", "11. Create Custom Binaural Beat".bright_yellow());
     println!("{}", "0.  Return to main menu".dimmed());
 
@@ -491,13 +599,15 @@ pub fn show_frequency_menu() {
     io::stdout().flush().unwrap_or(());
 
     let mut choice = String::new();
-    if io::stdin().read_line(&mut choice).is_err() { return; }
+    if io::stdin().read_line(&mut choice).is_err() {
+        return;
+    }
 
     match choice.trim() {
-        "10"     => export_all_frequencies(),
-        "11"     => create_custom_binaural(),
+        "10" => export_all_frequencies(),
+        "11" => create_custom_binaural(),
         "0" | "" => {}
-        chosen   => {
+        chosen => {
             if let Some(n) = crate::utils::parse_menu_choice(chosen, SOLFEGGIO_FREQUENCIES.len()) {
                 let (freq, name, _) = SOLFEGGIO_FREQUENCIES[n - 1];
                 export_frequency(freq, name);
@@ -514,12 +624,18 @@ fn prompt_f32(prompt: &str, min: f32, max: f32, default: f32) -> f32 {
     print!("{}", prompt.cyan());
     io::stdout().flush().unwrap_or(());
     let mut buf = String::new();
-    if io::stdin().read_line(&mut buf).is_err() { return default; }
-    buf.trim().parse::<f32>()
+    if io::stdin().read_line(&mut buf).is_err() {
+        return default;
+    }
+    buf.trim()
+        .parse::<f32>()
         .ok()
         .filter(|&v| v >= min && v <= max)
         .unwrap_or_else(|| {
-            println!("{}", format!("Invalid value. Using {} Hz.", default).yellow());
+            println!(
+                "{}",
+                format!("Invalid value. Using {} Hz.", default).yellow()
+            );
             default
         })
 }
@@ -528,8 +644,11 @@ fn prompt_u32(prompt: &str, min: u32, max: u32, default: u32) -> u32 {
     print!("{}", prompt.cyan());
     io::stdout().flush().unwrap_or(());
     let mut buf = String::new();
-    if io::stdin().read_line(&mut buf).is_err() { return default; }
-    buf.trim().parse::<u32>()
+    if io::stdin().read_line(&mut buf).is_err() {
+        return default;
+    }
+    buf.trim()
+        .parse::<u32>()
         .ok()
         .filter(|&v| v >= min && v <= max)
         .unwrap_or_else(|| {
