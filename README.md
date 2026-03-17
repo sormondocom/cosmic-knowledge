@@ -128,7 +128,8 @@ letter that precedes all letters, burning in silence against the void."</em></p>
 | `cosmology/african.rs` | Akan Day Names | Ghanaian | Birth-day soul name system |
 | `cosmology/african.rs` | Kemetic Numbers | Ancient Egyptian | Sacred numerical symbolism |
 | `audio.rs` | Solfeggio / Binaural | Modern esoteric | WAV export; binaural beat synthesis |
-| `rng.rs` | Psi–RNG Experiment | Experimental parapsychology | RDRAND hardware TRNG; configurable range and delay |
+| `rng.rs` | Psi–RNG Experiment | Experimental parapsychology | RDRAND hardware TRNG; configurable range and delay; user profiles; session history |
+| `persistence.rs` | User profiles & session history | Cross-session data layer | SQLite via rusqlite (bundled); UUID v4 user IDs; cumulative psi statistics |
 | `zodiac/mazzaroth.rs` | Hebrew Mazzaroth | Kabbalistic / Jewish astrology | Twelve signs · Sefer Yetzirah letters · Twelve Tribes · Hoshen gemstones |
 
 **Output formats:** interactive terminal · plain-text reports (`exports/*.txt`) ·
@@ -568,7 +569,7 @@ of the number's sacred significance within the Kemetic tradition.
 
 ## Psi–RNG Experiment
 
-**Source file:** `src/rng.rs`
+**Source files:** `src/rng.rs`, `src/persistence.rs`
 **Main menu:** option **5**
 
 The Psi–RNG module provides an interactive experiment for exploring the hypothesis that focused
@@ -588,6 +589,31 @@ RDRAND, the application falls back silently to OS entropy (`getrandom`, backed b
 `BCryptGenRandom` on Windows, `getrandom(2)` on Linux, or `/dev/urandom` on macOS).
 
 The active source is displayed at the start of each session.
+
+### User profiles & session history
+
+Before configuration begins, the application prompts for a name:
+
+```
+▸ Enter your name, or press Enter to skip history:
+```
+
+- **Returning users** — the profile is looked up case-insensitively. Prior cumulative statistics
+  are displayed immediately so the user can see their historical tendency before the new session
+  begins.
+- **New users** — a UUID v4 identifier is generated from OS entropy (no external crate required;
+  the already-present `getrandom` dependency is reused). A new row is inserted into the `users`
+  table and the user is welcomed.
+- **Anonymous mode** — pressing Enter without a name skips all persistence. The session runs
+  normally; no data is written.
+
+Session records are stored in **`data/cosmic_knowledge.db`** (SQLite, created automatically on
+first use alongside the existing `exports/` directory). The schema comprises two tables:
+
+| Table | Key columns |
+|-------|-------------|
+| `users` | `id TEXT PRIMARY KEY` (UUID v4) · `name TEXT` · `created_at TEXT` |
+| `rng_sessions` | `user_id` · `started_at` · `range_min/max` · `delay_secs` · `outcome` (`"match"` / `"stopped"`) · `draws` · `beat_chance` (0/1) |
 
 ### Configuration
 
@@ -618,6 +644,8 @@ signal. This mirrors the standard REG protocol used in PEAR lab studies.
 
 ### Statistics
 
+#### Single-session results
+
 After each session the following are reported:
 
 | Statistic | Formula |
@@ -632,6 +660,39 @@ The cumulative probability figures show how surprising the result would be under
 only a series of independent trials analysed with appropriate statistics (e.g. binomial z-score
 or meta-analytic effect size) constitutes meaningful evidence. The session note reminds users of
 this after every run.
+
+#### Cumulative statistics (named users only)
+
+After each session, and again on login for returning users, a history panel is displayed
+summarising all sessions recorded under the user's name:
+
+| Field | Description |
+|-------|-------------|
+| **Sessions recorded** | Total sessions stored (both `match` and `stopped` outcomes) |
+| **Mean draws per session** | `AVG(draws)` across all sessions |
+| **Personal best match** | `MIN(draws)` where `outcome = 'match'`; omitted if no confirmed matches yet |
+| **Beat chance** | Count of sessions where `draws < range_size` (earlier than the geometric mean) |
+| **Overall tendency** | `mean(draws / range_size)` — the *tendency ratio* |
+
+**Tendency ratio interpretation:**
+
+| Value | Meaning |
+|-------|---------|
+| < 0.95 | Tends to match **earlier** than chance — highlighted in green with ✦ |
+| 0.95 – 1.05 | Near chance expectation — shown dimmed |
+| > 1.05 | Tends to match **later** than chance — highlighted in yellow |
+
+The ratio is computed by the single SQL aggregate query in `persistence::get_stats`:
+
+```sql
+AVG(CAST(draws AS REAL) / CAST(range_max - range_min + 1 AS REAL))
+```
+
+Storing `beat_chance` as a denormalised 0/1 column at insert time keeps this query O(1) with no
+subquery overhead even at large session counts.
+
+Trends are most meaningful after approximately 10 or more sessions; the panel reminds users of
+this threshold while their session count is still low.
 
 ### Scientific context
 

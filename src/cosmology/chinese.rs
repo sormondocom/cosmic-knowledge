@@ -175,6 +175,7 @@ pub fn wu_xing(number: u32) -> Option<WuXingInfo> {
 // ─── Chinese: Lucky/Unlucky numbers ───────────────────────────────────────────
 
 pub struct ChineseLuckyInfo {
+    #[allow(dead_code)]   // stored for completeness; callers typically use the query value directly
     pub number:      u32,
     pub mandarin:    &'static str,   // pronunciation
     pub cantonese:   &'static str,   // pronunciation

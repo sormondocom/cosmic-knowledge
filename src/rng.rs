@@ -19,6 +19,8 @@
 //! For a range of N values, the geometric distribution gives a mean of N
 //! draws until the first match by pure chance.  A match significantly earlier
 //! than N is consistent with (but does not prove) intentional influence.
+//! Session outcomes are persisted to SQLite and cumulative statistics are
+//! displayed after every session.
 
 use std::io::{self, Write};
 use std::sync::mpsc;
@@ -28,6 +30,11 @@ use std::time::Duration;
 
 use colored::*;
 use rdrand::RdRand;
+
+use crate::persistence::{
+    get_or_create_user, get_stats, open_db, print_cumulative_stats, record_session,
+};
+use crate::reports::chrono_now;
 
 // ─── Randomness source ────────────────────────────────────────────────────────
 
@@ -154,6 +161,68 @@ enum Outcome {
     Stopped { total:   u32 },
 }
 
+// ─── User identification ──────────────────────────────────────────────────────
+
+/// Prompt for a name and return `(Connection, UserRecord)` if a profile could
+/// be opened, or `None` if the user chose to run anonymously or the DB failed.
+fn identify_user() -> Option<(rusqlite::Connection, crate::persistence::UserRecord)> {
+    println!();
+    println!("{}", "  ─ Your Profile ───────────────────────────────────────────".dimmed());
+    print!("{}", "  ▸ Enter your name, or press Enter to skip history: ".bold().cyan());
+    io::stdout().flush().unwrap_or(());
+
+    let mut buf = String::new();
+    io::stdin().read_line(&mut buf).ok()?;
+    let name = buf.trim().to_string();
+
+    if name.is_empty() {
+        println!("{}", "  Running anonymously — session will not be recorded.".dimmed());
+        return None;
+    }
+
+    let conn = match open_db() {
+        Ok(c) => c,
+        Err(e) => {
+            println!(
+                "{}",
+                format!("  ⚠️  History database unavailable ({}). Running anonymously.", e)
+                    .yellow()
+            );
+            return None;
+        }
+    };
+
+    match get_or_create_user(&conn, &name) {
+        Ok((user, true)) => {
+            println!(
+                "{}",
+                format!("  ✨ Welcome, {}! Your psi history begins now.", user.name)
+                    .bright_cyan()
+            );
+            Some((conn, user))
+        }
+        Ok((user, false)) => {
+            println!(
+                "{}",
+                format!("  🌟 Welcome back, {}!", user.name).bright_cyan()
+            );
+            if let Ok(stats) = get_stats(&conn, &user.id) {
+                if stats.total_sessions > 0 {
+                    print_cumulative_stats(&user.name, &stats);
+                }
+            }
+            Some((conn, user))
+        }
+        Err(e) => {
+            println!(
+                "{}",
+                format!("  ⚠️  Could not load profile ({}). Running anonymously.", e).yellow()
+            );
+            None
+        }
+    }
+}
+
 // ─── Public entry point ───────────────────────────────────────────────────────
 
 /// Run the Psi–RNG interactive session.
@@ -169,6 +238,10 @@ pub fn run_rng_session() {
     let src = init_rng();
     println!();
     println!("  {}  {}", "RNG source:".bold(), src.label().bright_cyan());
+
+    // ── User profile & history ────────────────────────────────────────────────
+    let profile    = identify_user();
+    let session_ts = chrono_now();
 
     let cfg = configure();
 
@@ -225,12 +298,40 @@ pub fn run_rng_session() {
         }
     };
 
-    show_results(&cfg, &outcome);
+    let p_value = show_results(&cfg, &outcome);
+
+    // ── Persist session and show updated cumulative stats ─────────────────────
+    if let Some((ref conn, ref user)) = profile {
+        let (outcome_str, draws) = match &outcome {
+            Outcome::Match   { on_draw } => ("match",   *on_draw),
+            Outcome::Stopped { total }   => ("stopped", *total),
+        };
+        let beat = matches!(&outcome, Outcome::Match { on_draw } if *on_draw < cfg.range_size());
+
+        if let Err(e) = record_session(
+            conn, &user.id, &session_ts,
+            cfg.min, cfg.max, cfg.delay_secs,
+            outcome_str, draws, beat,
+        ) {
+            println!("{}", format!("  ⚠️  Could not save session: {}", e).yellow());
+        }
+
+        match get_stats(conn, &user.id) {
+            Ok(stats)  => print_cumulative_stats(&user.name, &stats),
+            Err(e)     => println!("{}", format!("  ⚠️  Could not load stats: {}", e).yellow()),
+        }
+    }
+
+    let _ = p_value; // used via show_results; suppress unused-variable lint if no profile
 }
 
 // ─── Results display ──────────────────────────────────────────────────────────
 
-fn show_results(cfg: &Config, outcome: &Outcome) {
+/// Display single-session results and return the probability value by chance.
+///
+/// For a match:   P(X ≤ draws) = 1 − ((N−1)/N)^draws
+/// For stopped:   P(0 matches) = ((N−1)/N)^total_draws
+fn show_results(cfg: &Config, outcome: &Outcome) -> f64 {
     let n = cfg.range_size();
 
     println!();
@@ -253,7 +354,7 @@ fn show_results(cfg: &Config, outcome: &Outcome) {
 
     println!("{}", "  ╠══════════════════════════════════════════════════════════╣".bright_magenta());
 
-    match outcome {
+    let p_value = match outcome {
         Outcome::Match { on_draw } => {
             println!("  ║  {}  {}",
                 format!("{:<20}", "Match on draw:").bold(),
@@ -261,31 +362,24 @@ fn show_results(cfg: &Config, outcome: &Outcome) {
             );
 
             let interpretation = if *on_draw < n {
-                let early = n - on_draw;
-                format!(
-                    "{} draw(s) EARLIER than chance expectation  ✦",
-                    early
-                ).bright_green().to_string()
+                format!("{} draw(s) EARLIER than chance  ✦", n - on_draw)
+                    .bright_green().to_string()
             } else if *on_draw > n {
-                let late = on_draw - n;
-                format!(
-                    "{} draw(s) later than chance expectation",
-                    late
-                ).yellow().to_string()
+                format!("{} draw(s) later than chance", on_draw - n)
+                    .yellow().to_string()
             } else {
                 "Exactly at chance expectation".bright_white().to_string()
             };
-
             println!("  ║  {}  {}", format!("{:<20}", "vs. expectation:").bold(), interpretation);
 
-            // Probability of matching on or before this draw by chance alone
-            // P(X <= k) = 1 - ((N-1)/N)^k
-            let p_by_chance = 1.0 - ((n as f64 - 1.0) / n as f64).powi(*on_draw as i32);
+            // P(X ≤ k) = 1 − ((N−1)/N)^k
+            let p = 1.0 - ((n as f64 - 1.0) / n as f64).powi(*on_draw as i32);
             println!("  ║  {}  {}",
                 format!("{:<20}", "Prob. by chance:").bold(),
                 format!("{:.1}% chance of matching by draw {} by luck alone",
-                    p_by_chance * 100.0, on_draw).dimmed(),
+                    p * 100.0, on_draw).dimmed(),
             );
+            p
         }
 
         Outcome::Stopped { total } => {
@@ -293,21 +387,24 @@ fn show_results(cfg: &Config, outcome: &Outcome) {
                 format!("{:<20}", "Total draws:").bold(),
                 total.to_string().bright_white(),
             );
-            println!("  ║  {}",
-                "No match confirmed — session ended by user.".yellow(),
-            );
-            let p_no_match = ((n as f64 - 1.0) / n as f64).powi(*total as i32);
+            println!("  ║  {}", "No match confirmed — session ended by user.".yellow());
+
+            // P(0 matches in k draws) = ((N−1)/N)^k
+            let p = ((n as f64 - 1.0) / n as f64).powi(*total as i32);
             println!("  ║  {}  {}",
                 format!("{:<20}", "Prob. no match:").bold(),
                 format!("{:.1}% chance of 0 hits in {} draws by luck alone",
-                    p_no_match * 100.0, total).dimmed(),
+                    p * 100.0, total).dimmed(),
             );
+            p
         }
-    }
+    };
 
     println!("{}", "  ╠══════════════════════════════════════════════════════════╣".bright_magenta());
     println!("{}", "  ║  Note: a single trial is not statistically conclusive.   ║".dimmed());
     println!("{}", "  ║  Repeat sessions accumulate evidence over time.          ║".dimmed());
     println!("{}", "  ╚══════════════════════════════════════════════════════════╝".bright_magenta());
     println!();
+
+    p_value
 }

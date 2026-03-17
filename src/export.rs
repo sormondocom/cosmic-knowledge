@@ -33,7 +33,7 @@ use crate::enochian::{
     aethyr_lookup, enochian_angelic_message, enochian_meaning, AETHYRS, ENOCHIAN_LETTERS,
 };
 use crate::numerology::{
-    numerology, meaning_of, isopsephy_meaning, abjad_meaning,
+    numerology, meaning_of, isopsephy_meaning, abjad_meaning, vedic_reading,
     angelic_message, master_numbers_message, check_special_sequences, get_calculation_breakdown,
 };
 use crate::reports::{strip_leading_emoji, chrono_now};
@@ -302,8 +302,8 @@ pub fn wrap_html(title: &str, body_html: &str, tradition_key: &str) -> String {
 
 /// Build a styled HTML report for a numerology word analysis.
 pub fn build_numerology_html(word: &str, active_systems: &[&str]) -> String {
-    let theme     = theme_for_systems(active_systems);
-    let html_body = build_numerology_html_body(word, active_systems, &theme);
+    let tradition_key = tradition_key_for_systems(active_systems);
+    let html_body     = build_numerology_html_body(word, active_systems);
     let all_results = numerology(word);
 
     // Angelic message block
@@ -360,17 +360,15 @@ pub fn build_numerology_html(word: &str, active_systems: &[&str]) -> String {
     );
 
     let title = format!("Celestial Numerology \u{2014} {}", word);
-    wrap_html(&title, &full_body, "")
+    wrap_html(&title, &full_body, tradition_key)
 }
 
-fn build_numerology_html_body(word: &str, active_systems: &[&str], theme: &CulturalTheme) -> String {
+fn build_numerology_html_body(word: &str, active_systems: &[&str]) -> String {
     let all_results = numerology(word);
     let results: Vec<_> = all_results
         .iter()
         .filter(|(name, _)| active_systems.iter().any(|s| s == name))
         .collect();
-
-    let _ = theme; // theme applied by caller via wrap_html / build_numerology_html
 
     let mut rows = String::new();
     for (system, (total, root)) in &results {
@@ -379,6 +377,7 @@ fn build_numerology_html_body(word: &str, active_systems: &[&str], theme: &Cultu
             s if s.starts_with("Enochian") => enochian_meaning(*root),
             "Greek Isopsephy"              => isopsephy_meaning(*root),
             "Abjad"                        => abjad_meaning(*root),
+            "Vedic"                        => vedic_reading(*root).meaning,
             _                              => meaning_of(*root),
         };
         let meaning   = strip_leading_emoji(meaning_raw);
@@ -621,8 +620,11 @@ fn theme_for_key(key: &str) -> CulturalTheme {
     }
 }
 
-/// Select the most culturally-appropriate theme for a set of active systems.
-fn theme_for_systems(systems: &[&str]) -> CulturalTheme {
+/// Return the most culturally-appropriate theme key for a set of active systems.
+///
+/// Returns `""` (the default celestial theme) when multiple distinct traditions
+/// are active or when no single tradition can be identified.
+fn tradition_key_for_systems(systems: &[&str]) -> &'static str {
     let mut groups: std::collections::HashSet<&str> = std::collections::HashSet::new();
     for s in systems {
         let g = match *s {
@@ -646,11 +648,9 @@ fn theme_for_systems(systems: &[&str]) -> CulturalTheme {
 
     if groups.len() == 1 {
         let key = *groups.iter().next().unwrap();
-        if key != "default" {
-            return theme_for_key(key);
-        }
+        if key != "default" { return key; }
     }
-    theme_default()
+    ""
 }
 
 fn theme_hebrew() -> CulturalTheme {

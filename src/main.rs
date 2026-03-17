@@ -12,6 +12,7 @@ mod enochian;
 mod export;
 mod menu;
 mod numerology;
+mod persistence;
 mod reports;
 mod rng;
 mod zodiac;

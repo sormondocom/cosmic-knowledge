@@ -9,7 +9,9 @@
 use std::io::{self, Write};
 use std::thread;
 use std::time::Duration;
+
 use colored::*;
+use crossterm::{cursor::{Hide, MoveTo, Show}, execute, style::Print, terminal::{Clear, ClearType}};
 
 use crate::audio::SOLFEGGIO_FREQUENCIES;
 
@@ -152,7 +154,7 @@ pub enum MainMode {
 
 static MAIN_ITEMS: &[MenuItem] = &[
     MenuItem { key: "1", icon: "🔢", label: "Gematria & Numerology",
-               hint: "Analyze words across all ten systems" },
+               hint: "Analyze words across all eleven systems" },
     MenuItem { key: "2", icon: "📜", label: "Enochian Angelology",
                hint: "Alphabet · Aethyrs · Translate · Keys" },
     MenuItem { key: "3", icon: "🎵", label: "Sacred Frequencies & Export",
@@ -227,12 +229,13 @@ pub fn show_loading_screen() {
     // ── Canvas: 71 cols × 37 rows.  Centre: col 35, row 18  (0-indexed) ──────
     const W: i32 = 71;
 
-    /// Place `s` at 0-indexed (row, col); clips silently if out of bounds.
-    fn put(row: i32, col: i32, s: &str) {
+    // Place `s` at 0-indexed (col, row); clips silently if out of bounds.
+    // crossterm::MoveTo(col, row) is column-first, 0-based — opposite of ANSI.
+    let put = |row: i32, col: i32, s: &str| {
         if row >= 0 && col >= 0 && row < 37 && col < 71 {
-            print!("\x1B[{};{}H{}", row + 1, col + 1, s);
+            execute!(io::stdout(), MoveTo(col as u16, row as u16), Print(s)).ok();
         }
-    }
+    };
 
     /// Compute (col, row) for symbol `i` of `n` evenly spaced around an
     /// ellipse with semi-axes (r_col, r_row) centred at (35, 18), starting
@@ -248,7 +251,7 @@ pub fn show_loading_screen() {
     // Flush helper (called after every visual change)
     let flush = || io::stdout().flush().unwrap_or(());
 
-    print!("\x1B[2J\x1B[H\x1B[?25l"); // clear, home, hide cursor
+    execute!(io::stdout(), Clear(ClearType::All), MoveTo(0, 0), Hide).ok();
     flush();
 
     // ── PHASE 0 · Starfield (scattered background stars) ──────────────────
@@ -364,7 +367,7 @@ pub fn show_loading_screen() {
     thread::sleep(Duration::from_millis(1300));
 
     // ── Teardown ───────────────────────────────────────────────────────────
-    print!("\x1B[?25h\x1B[2J\x1B[H"); // show cursor, clear, home
+    execute!(io::stdout(), Show, Clear(ClearType::All), MoveTo(0, 0)).ok();
     flush();
 }
 

@@ -15,7 +15,7 @@ use chrono::Utc;
 
 use crate::enochian::{enochian_lookup, enochian_substitute, aethyr_lookup, enochian_meaning, enochian_angelic_message};
 use crate::numerology::{
-    numerology, digital_root, meaning_of, isopsephy_meaning, abjad_meaning,
+    numerology, digital_root, meaning_of, isopsephy_meaning, abjad_meaning, vedic_reading,
     angelic_message, master_numbers_message, check_special_sequences, get_calculation_breakdown,
 };
 
@@ -45,6 +45,7 @@ pub fn build_numerology_report(word: &str, active_systems: &[&str]) -> String {
             s if s.starts_with("Enochian") => enochian_meaning(*root),
             "Greek Isopsephy"              => isopsephy_meaning(*root),
             "Abjad"                        => abjad_meaning(*root),
+            "Vedic"                        => vedic_reading(*root).meaning,
             _                              => meaning_of(*root),
         };
         let breakdown   = get_calculation_breakdown(word, system);
