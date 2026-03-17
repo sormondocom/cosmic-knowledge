@@ -61,13 +61,18 @@ impl Source for SineWave {
 
 // ─── Intro chord ──────────────────────────────────────────────────────────────
 
-/// A 5-second three-note chord with a decaying echo envelope.
+/// An 8-second synth-pad chord modelled after the warm DX7-style FM pad heard
+/// in the introduction of *Lies* (Fleetwood Mac, *Tango in the Night*, 1987).
 ///
-/// Amplitude envelope: four overlapping strikes at t = 0.0 s, 0.4 s, 0.8 s,
-/// and 1.2 s, each decaying at rate 1.8 s⁻¹.  The combined envelope fades to
-/// near-silence by ~4.5 s before the source terminates at 5 s.
+/// Synthesis model per note:
+///  - Two oscillators detuned ±5 Hz apart → chorus / ensemble warmth
+///  - Weak 2nd harmonic (15 %) → subtle FM-like brightness
+///  - Vibrato LFO at 4.5 Hz, ±2 Hz, ramping in after 1.5 s delay
 ///
-/// The three frequencies are supplied by the caller; see [`play_intro_chord`].
+/// Global envelope:
+///  - 0 → 0.7 s  : raised-cosine (Hann) attack
+///  - 0.7 → 6.0 s: full sustain
+///  - 6.0 → 8.0 s: linear release to silence
 struct IntroChord {
     freqs:         [f32; 3],
     sample_rate:   u32,
@@ -76,8 +81,16 @@ struct IntroChord {
 }
 
 impl IntroChord {
+    const SAMPLE_RATE: u32 = 44100;
+    const DURATION_S:  u32 = 8;
+
     fn new(freqs: [f32; 3]) -> Self {
-        Self { freqs, sample_rate: 44100, position: 0, total_samples: 5 * 44100 }
+        Self {
+            freqs,
+            sample_rate:   Self::SAMPLE_RATE,
+            position:      0,
+            total_samples: Self::DURATION_S * Self::SAMPLE_RATE,
+        }
     }
 }
 
@@ -90,22 +103,54 @@ impl Iterator for IntroChord {
         let t   = self.position as f32 / self.sample_rate as f32;
         let tau = self.position as f64 / self.sample_rate as f64;
 
-        // Four echoes, each an exponentially-decaying strike.
-        const DECAY: f32 = 1.8;
-        const STRIKES: &[(f32, f32)] = &[(0.0, 1.00), (0.4, 0.55), (0.8, 0.30), (1.2, 0.15)];
-        let envelope: f32 = STRIKES.iter()
-            .filter(|&&(onset, _)| t >= onset)
-            .map(|&(onset, amp)| amp * (-(t - onset) * DECAY).exp())
-            .sum();
+        // ── Global amplitude envelope ─────────────────────────────────────────
+        const ATTACK_S:        f32 = 0.7;
+        const RELEASE_START_S: f32 = 6.0;
+        const TOTAL_S:         f32 = IntroChord::DURATION_S as f32;
 
-        let wave: f32 = self.freqs.iter()
-            .map(|&f| (2.0 * std::f64::consts::PI * f as f64 * tau).sin() as f32)
-            .sum();
+        let envelope = if t < ATTACK_S {
+            // Raised-cosine (Hann) fade-in: 0 → 1 over ATTACK_S seconds.
+            0.5 * (1.0 - (std::f32::consts::PI * t / ATTACK_S).cos())
+        } else if t > RELEASE_START_S {
+            // Linear release: 1 → 0 over the final 2 s.
+            1.0 - (t - RELEASE_START_S) / (TOTAL_S - RELEASE_START_S)
+        } else {
+            1.0_f32
+        };
+
+        // ── Vibrato LFO (delayed onset, slow ramp-in) ─────────────────────────
+        // Ramps from 0 to ±2 Hz over 0.8 s, starting at 1.5 s into the chord.
+        const VIB_ONSET_S: f64 = 1.5;
+        const VIB_RAMP_S:  f64 = 0.8;
+        const VIB_DEPTH_HZ: f64 = 2.0;
+        const VIB_RATE_HZ:  f64 = 4.5;
+
+        let vib_amount = if tau > VIB_ONSET_S {
+            ((tau - VIB_ONSET_S) / VIB_RAMP_S).min(1.0)
+        } else {
+            0.0
+        };
+        let lfo = (2.0 * std::f64::consts::PI * VIB_RATE_HZ * tau).sin()
+            * VIB_DEPTH_HZ * vib_amount;
+
+        // ── Oscillator mix per note ───────────────────────────────────────────
+        // Detuned pair at ±5 Hz + weak 2nd harmonic (15 %) → warm pad timbre.
+        const DETUNE_HZ: f64 = 5.0;
+        const HARM2_AMP: f64 = 0.15;
+        let pi2 = 2.0 * std::f64::consts::PI;
+
+        let wave: f32 = self.freqs.iter().map(|&f| {
+            let f = f as f64;
+            let lo   = (pi2 * (f - DETUNE_HZ + lfo) * tau).sin();
+            let hi   = (pi2 * (f + DETUNE_HZ + lfo) * tau).sin();
+            let harm = (pi2 * (f * 2.0  + lfo) * tau).sin() * HARM2_AMP;
+            (lo + hi + harm) as f32
+        }).sum();
 
         self.position += 1;
-        // 0.12 scale keeps peak amplitude (envelope ~1.0 × three in-phase waves)
-        // well below clipping on typical consumer hardware.
-        Some(wave * envelope * 0.12)
+
+        // 3 notes × (2 detuned + 0.15 harmonic) ≈ 6.45 peak → scale to ~0.35 max.
+        Some(wave * envelope * 0.055)
     }
 }
 
@@ -113,10 +158,12 @@ impl Source for IntroChord {
     fn current_frame_len(&self) -> Option<usize> { None }
     fn channels(&self)       -> u16 { 1 }
     fn sample_rate(&self)    -> u32 { self.sample_rate }
-    fn total_duration(&self) -> Option<Duration> { Some(Duration::from_secs(5)) }
+    fn total_duration(&self) -> Option<Duration> {
+        Some(Duration::from_secs(IntroChord::DURATION_S as u64))
+    }
 }
 
-/// Play a three-note intro chord at the given frequencies and block until done.
+/// Play the three-note intro chord and block until it finishes (8 s).
 ///
 /// Clears the sink before appending so no stale audio bleeds in.
 pub fn play_intro_chord(system: &AudioSystem, freqs: [f32; 3]) {
@@ -125,7 +172,7 @@ pub fn play_intro_chord(system: &AudioSystem, freqs: [f32; 3]) {
         sink.append(IntroChord::new(freqs));
         sink.play();
     }
-    thread::sleep(Duration::from_secs(5));
+    thread::sleep(Duration::from_secs(IntroChord::DURATION_S as u64));
 }
 
 // ─── Lifecycle helpers ────────────────────────────────────────────────────────
@@ -412,6 +459,52 @@ pub fn create_custom_binaural() {
             println!("{}", format!("   Location: ./exports/{}", filename).dimmed());
         }
         Err(e) => println!("{}", format!("❌ Creation failed: {}", e).bright_red()),
+    }
+}
+
+// ─── Frequency export menu ────────────────────────────────────────────────────
+
+/// Present the interactive frequency-export sub-menu and handle the user's choice.
+pub fn show_frequency_menu() {
+    println!("\n{}", "╔════════════════════════════════════════════════╗".bright_cyan());
+    println!("{}", "║             🎵 FREQUENCY EXPORT 🎵             ║".bright_cyan());
+    println!("{}", "╚════════════════════════════════════════════════╝".bright_cyan());
+    println!();
+    println!("{}", "Choose frequencies to export as binaural beats:".bold());
+    println!();
+
+    for (i, (freq, _, icon)) in SOLFEGGIO_FREQUENCIES.iter().enumerate() {
+        println!("{} {} Hz — {} {}",
+            format!("{}.", i + 1).cyan(),
+            (*freq as u32).to_string().bright_blue(),
+            get_frequency_name(*freq).bright_white(),
+            icon,
+        );
+    }
+
+    println!();
+    println!("{}", "10. Export All Solfeggio Frequencies".bright_magenta());
+    println!("{}", "11. Create Custom Binaural Beat".bright_yellow());
+    println!("{}", "0.  Return to main menu".dimmed());
+
+    print!("\n{}", "Enter choice (0-11): ".cyan());
+    io::stdout().flush().unwrap_or(());
+
+    let mut choice = String::new();
+    if io::stdin().read_line(&mut choice).is_err() { return; }
+
+    match choice.trim() {
+        "10"     => export_all_frequencies(),
+        "11"     => create_custom_binaural(),
+        "0" | "" => {}
+        chosen   => {
+            if let Some(n) = crate::utils::parse_menu_choice(chosen, SOLFEGGIO_FREQUENCIES.len()) {
+                let (freq, name, _) = SOLFEGGIO_FREQUENCIES[n - 1];
+                export_frequency(freq, name);
+            } else {
+                println!("{}", "Invalid choice. Returning to main menu.".yellow());
+            }
+        }
     }
 }
 

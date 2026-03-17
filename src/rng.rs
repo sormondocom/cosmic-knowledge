@@ -8,12 +8,13 @@
 //!  2. OS entropy fallback (`getrandom`) when RDRAND is unsupported
 //!
 //! **Session flow:**
-//!  1. Select number range and inter-draw delay (seconds)
-//!  2. Think of a number — do not reveal it until a match occurs
-//!  3. Numbers are drawn at the configured interval
-//!  4. Type `Y` + Enter when the displayed number matches your thought
-//!  5. Type `Q` + Enter to end the session without confirming a match
-//!  6. Session statistics compare your result against chance expectation
+//!  1. Enter a name (or press Enter to run anonymously)
+//!  2. Select number range and inter-draw delay (seconds)
+//!  3. Think of a number — do not reveal it until a match occurs
+//!  4. Numbers are drawn at the configured interval
+//!  5. Type `Y` + Enter when the displayed number matches your thought
+//!  6. Type `Q` + Enter to end the session without confirming a match
+//!  7. Session statistics compare your result against chance expectation
 //!
 //! **Statistical note:**
 //! For a range of N values, the geometric distribution gives a mean of N
@@ -32,9 +33,8 @@ use colored::*;
 use rdrand::RdRand;
 
 use crate::persistence::{
-    get_or_create_user, get_stats, open_db, print_cumulative_stats, record_session,
+    get_or_create_user, get_stats, open_db, record_session, CumulativeStats,
 };
-use crate::reports::chrono_now;
 
 // ─── Randomness source ────────────────────────────────────────────────────────
 
@@ -87,7 +87,7 @@ impl Config {
 
 /// Map a raw `u32` uniformly into `[min, max]`.
 /// Modulo bias is negligible at these range sizes.
-fn clamp(raw: u32, min: u32, max: u32) -> u32 {
+fn rand_in_range(raw: u32, min: u32, max: u32) -> u32 {
     min + raw % (max - min + 1)
 }
 
@@ -163,9 +163,15 @@ enum Outcome {
 
 // ─── User identification ──────────────────────────────────────────────────────
 
-/// Prompt for a name and return `(Connection, UserRecord)` if a profile could
-/// be opened, or `None` if the user chose to run anonymously or the DB failed.
-fn identify_user() -> Option<(rusqlite::Connection, crate::persistence::UserRecord)> {
+/// Holds an open database connection and the authenticated user for one session.
+struct SessionContext {
+    conn: rusqlite::Connection,
+    user: crate::persistence::UserRecord,
+}
+
+/// Prompt for a name and return a `SessionContext` if a profile could be opened,
+/// or `None` if the user chose to run anonymously or the DB failed.
+fn identify_user() -> Option<SessionContext> {
     println!();
     println!("{}", "  ─ Your Profile ───────────────────────────────────────────".dimmed());
     print!("{}", "  ▸ Enter your name, or press Enter to skip history: ".bold().cyan());
@@ -199,7 +205,7 @@ fn identify_user() -> Option<(rusqlite::Connection, crate::persistence::UserReco
                 format!("  ✨ Welcome, {}! Your psi history begins now.", user.name)
                     .bright_cyan()
             );
-            Some((conn, user))
+            Some(SessionContext { conn, user })
         }
         Ok((user, false)) => {
             println!(
@@ -211,7 +217,7 @@ fn identify_user() -> Option<(rusqlite::Connection, crate::persistence::UserReco
                     print_cumulative_stats(&user.name, &stats);
                 }
             }
-            Some((conn, user))
+            Some(SessionContext { conn, user })
         }
         Err(e) => {
             println!(
@@ -240,8 +246,8 @@ pub fn run_rng_session() {
     println!("  {}  {}", "RNG source:".bold(), src.label().bright_cyan());
 
     // ── User profile & history ────────────────────────────────────────────────
-    let profile    = identify_user();
-    let session_ts = chrono_now();
+    let ctx        = identify_user();
+    let session_ts = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string();
 
     let cfg = configure();
 
@@ -281,7 +287,7 @@ pub fn run_rng_session() {
     let mut draw = 0u32;
 
     let outcome = loop {
-        let n = clamp(src.next_u32(), cfg.min, cfg.max);
+        let n = rand_in_range(src.next_u32(), cfg.min, cfg.max);
         draw += 1;
 
         println!("  {}  {}  →  {}",
@@ -298,10 +304,10 @@ pub fn run_rng_session() {
         }
     };
 
-    let p_value = show_results(&cfg, &outcome);
+    show_results(&cfg, &outcome);
 
     // ── Persist session and show updated cumulative stats ─────────────────────
-    if let Some((ref conn, ref user)) = profile {
+    if let Some(ref ctx) = ctx {
         let (outcome_str, draws) = match &outcome {
             Outcome::Match   { on_draw } => ("match",   *on_draw),
             Outcome::Stopped { total }   => ("stopped", *total),
@@ -309,29 +315,27 @@ pub fn run_rng_session() {
         let beat = matches!(&outcome, Outcome::Match { on_draw } if *on_draw < cfg.range_size());
 
         if let Err(e) = record_session(
-            conn, &user.id, &session_ts,
+            &ctx.conn, &ctx.user.id, &session_ts,
             cfg.min, cfg.max, cfg.delay_secs,
             outcome_str, draws, beat,
         ) {
             println!("{}", format!("  ⚠️  Could not save session: {}", e).yellow());
         }
 
-        match get_stats(conn, &user.id) {
-            Ok(stats)  => print_cumulative_stats(&user.name, &stats),
+        match get_stats(&ctx.conn, &ctx.user.id) {
+            Ok(stats)  => print_cumulative_stats(&ctx.user.name, &stats),
             Err(e)     => println!("{}", format!("  ⚠️  Could not load stats: {}", e).yellow()),
         }
     }
-
-    let _ = p_value; // used via show_results; suppress unused-variable lint if no profile
 }
 
 // ─── Results display ──────────────────────────────────────────────────────────
 
-/// Display single-session results and return the probability value by chance.
+/// Display single-session results.
 ///
 /// For a match:   P(X ≤ draws) = 1 − ((N−1)/N)^draws
 /// For stopped:   P(0 matches) = ((N−1)/N)^total_draws
-fn show_results(cfg: &Config, outcome: &Outcome) -> f64 {
+fn show_results(cfg: &Config, outcome: &Outcome) {
     let n = cfg.range_size();
 
     println!();
@@ -354,7 +358,7 @@ fn show_results(cfg: &Config, outcome: &Outcome) -> f64 {
 
     println!("{}", "  ╠══════════════════════════════════════════════════════════╣".bright_magenta());
 
-    let p_value = match outcome {
+    match outcome {
         Outcome::Match { on_draw } => {
             println!("  ║  {}  {}",
                 format!("{:<20}", "Match on draw:").bold(),
@@ -379,7 +383,6 @@ fn show_results(cfg: &Config, outcome: &Outcome) -> f64 {
                 format!("{:.1}% chance of matching by draw {} by luck alone",
                     p * 100.0, on_draw).dimmed(),
             );
-            p
         }
 
         Outcome::Stopped { total } => {
@@ -396,7 +399,6 @@ fn show_results(cfg: &Config, outcome: &Outcome) -> f64 {
                 format!("{:.1}% chance of 0 hits in {} draws by luck alone",
                     p * 100.0, total).dimmed(),
             );
-            p
         }
     };
 
@@ -405,6 +407,68 @@ fn show_results(cfg: &Config, outcome: &Outcome) -> f64 {
     println!("{}", "  ║  Repeat sessions accumulate evidence over time.          ║".dimmed());
     println!("{}", "  ╚══════════════════════════════════════════════════════════╝".bright_magenta());
     println!();
+}
 
-    p_value
+// ─── Cumulative statistics display ───────────────────────────────────────────
+
+/// Print a cumulative statistics panel for a named user.
+pub fn print_cumulative_stats(name: &str, stats: &CumulativeStats) {
+    println!();
+    println!("{}", "  ╔══════════════════════════════════════════════════════════╗".bright_cyan());
+    println!(
+        "{}",
+        format!("  ║  📊  PSI HISTORY — {:<38}║", name.to_uppercase())
+            .bold().bright_cyan()
+    );
+    println!("{}", "  ╠══════════════════════════════════════════════════════════╣".bright_cyan());
+
+    println!(
+        "  ║  {}  {}",
+        format!("{:<26}", "Sessions recorded:").bold(),
+        stats.total_sessions.to_string().bright_white(),
+    );
+    println!(
+        "  ║  {}  {}",
+        format!("{:<26}", "Mean draws per session:").bold(),
+        format!("{:.2}", stats.mean_draws).bright_white(),
+    );
+
+    if let Some(best) = stats.best_match_draw {
+        println!(
+            "  ║  {}  {}",
+            format!("{:<26}", "Personal best match:").bold(),
+            format!("draw #{}", best).bold().bright_green(),
+        );
+    }
+
+    println!(
+        "  ║  {}  {}",
+        format!("{:<26}", "Beat chance:").bold(),
+        format!("{}/{} sessions", stats.beat_chance_count, stats.total_sessions)
+            .bright_cyan(),
+    );
+
+    let tendency_str = if stats.tendency_ratio < 0.95 {
+        format!("{:.2}× — tends earlier than chance  ✦", stats.tendency_ratio)
+            .bright_green().to_string()
+    } else if stats.tendency_ratio > 1.05 {
+        format!("{:.2}× — tends later than chance", stats.tendency_ratio)
+            .yellow().to_string()
+    } else {
+        format!("{:.2}× — near chance expectation", stats.tendency_ratio)
+            .dimmed().to_string()
+    };
+    println!(
+        "  ║  {}  {}",
+        format!("{:<26}", "Overall tendency:").bold(),
+        tendency_str,
+    );
+
+    if stats.total_sessions < 10 {
+        println!("{}", "  ╠══════════════════════════════════════════════════════════╣".bright_cyan());
+        println!("{}", "  ║  Trends emerge after ~10 sessions — keep experimenting. ║".italic().dimmed());
+    }
+
+    println!("{}", "  ╚══════════════════════════════════════════════════════════╝".bright_cyan());
+    println!();
 }

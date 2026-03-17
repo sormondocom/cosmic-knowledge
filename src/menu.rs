@@ -226,25 +226,36 @@ pub fn print_angel_banner() {
 ///   inner ring  = 8 Ba Gua trigrams + 7 classical planet symbols
 ///   centre      = all-seeing eye / iris (◉)
 pub fn show_loading_screen() {
-    // ── Canvas: 71 cols × 37 rows.  Centre: col 35, row 18  (0-indexed) ──────
-    const W: i32 = 71;
+    // ── Canvas geometry ───────────────────────────────────────────────────────
+    // All coordinates are 0-indexed (col, row).
+    // crossterm::MoveTo(col, row) is column-first — opposite of ANSI row;col.
+    const CANVAS_W:     i32 = 71;
+    const CANVAS_H:     i32 = 37;
+    const CENTRE_COL:   f64 = 35.0;
+    const CENTRE_ROW:   f64 = 18.0;
+    // Ellipse semi-axes for each symbolic ring (col-radius, row-radius).
+    const R_ZODIAC_COL: f64 = 13.5; // outer  — 12 Mazzaroth signs
+    const R_ZODIAC_ROW: f64 =  6.5;
+    const R_HEBREW_COL: f64 =  9.0; // middle — 22 Hebrew letters
+    const R_HEBREW_ROW: f64 =  4.5;
+    const R_INNER_COL:  f64 =  6.0; // inner  — Ba Gua trigrams
+    const R_INNER_ROW:  f64 =  3.0;
 
     // Place `s` at 0-indexed (col, row); clips silently if out of bounds.
-    // crossterm::MoveTo(col, row) is column-first, 0-based — opposite of ANSI.
     let put = |row: i32, col: i32, s: &str| {
-        if row >= 0 && col >= 0 && row < 37 && col < 71 {
+        if row >= 0 && col >= 0 && row < CANVAS_H && col < CANVAS_W {
             execute!(io::stdout(), MoveTo(col as u16, row as u16), Print(s)).ok();
         }
     };
 
     /// Compute (col, row) for symbol `i` of `n` evenly spaced around an
-    /// ellipse with semi-axes (r_col, r_row) centred at (35, 18), starting
-    /// at the top (−π/2) and advancing clockwise.
+    /// ellipse with semi-axes (r_col, r_row), starting at the top (−π/2)
+    /// and advancing clockwise.
     fn ring_pos(r_col: f64, r_row: f64, i: usize, n: usize) -> (i32, i32) {
         let a = -std::f64::consts::PI / 2.0
             + i as f64 * 2.0 * std::f64::consts::PI / n as f64;
-        let col = (35.0_f64 + r_col * a.cos()).round() as i32;
-        let row = (18.0_f64 + r_row * a.sin()).round() as i32;
+        let col = (CENTRE_COL + r_col * a.cos()).round() as i32;
+        let row = (CENTRE_ROW + r_row * a.sin()).round() as i32;
         (col, row)
     }
 
@@ -277,7 +288,7 @@ pub fn show_loading_screen() {
         '♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓',
     ];
     for (i, &sign) in zodiac.iter().enumerate() {
-        let (col, row) = ring_pos(13.5, 6.5, i, 12);
+        let (col, row) = ring_pos(R_ZODIAC_COL, R_ZODIAC_ROW, i, 12);
         put(row, col, &sign.to_string().bright_cyan().to_string());
         flush();
         thread::sleep(Duration::from_millis(75));
@@ -291,7 +302,7 @@ pub fn show_loading_screen() {
         'מ','נ','ס','ע','פ','צ','ק','ר','ש','ת',
     ];
     for (i, &letter) in hebrew.iter().enumerate() {
-        let (col, row) = ring_pos(9.0, 4.5, i, 22);
+        let (col, row) = ring_pos(R_HEBREW_COL, R_HEBREW_ROW, i, 22);
         put(row, col, &letter.to_string().bright_magenta().to_string());
         flush();
         thread::sleep(Duration::from_millis(48));
@@ -301,7 +312,7 @@ pub fn show_loading_screen() {
     // ── PHASE 3a · Ba Gua inner ring (rcol=6.0, rrow=3.0) ──────────────────
     let bagua: &[char] = &['☰','☱','☲','☳','☴','☵','☶','☷'];
     for (i, &tri) in bagua.iter().enumerate() {
-        let (col, row) = ring_pos(6.0, 3.0, i, 8);
+        let (col, row) = ring_pos(R_INNER_COL, R_INNER_ROW, i, 8);
         put(row, col, &tri.to_string().bright_yellow().to_string());
         flush();
         thread::sleep(Duration::from_millis(80));
@@ -357,8 +368,8 @@ pub fn show_loading_screen() {
     // ── PHASE 5 · Title ────────────────────────────────────────────────────
     let title    = "✦  C O S M I C   K N O W L E D G E  ✦";
     let subtitle = "Celestial Numerology · Sacred Wisdom";
-    let t_col = ((W - title.chars().count() as i32) / 2).max(0);
-    let s_col = ((W - subtitle.chars().count() as i32) / 2).max(0);
+    let t_col = ((CANVAS_W - title.chars().count() as i32) / 2).max(0);
+    let s_col = ((CANVAS_W - subtitle.chars().count() as i32) / 2).max(0);
     put(34, t_col, &title.bold().bright_magenta().to_string());
     flush();
     thread::sleep(Duration::from_millis(280));

@@ -27,7 +27,6 @@
 
 use std::fs;
 
-use colored::*;
 use rusqlite::{params, Connection};
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
@@ -196,66 +195,73 @@ pub fn get_stats(conn: &Connection, user_id: &str) -> rusqlite::Result<Cumulativ
     })
 }
 
-// ─── Display ─────────────────────────────────────────────────────────────────
+// ─── Tests ───────────────────────────────────────────────────────────────────
 
-/// Print a cumulative statistics panel for a user.
-pub fn print_cumulative_stats(name: &str, stats: &CumulativeStats) {
-    println!();
-    println!("{}", "  ╔══════════════════════════════════════════════════════════╗".bright_cyan());
-    println!(
-        "{}",
-        format!("  ║  📊  PSI HISTORY — {:<38}║", name.to_uppercase())
-            .bold().bright_cyan()
-    );
-    println!("{}", "  ╠══════════════════════════════════════════════════════════╣".bright_cyan());
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    println!(
-        "  ║  {}  {}",
-        format!("{:<26}", "Sessions recorded:").bold(),
-        stats.total_sessions.to_string().bright_white(),
-    );
-    println!(
-        "  ║  {}  {}",
-        format!("{:<26}", "Mean draws per session:").bold(),
-        format!("{:.2}", stats.mean_draws).bright_white(),
-    );
-
-    if let Some(best) = stats.best_match_draw {
-        println!(
-            "  ║  {}  {}",
-            format!("{:<26}", "Personal best match:").bold(),
-            format!("draw #{}", best).bold().bright_green(),
-        );
+    fn in_memory_db() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(SCHEMA).expect("schema");
+        conn
     }
 
-    println!(
-        "  ║  {}  {}",
-        format!("{:<26}", "Beat chance:").bold(),
-        format!("{}/{} sessions", stats.beat_chance_count, stats.total_sessions)
-            .bright_cyan(),
-    );
-
-    let tendency_str = if stats.tendency_ratio < 0.95 {
-        format!("{:.2}× — tends earlier than chance  ✦", stats.tendency_ratio)
-            .bright_green().to_string()
-    } else if stats.tendency_ratio > 1.05 {
-        format!("{:.2}× — tends later than chance", stats.tendency_ratio)
-            .yellow().to_string()
-    } else {
-        format!("{:.2}× — near chance expectation", stats.tendency_ratio)
-            .dimmed().to_string()
-    };
-    println!(
-        "  ║  {}  {}",
-        format!("{:<26}", "Overall tendency:").bold(),
-        tendency_str,
-    );
-
-    if stats.total_sessions < 10 {
-        println!("{}", "  ╠══════════════════════════════════════════════════════════╣".bright_cyan());
-        println!("{}", "  ║  Trends emerge after ~10 sessions — keep experimenting. ║".italic().dimmed());
+    #[test]
+    fn creates_new_user_and_returns_is_new() {
+        let conn = in_memory_db();
+        let (user, is_new) = get_or_create_user(&conn, "Alice").unwrap();
+        assert!(is_new);
+        assert_eq!(user.name, "Alice");
     }
 
-    println!("{}", "  ╚══════════════════════════════════════════════════════════╝".bright_cyan());
-    println!();
+    #[test]
+    fn returns_existing_user_case_insensitive() {
+        let conn = in_memory_db();
+        let (u1, _) = get_or_create_user(&conn, "Bob").unwrap();
+        let (u2, is_new) = get_or_create_user(&conn, "bob").unwrap();
+        assert!(!is_new);
+        assert_eq!(u1.id, u2.id);
+    }
+
+    #[test]
+    fn stats_empty_for_new_user() {
+        let conn = in_memory_db();
+        let (user, _) = get_or_create_user(&conn, "Carol").unwrap();
+        let stats = get_stats(&conn, &user.id).unwrap();
+        assert_eq!(stats.total_sessions, 0);
+        assert!(stats.best_match_draw.is_none());
+    }
+
+    #[test]
+    fn records_sessions_and_stats_are_accurate() {
+        let conn = in_memory_db();
+        let (user, _) = get_or_create_user(&conn, "Dave").unwrap();
+
+        // Match on draw 4 in a 1-9 range — beats chance (mean = 9)
+        record_session(&conn, &user.id, "2024-01-01", 1, 9, 3.0, "match", 4, true).unwrap();
+        // Stopped after 12 draws — does not beat chance
+        record_session(&conn, &user.id, "2024-01-02", 1, 9, 3.0, "stopped", 12, false).unwrap();
+
+        let stats = get_stats(&conn, &user.id).unwrap();
+        assert_eq!(stats.total_sessions, 2);
+        assert_eq!(stats.beat_chance_count, 1);
+        assert_eq!(stats.best_match_draw, Some(4));
+        // mean draws = (4 + 12) / 2 = 8.0
+        assert!((stats.mean_draws - 8.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn tendency_ratio_below_one_when_consistently_early() {
+        let conn = in_memory_db();
+        let (user, _) = get_or_create_user(&conn, "Eve").unwrap();
+
+        // Three very early matches in a 1-100 range (mean = 100)
+        for draw in [5u32, 8, 3] {
+            record_session(&conn, &user.id, "2024-01-01", 1, 100, 3.0, "match", draw, true)
+                .unwrap();
+        }
+        let stats = get_stats(&conn, &user.id).unwrap();
+        assert!(stats.tendency_ratio < 0.95, "ratio was {}", stats.tendency_ratio);
+    }
 }
