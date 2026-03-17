@@ -55,6 +55,11 @@ letter that precedes all letters, burning in silence against the void."</em></p>
 - [Psi–RNG Experiment](#psirng-experiment)
 - [Zodiac & Astrology](#zodiac--astrology)
   - [Hebrew Mazzaroth](#hebrew-mazzaroth) — Signs · Sefer Yetzirah · Tribes · Hoshen
+- [Runic Traditions](#runic-traditions)
+  - [Elder Futhark](#elder-futhark) — 24 runes, three aettir
+  - [Younger Futhark](#younger-futhark) — 16 Viking Age runes
+  - [Anglo-Saxon Futhorc](#anglo-saxon-futhorc) — 28+5 runes, Northumbrian extension
+  - [Armanen Runes](#armanen-runes-modern-esoteric) — modern esoteric (1908)
 - [Sacred Frequencies](#sacred-frequencies)
   - [Solfeggio Frequencies](#solfeggio-frequencies)
   - [Binaural Beats](#binaural-beats)
@@ -879,6 +884,121 @@ The Mazzaroth session provides three modes:
   associations and Hoshen stone narrative tradition
 - Hershkovitz, M. "The Hoshen Mishpat and Its Stones," *Sinai* 93 (1983) — mineralogical analysis
 - Job 38:32 (MT) — the sole biblical occurrence of the word *Mazzaroth* (מַזָּרוֹת)
+
+---
+
+## Runic Traditions
+
+**Source files:** `src/runes/mod.rs` · `src/runes/elder_futhark.rs` · `src/runes/younger_futhark.rs` · `src/runes/anglo_saxon.rs` · `src/runes/armanen.rs` · `src/runes/session.rs`
+
+The `runes` module covers four traditions of Germanic runic writing from the oldest
+inscriptions (c. 150 CE) to a modern esoteric revival (1908 CE).  Each rune carries
+a name, phonetic value, Proto-Germanic etymology, associated deity, elemental and
+cosmological correspondence, stanzas from the three medieval rune poems, esoteric
+meaning, and divinatory interpretation.
+
+### Traditions at a Glance
+
+| Tradition | Runes | Period | Primary sources |
+|-----------|-------|--------|-----------------|
+| Elder Futhark | 24 | c. 150–800 CE | Vimose comb, Ruthwell Cross |
+| Younger Futhark | 16 | c. 750–1100 CE | ~2,500 Viking Age runestones |
+| Anglo-Saxon Futhorc | 28 + 5 Northumbrian | c. 5th–11th c. | OE Rune Poem, Vienna Codex |
+| Armanen Runes | 18 | 1908 CE (modern) | List 1908; Flowers trans. 1988 |
+
+### Elder Futhark
+
+The Elder Futhark (*futark* from its first six phonemic values: ᚠ ᚢ ᚦ ᚨ ᚱ ᚲ) is the
+oldest attested Germanic runic alphabet, documented across the Germanic world from roughly
+150 CE to 800 CE.  The earliest certain inscription is the Vimose comb (Denmark, c. 160 CE);
+later examples include the Kylver Stone (Gotland, c. 400 CE), which is the first monumental
+runic inscription showing the complete futhark sequence.
+
+The 24 runes are arranged in three groups of eight called *aettir* ("families"):
+
+| Aett | Patron | Runes |
+|------|--------|-------|
+| Freyr's Aett | Freyr / Freyja | ᚠ ᚢ ᚦ ᚨ ᚱ ᚲ ᚷ ᚹ |
+| Hagal's Aett | Heimdall / Hagal | ᚺ ᚾ ᛁ ᛃ ᛇ ᛈ ᛉ ᛊ |
+| Tyr's Aett | Tyr | ᛏ ᛒ ᛖ ᛗ ᛚ ᛜ ᛞ ᛟ |
+
+Each rune entry includes stanzas from the three medieval rune poems (where applicable)
+cited with scholarly attribution:
+
+- **Old English Rune Poem** (*Rūnstæfas*, c. 8th–10th c.; Halsall 1981)
+- **Old Norwegian Rune Poem** (*Runatal*, c. 13th–15th c., MS AM 461 12mo; Page 1999)
+- **Old Icelandic Rune Poem** (*Rúnakvæði*, c. 15th c., MS AM 687d 4to; Page 1999)
+
+### Younger Futhark
+
+The Younger Futhark is a *reduction* of the Elder Futhark from 24 to 16 runes, occurring
+paradoxically during the Viking Age when Old Norse was expanding its phoneme inventory.
+The result is that a single rune must serve multiple phonemic roles.  Two graphic variants
+exist: **Long-branch** (Danish) and **Short-twig** (Swedish-Norwegian).
+
+Notable semantic shifts from Elder Futhark are explicitly documented:
+
+- ᚢ **Úr**: "aurochs" → "drizzle / slag" (Old Norse *úr*)
+- ᚴ **Kaun**: "torch" (*kaunan*) → "ulcer / sore" (Old Norse *kaun*)
+
+### Anglo-Saxon Futhorc
+
+Where the Viking Age alphabet *contracted*, the Anglo-Saxon Futhorc *expanded* the Elder
+Futhark, adding new runes for Old English sounds.  The standard 28-rune core is attested
+in the *Old English Rune Poem* (29 stanzas, the extra being Ear).  The **Northumbrian
+extension** (runes 29–33: Cweorth, Calc, Stan, Gar) is attested in the Vienna Codex
+(MS Cod. Vindob. 795) and related manuscripts.
+
+The futhorc rune **Þorn** (Thorn, ᚦ) gave its name to the Old English letter Þ, which
+survived in English orthography until replaced by *th* in the 15th century.
+
+### Armanen Runes (Modern Esoteric)
+
+> ⚠ **Historical Warning**: The Armanen system is **not historically attested**.  It was
+> constructed by the Austrian occultist Guido von List (1908) based on a claimed mystical
+> vision and on the 18 magical songs (*ljóðatal*) of the Eddic poem *Hávamál*.  Several
+> Armanen runes were subsequently appropriated by the SS (*Schutzstaffel*) — including the
+> doubled Sol rune (ᛋᛋ) as the SS insignia and the inverted Yr as the *Todesrune*.
+> These appropriations are historical crimes entirely foreign to the legitimate runic tradition.
+> The system is presented for historical and educational completeness only.
+> See: Goodrick-Clarke, Nicholas. *The Occult Roots of Nazism* (I.B. Tauris, 2004).
+
+The Armanen system's central claim — that all rune forms can be derived geometrically
+from the hexagonal snowflake pattern of Hagal — is mathematically interesting but
+has no support in academic runology.
+
+### Historical Note on Runic Divination
+
+Tacitus (*Germania*, c. 98 CE) describes Germanic lot-casting with marked nut-tree staves,
+but does not call them "runes."  Runic amulet inscriptions (e.g., the bracteates, the
+Lindholm amulet) demonstrate magical intent.  However, a formalised divinatory system
+comparable to Tarot or the I Ching is largely a product of the modern revival:
+
+- **Blum, Ralph**. *The Book of Runes* (1982) — popular but criticised by scholars for
+  adding a blank rune and reversed meanings with no historical basis.
+- **Thorsson, Edred (Stephen Flowers)**. *Futhark: A Handbook of Rune Magic* (1984) —
+  a more scholarly esoteric approach, though still modern in its systematisation.
+- **Paxson, Diana L.** *Taking Up the Runes* (2005) — integrates scholarship with practice.
+
+The application clearly labels which meanings are historically attested and which are
+modern constructions.
+
+### Runic Traditions — Sources
+
+- Antonsen, Elmer H. *Runes and Germanic Linguistics*. Berlin: Mouton de Gruyter, 2002.
+- Barnes, Michael P. *Runes: A Handbook*. Woodbridge: Boydell Press, 2012.
+- Elliott, Ralph W.V. *Runes: An Introduction*, 2nd ed. Manchester: Manchester University Press, 1989.
+- Flowers, Stephen E. *Futhark: A Handbook of Rune Magic*. York Beach, ME: Weiser Books, 1984.
+- Goodrick-Clarke, Nicholas. *The Occult Roots of Nazism*, 2nd ed. London: I.B. Tauris, 2004.
+- Halsall, Maureen. *The Old English Rune Poem: A Critical Edition*. Toronto: University of Toronto Press, 1981.
+- Jansson, Sven B.F. *Runes in Sweden*, trans. P. Foote. Stockholm: Gidlunds, 1987.
+- List, Guido von. *The Secret of the Runes* [1908], trans. Stephen E. Flowers. Rochester, VT: Destiny Books, 1988.
+- Looijenga, Tineke. *Texts and Contexts of the Oldest Runic Inscriptions*. Leiden: Brill, 2003.
+- Odenstedt, Bengt. *On the Origin and Early History of the Runic Script*. Uppsala: Almqvist & Wiksell, 1990.
+- Page, R.I. *An Introduction to English Runes*, 2nd ed. Woodbridge: Boydell Press, 1999.
+- Paxson, Diana L. *Taking Up the Runes*. San Francisco: Weiser, 2005.
+- Spurkland, Terje. *Norwegian Runes and Runic Inscriptions*. Woodbridge: Boydell Press, 2005.
+- Derolez, René. *Runica Manuscripta: The English Tradition*. Bruges: De Tempel, 1954.
 
 ---
 

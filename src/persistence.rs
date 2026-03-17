@@ -49,6 +49,15 @@ CREATE TABLE IF NOT EXISTS rng_sessions (
     beat_chance INTEGER NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
+CREATE TABLE IF NOT EXISTS readings (
+    id          TEXT    PRIMARY KEY,
+    user_id     TEXT    NOT NULL,
+    drawn_at    TEXT    NOT NULL,
+    tradition   TEXT    NOT NULL,
+    spread_type TEXT    NOT NULL,
+    cards       TEXT    NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
 ";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -217,6 +226,83 @@ pub fn get_stats(conn: &Connection, user_id: &str) -> rusqlite::Result<Cumulativ
         beat_chance_count: row.3.unwrap_or(0),
         tendency_ratio: row.4.unwrap_or(1.0),
     })
+}
+
+// ─── Reading records ──────────────────────────────────────────────────────────
+
+/// A stored reading record (Tarot, Runes, Oracle, etc.).
+pub struct ReadingRecord {
+    pub id: String,
+    pub user_name: String,
+    pub drawn_at: String,
+    pub tradition: String,
+    pub spread_type: String,
+    pub cards: String,
+}
+
+/// Persist a divination reading for a named user.
+///
+/// `tradition`   — e.g. "Angelic Tarot", "Elder Futhark", "Lenormand"
+/// `spread_type` — e.g. "Single Card", "Three-Card", "Nine-Rune Cast"
+/// `cards`       — newline-separated list of drawn card/rune descriptions
+pub fn record_reading(
+    conn: &Connection,
+    user_id: &str,
+    tradition: &str,
+    spread_type: &str,
+    cards: &str,
+) -> rusqlite::Result<String> {
+    let id = new_uuid();
+    conn.execute(
+        "INSERT INTO readings (id, user_id, drawn_at, tradition, spread_type, cards) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![id, user_id, now_utc(), tradition, spread_type, cards],
+    )?;
+    Ok(id)
+}
+
+/// Retrieve all readings for a given user, ordered newest-first.
+pub fn get_user_readings(
+    conn: &Connection,
+    user_id: &str,
+) -> rusqlite::Result<Vec<ReadingRecord>> {
+    let mut stmt = conn.prepare(
+        "SELECT r.id, u.name, r.drawn_at, r.tradition, r.spread_type, r.cards
+         FROM readings r JOIN users u ON r.user_id = u.id
+         WHERE r.user_id = ?1
+         ORDER BY r.drawn_at DESC",
+    )?;
+    let rows = stmt.query_map(params![user_id], |row| {
+        Ok(ReadingRecord {
+            id: row.get(0)?,
+            user_name: row.get(1)?,
+            drawn_at: row.get(2)?,
+            tradition: row.get(3)?,
+            spread_type: row.get(4)?,
+            cards: row.get(5)?,
+        })
+    })?;
+    rows.collect()
+}
+
+/// Retrieve all readings across all users, ordered newest-first.
+pub fn get_all_readings(conn: &Connection) -> rusqlite::Result<Vec<ReadingRecord>> {
+    let mut stmt = conn.prepare(
+        "SELECT r.id, u.name, r.drawn_at, r.tradition, r.spread_type, r.cards
+         FROM readings r JOIN users u ON r.user_id = u.id
+         ORDER BY r.drawn_at DESC",
+    )?;
+    let rows = stmt.query_map([], |row| {
+        Ok(ReadingRecord {
+            id: row.get(0)?,
+            user_name: row.get(1)?,
+            drawn_at: row.get(2)?,
+            tradition: row.get(3)?,
+            spread_type: row.get(4)?,
+            cards: row.get(5)?,
+        })
+    })?;
+    rows.collect()
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────

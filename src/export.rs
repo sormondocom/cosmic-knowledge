@@ -639,6 +639,7 @@ fn theme_for_key(key: &str) -> CulturalTheme {
         "enochian" => theme_enochian(),
         "chinese" => theme_chinese(),
         "african" => theme_african(),
+        "runic" => theme_runic(),
         _ => theme_default(),
     }
 }
@@ -930,6 +931,33 @@ fn theme_african() -> CulturalTheme {
     body { font-family: 'Gentium Plus', 'Andika', 'Noto Serif',
                          Georgia, serif; }"#,
         tradition: "African Traditions \u{2014} Yoruba If\u{00e1} \u{00b7} Akan \u{00b7} Kemetic",
+    }
+}
+
+fn theme_runic() -> CulturalTheme {
+    CulturalTheme {
+        font_imports: r#"<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">"#,
+        css_vars: r#"
+    :root {
+      --bg:          #1A1208;
+      --text:        #E8DCC0;
+      --accent:      #C8922A;
+      --header-bg:   #2C1A00;
+      --header-text: #E8DCC0;
+      --row-even:    #221600;
+      --border:      #6A4A20;
+      --sys-color:   #C8922A;
+      --calc-color:  #9A8A6A;
+      --master-color:#E8C060;
+      --aethyr-color:#4A8E7A;
+      --special-color:#C8922A;
+    }
+    body { font-family: 'IM Fell English', 'Palatino Linotype',
+                         'Book Antiqua', Georgia, serif; }
+    .page-header h1 { font-family: 'MedievalSharp', 'IM Fell English', serif;
+                      letter-spacing: 0.08em; }"#,
+        tradition: "Germanic Runic Traditions",
     }
 }
 

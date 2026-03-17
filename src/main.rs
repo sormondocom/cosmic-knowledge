@@ -14,6 +14,8 @@ mod numerology;
 mod persistence;
 mod reports;
 mod rng;
+mod runes;
+mod tarot;
 mod utils;
 mod zodiac;
 
@@ -33,6 +35,8 @@ use enochian::{random_aethyr_chord, run_enochian_session, show_aethyr_info, show
 use menu::{print_angel_banner, show_help, show_loading_screen, show_main_menu, MainMode};
 use numerology::run_numerology_session;
 use rng::run_rng_session;
+use runes::run_runes_session;
+use tarot::run_tarot_session;
 use zodiac::run_zodiac_session;
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
@@ -137,6 +141,8 @@ fn main() {
             }
             MainMode::RngExperiment => run_rng_session(),
             MainMode::Zodiac => run_zodiac_session(),
+            MainMode::Tarot => run_tarot_session(),
+            MainMode::Runes => run_runes_session(),
             MainMode::Help => show_help(),
             MainMode::Quit => {
                 if let Some(ref sys) = audio_system {

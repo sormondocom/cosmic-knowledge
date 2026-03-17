@@ -14,6 +14,9 @@
 use colored::*;
 use std::io::{self, Write};
 
+use crate::export::{handle_export, wrap_html};
+use crate::reports::chrono_now;
+
 // ─── Data types ───────────────────────────────────────────────────────────────
 
 pub struct MazzarothSign {
@@ -327,6 +330,47 @@ fn print_summary_table() {
         "{}",
         "  ╚═══╩══╩════════════╩══════════════╩════════╩══════════════╝".bright_yellow()
     );
+    println!();
+    handle_export(
+        "mazzaroth_twelve_signs",
+        || {
+            let mut s = format!("HEBREW MAZZAROTH — TWELVE SIGNS\nGenerated: {}\n\n", chrono_now());
+            s.push_str(&format!("{:<3} {:<3} {:<14} {:<16} {:<10} {:<16} {:<12} {}\n",
+                "#", "", "Hebrew", "English", "Element", "Dates", "Tribe", "Hoshen Stone"));
+            s.push_str(&"-".repeat(90));
+            s.push('\n');
+            for sg in MAZZAROTH {
+                s.push_str(&format!("{:<3} {:<3} {:<14} {:<16} {:<10} {:<16} {:<12} {}\n",
+                    sg.number, sg.symbol, sg.name, sg.english,
+                    sg.element, sg.dates, sg.tribe, sg.hoshen_stone));
+            }
+            s
+        },
+        || {
+            let mut rows = String::new();
+            for sg in MAZZAROTH {
+                rows.push_str(&format!(
+                    "<tr><td class=\"num\">{}</td><td style=\"font-size:18pt;\">{}</td>\
+                     <td class=\"sys\">{}</td><td>{}</td><td>{}</td><td>{}</td>\
+                     <td>{}</td><td class=\"meaning\">{}</td></tr>",
+                    sg.number, maz_esc(sg.symbol), maz_esc(sg.name),
+                    maz_esc(sg.english), maz_esc(sg.element), maz_esc(sg.dates),
+                    maz_esc(sg.tribe), maz_esc(sg.hoshen_stone)
+                ));
+            }
+            let body = format!(
+                "<table><thead><tr><th>#</th><th>Symbol</th><th>Hebrew</th>\
+                 <th>English</th><th>Element</th><th>Dates</th>\
+                 <th>Tribe</th><th>Hoshen Stone</th></tr></thead><tbody>{}</tbody></table>",
+                rows
+            );
+            wrap_html("Hebrew Mazzaroth — Twelve Signs", &body, "hebrew")
+        },
+    );
+}
+
+fn maz_esc(s: &str) -> String {
+    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
 }
 
 // ─── Session ──────────────────────────────────────────────────────────────────

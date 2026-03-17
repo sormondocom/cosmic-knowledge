@@ -159,6 +159,8 @@ pub enum MainMode {
     Frequencies,
     RngExperiment,
     Zodiac,
+    Tarot,
+    Runes,
     Help,
     Quit,
 }
@@ -202,6 +204,18 @@ static MAIN_ITEMS: &[MenuItem] = &[
     },
     MenuItem {
         key: "7",
+        icon: "🌟",
+        label: "Angelic Tarot",
+        hint: "Major Arcana · Minor Arcana · Shem HaMephorash · Sacred Draw",
+    },
+    MenuItem {
+        key: "8",
+        icon: "ᚠ",
+        label: "Runic Traditions",
+        hint: "Elder Futhark · Younger · Anglo-Saxon · Armanen · Readings",
+    },
+    MenuItem {
+        key: "9",
         icon: "❓",
         label: "Help & Reference",
         hint: "",
@@ -226,9 +240,11 @@ pub fn show_main_menu() -> MainMode {
             "4" => return MainMode::WorldSystems,
             "5" => return MainMode::RngExperiment,
             "6" => return MainMode::Zodiac,
-            "7" => return MainMode::Help,
+            "7" => return MainMode::Tarot,
+            "8" => return MainMode::Runes,
+            "9" => return MainMode::Help,
             "0" | "" => return MainMode::Quit,
-            _ => println!("{}", "  Please enter 0–7.".yellow()),
+            _ => println!("{}", "  Please enter 0–9.".yellow()),
         }
     }
 }
