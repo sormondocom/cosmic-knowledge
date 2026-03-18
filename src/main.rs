@@ -14,8 +14,10 @@ mod numerology;
 mod persistence;
 mod reports;
 mod rng;
+mod hymn_synth;
 mod runes;
 mod tarot;
+mod urim;
 mod utils;
 mod zodiac;
 
@@ -37,6 +39,7 @@ use numerology::run_numerology_session;
 use rng::run_rng_session;
 use runes::run_runes_session;
 use tarot::run_tarot_session;
+use urim::run_urim_session;
 use zodiac::run_zodiac_session;
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
@@ -143,6 +146,7 @@ fn main() {
             MainMode::Zodiac => run_zodiac_session(),
             MainMode::Tarot => run_tarot_session(),
             MainMode::Runes => run_runes_session(),
+            MainMode::Urim => run_urim_session(),
             MainMode::Help => show_help(),
             MainMode::Quit => {
                 if let Some(ref sys) = audio_system {

@@ -13,6 +13,8 @@ pub mod major;
 pub mod minor;
 pub mod oh_cards;
 pub mod oracle;
+pub mod thoth_major;
+pub mod thoth_minor;
 mod session;
 
 pub use session::run_tarot_session;

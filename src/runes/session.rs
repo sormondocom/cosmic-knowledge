@@ -1073,6 +1073,188 @@ fn view_rune_history() {
     }
 }
 
+/// Re-render a stored rune reading at full detail.
+///
+/// Stored formats:
+///   Upright  — `"ᚠ Fehu"`
+///   Reversed — `"ᚠ Fehu (reversed)"`
+fn recall_rune_reading(record: &crate::persistence::ReadingRecord) {
+    let card_lines: Vec<&str> = record.cards.lines().collect();
+    let count = card_lines.len();
+
+    println!();
+    println!(
+        "  {}",
+        format!("✦  RECALLED: {}  ✦", record.spread_type)
+            .bright_cyan()
+            .bold()
+    );
+    println!(
+        "  {}",
+        format!("  {} · {}", record.user_name, record.drawn_at).dimmed()
+    );
+    println!();
+
+    let norn_labels = ["Past (Urðr)", "Present (Verðandi)", "Future (Skuld)"];
+    let nine_labels = [
+        "1 — Root cause",
+        "2 — The past",
+        "3 — Near future",
+        "4 — Foundation",
+        "5 — The present",
+        "6 — The path",
+        "7 — Hopes/fears",
+        "8 — Environment",
+        "9 — Outcome",
+    ];
+
+    for (i, line) in card_lines.iter().enumerate() {
+        let line = line.trim();
+        let reversed = line.ends_with("(reversed)");
+        // Extract name: strip glyph (first whitespace-separated token) and optional " (reversed)"
+        let without_rev = if reversed {
+            line.trim_end_matches("(reversed)").trim()
+        } else {
+            line
+        };
+        // Drop the leading glyph token (may be multi-byte)
+        let name = without_rev
+            .splitn(2, char::is_whitespace)
+            .nth(1)
+            .unwrap_or(without_rev)
+            .trim();
+
+        let pos_label = if count == 3 {
+            norn_labels.get(i).copied().unwrap_or("")
+        } else if count == 9 {
+            nine_labels.get(i).copied().unwrap_or("")
+        } else {
+            ""
+        };
+
+        // Look up the rune by name in Elder Futhark
+        let rune = ELDER_FUTHARK.iter().find(|r| r.name.eq_ignore_ascii_case(name));
+
+        if let Some(rune) = rune {
+            let orientation = if reversed { " ↓ (reversed)" } else { "" };
+            println!(
+                "  {}  {}{}",
+                rune.glyph.bright_white().bold(),
+                rune.name.bright_yellow().bold(),
+                orientation.dimmed(),
+            );
+            if !pos_label.is_empty() {
+                println!("  {}", format!("  Position: {}", pos_label).dimmed());
+            }
+            if reversed && !rune.meaning_reversed.is_empty()
+                && !rune.meaning_reversed.starts_with('(')
+            {
+                println!(
+                    "  {}  {}",
+                    "  Reversed:".bright_red(),
+                    rune.meaning_reversed.white()
+                );
+            } else {
+                println!(
+                    "  {}  {}",
+                    "  Meaning: ".bright_green(),
+                    truncate(rune.meaning_upright, 70).white()
+                );
+            }
+            if count == 1 {
+                println!("  {}", "  Esoteric:".bright_cyan());
+                for wl in word_wrap(rune.esoteric, 72) {
+                    println!("    {}", wl.dimmed());
+                }
+            }
+            println!();
+        } else {
+            println!("  {}", line.dimmed());
+            println!();
+        }
+    }
+
+    // Export the recalled reading
+    let querent = record.user_name.clone();
+    let drawn_at = record.drawn_at.clone();
+    let spread = record.spread_type.clone();
+    let cards_text = record.cards.clone();
+    handle_export(
+        &format!(
+            "recalled_rune_{}",
+            record.drawn_at.replace(' ', "_").replace(':', "")
+        ),
+        || {
+            let mut s = format!(
+                "RECALLED RUNE READING — {}\nQuerent: {} · {}\n\n",
+                spread, querent, drawn_at
+            );
+            for line in cards_text.lines() {
+                let line = line.trim();
+                let rev = line.ends_with("(reversed)");
+                let without_rev = if rev { line.trim_end_matches("(reversed)").trim() } else { line };
+                let name = without_rev.splitn(2, char::is_whitespace).nth(1).unwrap_or(without_rev).trim();
+                if let Some(r) = ELDER_FUTHARK.iter().find(|r| r.name.eq_ignore_ascii_case(name)) {
+                    s.push_str(&format!(
+                        "{} {}  {}\n  {}\n\n",
+                        r.glyph,
+                        r.name,
+                        if rev { "(reversed)" } else { "" },
+                        if rev && !r.meaning_reversed.is_empty() && !r.meaning_reversed.starts_with('(') {
+                            r.meaning_reversed
+                        } else {
+                            r.meaning_upright
+                        },
+                    ));
+                }
+            }
+            s
+        },
+        || {
+            let mut rows = String::new();
+            for (i, line) in cards_text.lines().enumerate() {
+                let line = line.trim();
+                let rev = line.ends_with("(reversed)");
+                let without_rev = if rev { line.trim_end_matches("(reversed)").trim() } else { line };
+                let name = without_rev.splitn(2, char::is_whitespace).nth(1).unwrap_or(without_rev).trim();
+                let pos = if count == 3 {
+                    norn_labels.get(i).copied().unwrap_or("")
+                } else if count == 9 {
+                    nine_labels.get(i).copied().unwrap_or("")
+                } else {
+                    ""
+                };
+                if let Some(r) = ELDER_FUTHARK.iter().find(|r| r.name.eq_ignore_ascii_case(name)) {
+                    let meaning = if rev && !r.meaning_reversed.is_empty() && !r.meaning_reversed.starts_with('(') {
+                        r.meaning_reversed
+                    } else {
+                        r.meaning_upright
+                    };
+                    rows.push_str(&format!(
+                        "<tr><td class=\"sys\">{} {}</td><td>{}</td><td>{}</td><td class=\"meaning\">{}</td></tr>",
+                        html_esc(r.glyph),
+                        html_esc(r.name),
+                        html_esc(pos),
+                        if rev { "Reversed" } else { "Upright" },
+                        html_esc(meaning),
+                    ));
+                }
+            }
+            let body = format!(
+                "<h2 style=\"color:var(--accent);\">Recalled: {}</h2>\
+                 <p class=\"meta\">Querent: {} · {}</p>\
+                 <table><thead><tr><th>Rune</th><th>Position</th><th>Orientation</th><th>Meaning</th></tr></thead>\
+                 <tbody>{}</tbody></table>",
+                html_esc(&spread),
+                html_esc(&querent),
+                html_esc(&drawn_at),
+                rows
+            );
+            wrap_html(&format!("Recalled Rune Reading — {}", spread), &body, "runic")
+        },
+    );
+}
+
 fn print_rune_readings_table(readings: &[crate::persistence::ReadingRecord], title: &str) {
     println!();
     println!("{}", format!("  ══  {}  ══", title).bright_cyan().bold());
@@ -1082,15 +1264,16 @@ fn print_rune_readings_table(readings: &[crate::persistence::ReadingRecord], tit
         return;
     }
     println!(
-        "  {:<20} {:<24} {:<18} {:<16} {}",
+        "  {:<4} {:<20} {:<24} {:<18} {:<16} {}",
+        "#".bold(),
         "User".bold(),
         "Date".bold(),
         "Tradition".bold(),
         "Spread".bold(),
         "Runes".bold(),
     );
-    println!("  {}", "─".repeat(90).dimmed());
-    for r in readings {
+    println!("  {}", "─".repeat(94).dimmed());
+    for (i, r) in readings.iter().enumerate() {
         let runes_preview: String = r.cards.lines().take(3).collect::<Vec<_>>().join(", ");
         let runes_preview = if r.cards.lines().count() > 3 {
             format!("{}, …", runes_preview)
@@ -1098,7 +1281,8 @@ fn print_rune_readings_table(readings: &[crate::persistence::ReadingRecord], tit
             runes_preview
         };
         println!(
-            "  {:<20} {:<24} {:<18} {:<16} {}",
+            "  {:<4} {:<20} {:<24} {:<18} {:<16} {}",
+            (i + 1).to_string().bright_cyan(),
             r.user_name.bright_yellow(),
             r.drawn_at.dimmed(),
             r.tradition.cyan(),
@@ -1107,6 +1291,23 @@ fn print_rune_readings_table(readings: &[crate::persistence::ReadingRecord], tit
         );
     }
     println!();
+
+    // Offer recall of individual reading
+    print!(
+        "{}",
+        "  ▸ Enter number to recall a reading in full detail (Enter to skip): "
+            .bold()
+            .bright_yellow()
+    );
+    io::stdout().flush().unwrap_or(());
+    let mut sel_buf = String::new();
+    io::stdin().read_line(&mut sel_buf).unwrap_or(0);
+    if let Ok(n) = sel_buf.trim().parse::<usize>() {
+        if n >= 1 && n <= readings.len() {
+            recall_rune_reading(&readings[n - 1]);
+            return;
+        }
+    }
 
     // Export
     let readings_owned: Vec<crate::persistence::ReadingRecord> = readings.iter().map(|r| {

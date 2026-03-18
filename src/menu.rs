@@ -161,6 +161,7 @@ pub enum MainMode {
     Zodiac,
     Tarot,
     Runes,
+    Urim,
     Help,
     Quit,
 }
@@ -216,6 +217,12 @@ static MAIN_ITEMS: &[MenuItem] = &[
     },
     MenuItem {
         key: "9",
+        icon: "ℵ",
+        label: "Urim & Thummim",
+        hint: "Oracle of the High Priest · Breastplate · Binary Oracle",
+    },
+    MenuItem {
+        key: "h",
         icon: "❓",
         label: "Help & Reference",
         hint: "",
@@ -242,9 +249,10 @@ pub fn show_main_menu() -> MainMode {
             "6" => return MainMode::Zodiac,
             "7" => return MainMode::Tarot,
             "8" => return MainMode::Runes,
-            "9" => return MainMode::Help,
+            "9" => return MainMode::Urim,
+            "h" | "H" => return MainMode::Help,
             "0" | "" => return MainMode::Quit,
-            _ => println!("{}", "  Please enter 0–9.".yellow()),
+            _ => println!("{}", "  Please enter 0–9 or h.".yellow()),
         }
     }
 }

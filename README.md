@@ -9,7 +9,8 @@
 
 <p>A Rust terminal application for analyzing words and phrases through ten numerological and
 gematria traditions, exploring Enochian angelology, navigating world cosmological systems,
-exploring the Hebrew Mazzaroth zodiac, and generating sacred-frequency WAV files.</p>
+exploring the Hebrew Mazzaroth zodiac, performing Tarot and Urim & Thummim divination with
+full scholarly attribution, and generating sacred-frequency WAV files.</p>
 
 <br/>
 
@@ -60,6 +61,13 @@ letter that precedes all letters, burning in silence against the void."</em></p>
   - [Younger Futhark](#younger-futhark) — 16 Viking Age runes
   - [Anglo-Saxon Futhorc](#anglo-saxon-futhorc) — 28+5 runes, Northumbrian extension
   - [Armanen Runes](#armanen-runes-modern-esoteric) — modern esoteric (1908)
+- [Tarot](#tarot)
+  - [Angelic Tarot & Oracle Cards](#angelic-tarot--oracle-cards)
+  - [OH Cards](#oh-cards)
+  - [Crowley–Harris Thoth Tarot](#crowleyharis-thoth-tarot)
+- [Urim & Thummim](#urim--thummim)
+  - [The Breastplate of Judgment](#the-breastplate-of-judgment)
+  - [Binary Oracle](#binary-oracle)
 - [Sacred Frequencies](#sacred-frequencies)
   - [Solfeggio Frequencies](#solfeggio-frequencies)
   - [Binaural Beats](#binaural-beats)
@@ -106,6 +114,12 @@ letter that precedes all letters, burning in silence against the void."</em></p>
 | Browse all twelve Mazzaroth signs | option **6** → sub-option **1** → sub-option **1** |
 | Look up a Mazzaroth sign by number (1–12) | option **6** → sub-option **1** → sub-option **2** |
 | Find my Mazzaroth sign by birth date | option **6** → sub-option **1** → sub-option **3** |
+| Draw a Tarot spread (Angelic / Oracle / OH Cards) | option **8** → sub-option **1**–**3** |
+| Browse the Crowley Thoth Tarot major arcana | option **8** → sub-option **4** → **1** |
+| Draw a Thoth spread | option **8** → sub-option **4** → **5** |
+| Cast the Urim & Thummim binary oracle | option **9** → sub-option **2** |
+| Browse the twelve Hoshen breastplate stones | option **9** → sub-option **1** |
+| Recall a past reading in full detail | any tradition → **View Reading History** |
 | Skip the intro animation | `cargo run -- --fast` |
 | Run silently (no audio) | `cargo run -- --silent` |
 | Run all unit tests | `cargo test` |
@@ -136,6 +150,13 @@ letter that precedes all letters, burning in silence against the void."</em></p>
 | `rng.rs` | Psi–RNG Experiment | Experimental parapsychology | RDRAND hardware TRNG; configurable range and delay; user profiles; session history |
 | `persistence.rs` | User profiles & session history | Cross-session data layer | SQLite via rusqlite (bundled); UUID v4 user IDs; cumulative psi statistics |
 | `zodiac/mazzaroth.rs` | Hebrew Mazzaroth | Kabbalistic / Jewish astrology | Twelve signs · Sefer Yetzirah letters · Twelve Tribes · Hoshen gemstones |
+| `tarot/session.rs` | Angelic Tarot | Modern angelic oracle tradition | 44-card deck; three spreads; Gregorian chant synthesis before reveal |
+| `tarot/session.rs` | Oracle Cards | Multi-tradition oracle deck | Single-card draws with contemplative openings |
+| `tarot/session.rs` | OH Cards | Jungian projective oracle | Image + word card pairings; contemplative modal synthesis |
+| `tarot/thoth_major.rs` | Crowley–Harris Thoth Tarot (Major Arcana) | Thelemic / Golden Dawn (1943) | 22 trump cards with Crowley's renamed attributions, Hebrew paths, Qabalistic trees |
+| `tarot/thoth_minor.rs` | Crowley–Harris Thoth Tarot (Minor Arcana) | Thelemic / Golden Dawn (1943) | 56 pip + court cards; Disks suit; Knight/Queen/Prince/Princess courts; Crowley pip titles |
+| `urim/breastplate.rs` | Hoshen Breastplate | Ancient Israelite / Biblical | 12 stones, 4×3 grid, tribal attributions, gemological identifications (Exodus 28:17–20) |
+| `urim/session.rs` | Urim & Thummim Oracle | Biblical / Second Temple | Weighted binary oracle (Urim 40% / Thummim 40% / Silence 20%); SQLite persistence |
 
 **Output formats:** interactive terminal · plain-text reports (`exports/*.txt`) ·
 HTML reports · PDF reports · WAV audio (`exports/*.wav`)
@@ -154,9 +175,14 @@ library of gematria and cosmological traditions. It lets users:
   Yoruba Ifá Odù, Akan day-name souls, Kemetic number symbolism).
 - Explore the Hebrew Mazzaroth — the twelve zodiacal signs as interpreted through Sefer Yetzirah,
   the Twelve Tribes of Israel, and the Hoshen (High Priest's breastplate) gemstones.
+- Perform Tarot readings across three traditions: Angelic Tarot (with Gregorian chant synthesis),
+  OH Cards (Jungian projective), and the Crowley–Harris Thoth Tarot with complete Thelemic attributions.
+- Cast the Biblical Urim & Thummim binary oracle, browse the twelve Hoshen breastplate stones, and
+  read the scholarly lore on this ancient priestly divination instrument.
 - Export pure-tone Solfeggio frequencies and binaural-beat WAV files for meditative use.
 - Save session results to timestamped plain-text files or send formatted HTML reports to a system
-  printer.
+  printer. Reading history (Tarot, Runes, Urim & Thummim) persists across sessions in an embedded
+  SQLite database and can be recalled in full detail from within the application.
 
 The application is structured so that all domain logic lives in library modules; `main.rs` is a
 thin dispatcher of session loops. Each tradition is isolated in its own source file, making it
@@ -1002,6 +1028,284 @@ modern constructions.
 
 ---
 
+## Tarot
+
+**Source files:** `src/tarot/mod.rs` · `src/tarot/session.rs` · `src/tarot/thoth_major.rs` · `src/tarot/thoth_minor.rs`
+
+The `tarot` module provides three distinct card traditions under a unified session interface.
+All draw sessions prompt for a querent name, persist the reading to the SQLite database
+(shareable with the Runes and Urim & Thummim reading history), and offer HTML / text export.
+Before each reading is revealed, an **angelic hymn** (Tarot / Oracle traditions) or
+**contemplative modal tone** (OH Cards) is synthesized and played on a background thread so
+playback never blocks the interface.
+
+### Angelic Tarot & Oracle Cards
+
+The **Angelic Tarot** follows the tradition of angel-attributed card decks popular in modern
+New Age and angelic devotion contexts. Card draws offer three spread types (single, three-card,
+and Celtic Cross) and full per-card detail on upright and reversed meanings.
+
+The **Oracle** deck provides single-card draws from a broad oracle tradition, intended for
+open-ended intuitive reading rather than the fixed positional framework of Tarot.
+
+Before each Angelic Tarot or Oracle draw is revealed, one of eight **Angelic Hymns** is displayed
+and its Gregorian melody is synthesized via `src/hymn_synth.rs`:
+
+| Index | Hymn | Modal Basis | Liturgical Source |
+|-------|------|-------------|-------------------|
+| 0 | Sanctus | Mode VII — Mixolydian | *Missa de Angelis* (Mass VIII, Gregorian Chant) |
+| 1 | Gloria | Mode VI — Hypolydian | *Gloria in excelsis Deo*, ancient doxology |
+| 2 | Trisagion | Mode III — Phrygian | Byzantine / Eastern rite (5th c.); Latin reception |
+| 3 | Te Deum | Mode IV — Hypophrygian | Ambrosian hymn, attr. Ambrose & Augustine (c. 387 CE) |
+| 4 | Agnus Dei | Mode VII — Mixolydian | Roman Mass, intro. c. 7th c. (Sergius I, d. 701) |
+| 5 | Veni Creator Spiritus | Mode VIII — Hypomixolydian | attr. Rabanus Maurus (9th c.) |
+| 6 | Alma Redemptoris Mater | Mode V — Lydian | attr. Hermann of Reichenau (*Hermannus Contractus*, d. 1054) |
+| 7 | O Lux Beata Trinitas | Mode II — Hypodorian | attr. St Ambrose of Milan (d. 397 CE) |
+
+**Synthesis method:** Melodies are rendered in pure Rust — no OS TTS or external samples.
+Each note is built from a harmonic series (6 overtones, three detuned layers at ×0.997/1.000/1.003),
+an ADSR envelope (55 ms Hann attack, 85 ms linear release), and six-tap Schroeder cathedral reverb.
+Playback runs on a detached background thread; the calling thread returns immediately.
+
+**Key sources:**
+- Apel, W. *Gregorian Chant*. Bloomington: Indiana University Press, 1958. — Modal theory and
+  melodic classification (pp. 133–191, 392–419).
+- Hiley, D. *Western Plainchant: A Handbook*. Oxford: Clarendon Press, 1993. — Comprehensive
+  treatment of modes, psalm tones, and hymn classification (pp. 48–87, 151–176).
+- Stäblein, B. *Monumenta Monodica Medii Aevi*, Vol. 1 (*Hymnen*). Kassel: Bärenreiter, 1956. —
+  Critical edition of Latin hymn melodies including *Veni Creator*, *Te Deum*, and Office hymns.
+- Connelly, J. *Hymns of the Roman Liturgy*. London: Longmans, 1957. — Authoritative English
+  translation and commentary on the eight hymns implemented here.
+- *Liber Usualis* (1961 ed.; Desclée de Brouwer). — Standard Gregorian chant reference for
+  *Sanctus*, *Gloria*, *Agnus Dei*, and *Alma Redemptoris Mater*.
+
+### OH Cards
+
+OH Cards (Ofra Ayalon & Moritz Egetmeyer, 1981) are a projective Jungian image–word pairing
+system designed to stimulate free association and narrative self-exploration. The application
+draws one image card and one word card; the pair is displayed with a Jungian or contemplative
+opening reflection drawn from the tradition of depth psychology.
+
+Before the OH Cards draw is revealed, one of eight **contemplative modal tones** is synthesized
+in the D Dorian mode — a modal centre associated in medieval music theory with meditative quality
+(Mode I / authentic Dorian, *finalis* D).
+
+**Key sources:**
+- Ayalon, O. & Egetmeyer, M. *OH* (projective card set). OH Publishing, 1981. — Original OH Card system.
+- Jung, C.G. *The Archetypes and the Collective Unconscious* (CW 9/I). Princeton: Princeton
+  University Press, 1959. — Archetypal theory underlying projective card interpretation.
+- Samuels, A., Shorter, B. & Plaut, F. *A Critical Dictionary of Jungian Analysis*. London:
+  Routledge & Kegan Paul, 1986. — Reference for Jungian concepts used in contemplative openings.
+
+### Crowley–Harris Thoth Tarot
+
+**Source files:** `src/tarot/thoth_major.rs` · `src/tarot/thoth_minor.rs`
+
+The Thoth Tarot was designed by Aleister Crowley and painted by Lady Frieda Harris between 1938
+and 1943; it was first published posthumously in 1969. It represents the most systematic attempt
+to encode the complete Hermetic Qabalah — including Thelemic attributions, the Tree of Life, the
+thirty-two paths, Hebrew letter correspondences, and astrological dignities — into a 78-card deck.
+
+#### Structural Divergences from Rider–Waite–Smith
+
+Crowley introduced deliberate structural changes that distinguish the Thoth Tarot from the
+earlier RWS tradition (A.E. Waite & Pamela Colman Smith, 1909):
+
+| Thoth Card | RWS Equivalent | Change | Justification |
+|------------|----------------|--------|---------------|
+| Adjustment (VIII) | Justice (XI) | Renamed and renumbered | Restores the "correct" Qabalistic order per *Liber AL* |
+| Lust (XI) | Strength (VIII) | Renamed and renumbered | Replaces Victorian sentiment with Thelemic *Babalon* imagery |
+| Art (XIV) | Temperance (XIV) | Renamed | "Art" is the Great Work of alchemical union (*coniunctio*) |
+| Aeon (XX) | Judgement (XX) | Renamed | Replaces Christian Last Judgement with the Thelemic Aeon of Horus |
+| Universe (XXI) | The World (XXI) | Renamed | Shift from geocentric to cosmological framing |
+| Emperor (IV) | Emperor (IV) | Path assignment swapped | Emperor = Tzaddi (path 28); Star = Hé (path 15) per *Liber AL* II:16 |
+| Star (XVII) | The Star (XVII) | Path assignment swapped | As above — "All these old letters of my Book are aright; but Tzaddi is not the Star" |
+| Disks (suit) | Pentacles / Coins | Renamed | Earth suit renamed to emphasize dynamic material force over static symbol |
+
+**Court card titles:** Crowley replaces King / Queen / Knight / Page with
+**Knight** (fire aspect of the element) / **Queen** (water) / **Prince** (air) / **Princess** (earth).
+This aligns the court with elemental sub-qualities under each suit's ruling element.
+
+#### Major Arcana Sources and Attributions
+
+Each of the 22 major arcana entries in `ThothMajor` carries:
+- **Hebrew letter** and **Tree of Life path** (numbered 11–32 per *Sefer Yetzirah* / Hermetic convention)
+- **Sephirothic pair** (the two *Sephiroth* connected by the path)
+- **Astrological attribution** (planet or sign)
+- **Thelemic grade title** (from Crowley's A∴A∴ system)
+- **Harris symbolism** (projective geometry and alchemical imagery Lady Harris encoded in the paintings)
+- Upright and reversed divinatory meanings
+
+Key swaps implemented verbatim from *Liber AL vel Legis* (II:16) and systematized in
+*The Book of Thoth* (Crowley, 1944):
+
+- **The Emperor (IV):** Hebrew letter **Tzaddi** (צ), path **28**, connects *Netzach*–*Yesod*.
+- **The Star (XVII):** Hebrew letter **Hé** (ה), path **15**, connects *Chokmah*–*Tiphareth*.
+
+#### Minor Arcana
+
+The 56 minor arcana are organized as four suits of 14 cards (Ace through 10, plus four court cards).
+Crowley's pip card titles encode the astrological and Qabalistic qualities of each numbered position:
+
+| Suit | Element | Pip themes | Example title |
+|------|---------|-----------|---------------|
+| Wands | Fire | Will, dominion, strife, swiftness | **Dominion** (4 of Wands) |
+| Cups | Water | Love, pleasure, abundance, debauch | **Abundance** (6 of Cups) |
+| Swords | Air | Peace, science, sorrow, ruin, futility | **Ruin** (10 of Swords) |
+| Disks | Earth | Change, failure, works, wealth, success | **Wealth** (10 of Disks) |
+
+**Key sources:**
+- Crowley, A. *The Book of Thoth: A Short Essay on the Tarot of the Egyptians*. London: O.T.O., 1944.
+  (Repr. Weiser, 1969; Samuel Weiser edition is standard.) — **Primary reference** for all
+  attributions, pip titles, court card correspondences, and the He/Tzaddi inversion.
+- Crowley, A. *Liber AL vel Legis* (*The Book of the Law*). Privately printed, 1909; first
+  authorized ed. O.T.O., 1913. — II:16 is the primary textual authority for the Tzaddi/Star swap.
+- Crowley, A. *Liber 777 vel Prolegomena Symbolica ad Systemam Sceptico-Mysticae Viae Explicandae*.
+  London: privately printed, 1909. — Complete Hermetic correspondence tables; Tree of Life paths,
+  Hebrew letters, astrological dignities, and divine names used throughout the Thoth system.
+- DuQuette, L.M. *Understanding Aleister Crowley's Thoth Tarot*. San Francisco: Weiser, 2003. —
+  Accessible modern commentary; **secondary reference** for Harris symbolism and card-by-card
+  exegesis. Essential companion to Crowley's often elliptic primary text.
+- Harris, F. (Lady). *Thoth Tarot* (original paintings, 1938–1943; now held at the Warburg
+  Institute, University of London). — Primary artistic source; Harris's projective geometry
+  (stella octangula, interlaced triangles) is documented in her correspondence with Crowley
+  (repr. in Kaczynski below).
+- Kaczynski, R. *Perdurabo: The Life of Aleister Crowley*, rev. ed. Berkeley: North Atlantic
+  Books, 2010. — Scholarly biography; chapter 34 documents the Thoth Tarot project, Harris's
+  correspondence, and the deck's publication history.
+- Regardie, I. *The Golden Dawn*, 6th ed. St Paul: Llewellyn, 1989. — Pre-Thoth Golden Dawn
+  attributions against which Crowley's changes can be measured.
+- Wang, R. *The Qabalistic Tarot: A Textbook of Mystical Philosophy*. York Beach: Weiser, 1983. —
+  Comparative Qabalistic analysis of major arcana paths used as cross-reference for path numbering.
+- Mathers, S.L.M. *The Kabbalah Unveiled*. London: Redway, 1887. — Foundational Western Hermetic
+  Qabalah reference for Sephirotic attributions.
+
+> **Note on Thelemic provenance.** The Thoth Tarot is embedded in Thelema, a syncretic
+> religious-philosophical system Crowley founded after receiving *Liber AL vel Legis* (Cairo, 1904).
+> The card attributions encode Thelemic theology (the Aeons of Isis, Osiris, and Horus;
+> *Babalon*; the Beast 666) alongside the inherited Golden Dawn Qabalah. The application
+> presents these attributions descriptively, without endorsing or dismissing their theological claims.
+
+---
+
+## Urim & Thummim
+
+**Source files:** `src/urim/mod.rs` · `src/urim/breastplate.rs` · `src/urim/session.rs`
+
+The Urim and Thummim (*אוּרִים וְתֻמִּים*, *ʾÛrîm wə-Tummîm*) were objects kept within the
+**Hoshen Mishpat** — the High Priest's breastplate (Exodus 28:15–30) — and consulted as a binary
+oracle to determine the divine will in matters of communal importance. Their exact physical form
+is unknown; scholarly reconstructions range from inscribed lots to luminous stones. This module
+provides both a reference subsystem for the Hoshen breastplate and an interactive oracle.
+
+### The Breastplate of Judgment
+
+The Hoshen (*חֹשֶׁן הַמִּשְׁפָּט*, "breastplate of judgment") carried twelve gemstones arranged
+in a 4×3 grid (four rows of three stones), each engraved with the name of one of the Twelve Tribes
+of Israel (Exodus 28:17–20). The `breastplate.rs` file encodes all twelve stones with their:
+- Hebrew name and standard transliteration
+- Mineralogical identification (following LXX, Josephus *Antiquities* III.7.5, and Hershkovitz 1983)
+- Tribal attribution and tribal meaning
+- Color and associated attributes
+- Scripture cross-reference
+
+**The twelve Hoshen stones (Exodus 28:17–20, MT):**
+
+| Row | Position | Hebrew | Transliteration | Tribe | Identification |
+|-----|----------|--------|-----------------|-------|----------------|
+| 1 | 1 | אֹדֶם | *Odem* | Reuben | Ruby / Carnelian |
+| 1 | 2 | פִּטְדָה | *Pitdah* | Simeon | Topaz / Peridot |
+| 1 | 3 | בָּרֶקֶת | *Bareket* | Levi | Emerald / Smaragdus |
+| 2 | 1 | נֹפֶךְ | *Nofekh* | Judah | Turquoise / Carbuncle |
+| 2 | 2 | סַפִּיר | *Sapir* | Issachar | Sapphire / Lapis Lazuli |
+| 2 | 3 | יַהֲלֹם | *Yahalom* | Zebulun | Diamond / Onyx |
+| 3 | 1 | לֶשֶׁם | *Leshem* | Dan | Ligure / Jacinth |
+| 3 | 2 | שְׁבוֹ | *Shevo* | Naphtali | Agate / Banded Quartz |
+| 3 | 3 | אַחְלָמָה | *Achlamah* | Gad | Amethyst |
+| 4 | 1 | תַּרְשִׁישׁ | *Tarshish* | Asher | Beryl / Chrysolite |
+| 4 | 2 | שֹׁהַם | *Shoham* | Joseph (Ephraim) | Onyx / Beryl |
+| 4 | 3 | יָשְׁפֵה | *Yashfeh* | Benjamin | Jasper |
+
+> **Note on gem identifications.** Ancient Hebrew mineral vocabulary does not map cleanly to modern
+> mineralogy. The identifications above synthesize the Septuagint (LXX), Josephus (*Antiquities*
+> III.7.5), the Vulgate, Pliny the Elder (*Naturalis Historia* XXXVII), Nahmanides (*Commentary on
+> Exodus*), and modern gemological scholarship (Hershkovitz 1983; Smeets 1984). Multiple identifications
+> separated by "/" indicate contested assignments. The application displays these variants.
+
+### Binary Oracle
+
+The Urim & Thummim oracle simulates the classical binary consultation described in 1 Samuel 14:41
+(LXX text), Numbers 27:21, and Joshua 7:14–18. The three possible outcomes — **Urim** (divine
+affirmation), **Thummim** (divine negation), and **Silence** (no answer given) — are weighted to
+reflect the relative frequency reported in the biblical narrative:
+
+| Outcome | Probability | Biblical parallel |
+|---------|-------------|------------------|
+| Urim (Light / Yes) | 40 % | Consultation answered affirmatively |
+| Thummim (Perfection / No) | 40 % | Consultation answered negatively |
+| Silence | 20 % | God does not answer (1 Sam 14:37; 28:6) |
+
+Randomness is drawn from the hardware TRNG (Intel RDRAND via the `rdrand` crate) with fallback
+to the OS CSPRNG (`getrandom`). Each cast randomly illuminates one of the twelve breastplate stones.
+Results are persisted to the SQLite `readings` table (tradition = "Urim & Thummim",
+spread = "Binary Oracle") and appear in the reading history browser.
+
+#### Historical and Scholarly Context
+
+The application's Historical Lore section covers the following topics with primary and secondary
+source attribution:
+
+1. **Etymology.** *ʾÛrîm* derives from Heb. *ʾôr* ("light"); *Tummîm* from *tōm* ("completeness /
+   integrity"). The LXX renders them as *dēloi* ("revelations") and *alētheia* ("truth"), suggesting
+   a binary light/dark or yes/no function. See Lindblom (1962), Urim entry.
+2. **Biblical occurrences.** Exodus 28:30; Leviticus 8:8; Numbers 27:21; Deuteronomy 33:8;
+   1 Samuel 14:41 (LXX); 28:6; Ezra 2:63; Nehemiah 7:65.
+3. **Mechanism.** Theories include: (a) sacred lots drawn from the breastplate pouch (Josephus;
+   Talmud Bavli, *Yoma* 73b); (b) luminous stones that spelled divine answers letter by letter
+   (Talmud Bavli, *Yoma* 73b; Rashi); (c) a priestly mantic device of otherwise unknown form
+   (Lindblom 1962; Urim and Thummim, *Encyclopedia Judaica* 16:7–9).
+4. **Second Temple absence.** The *Talmud Bavli* records that the Urim and Thummim ceased to
+   function (*batel*) after the First Temple's destruction (587/586 BCE; *Sotah* 48b; *Yoma* 21b).
+   They are absent from the Second Temple inventory (*Ezra* 2:63; Maimonides, *Mishneh Torah*,
+   *Hilkhot Kelei ha-Mikdash* 10:10).
+5. **Josephus.** *Antiquities of the Jews* III.7.5 describes the stones flashing brilliantly when
+   the answer was positive, providing the earliest explicit account of a luminous mechanism.
+6. **Talmudic tradition.** The Talmud (*Yoma* 73b) holds that the letters of the tribal names on
+   the breastplate would illuminate to spell out the divine response, read by the High Priest through
+   ruach ha-kodesh (holy spirit).
+7. **Maimonides.** *Mishneh Torah*, *Hilkhot Kelei ha-Mikdash* 10:10: the High Priest consulted
+   the Urim and Thummim only for matters of national importance (kings, courts, military commanders).
+8. **Agrippan reception.** Agrippa (*De Occulta Philosophia* II.22, 1531) treats the twelve
+   breastplate gems as a complete astrological correspondence system linking the tribes, planets,
+   and signs of the zodiac.
+
+**Key sources:**
+- Exodus 28:15–30; 1 Samuel 14:41 (LXX); Numbers 27:21 — Primary biblical texts.
+- Josephus, Flavius. *Antiquities of the Jews* (*Antiquitates Judaicae*), III.7.5 (c. 93–94 CE);
+  trans. Whiston, W. Edinburgh: Nimmo, 1867. — Earliest extant description of the luminescence mechanism.
+- Talmud Bavli, tractates *Yoma* 73a–b; *Sotah* 48b. In *The Babylonian Talmud*, ed. Epstein, I.
+  London: Soncino Press, 1935–1952. — Rabbinic letter-illumination theory and cessation traditions.
+- Maimonides (Rabbi Moses ben Maimon). *Mishneh Torah*, *Hilkhot Kelei ha-Mikdash* 10:10 (12th c.);
+  trans. Yale Judaica Series. New Haven: Yale University Press. — Authoritative codification of who
+  could consult the Urim and Thummim and for what purposes.
+- Nahmanides (Rabbi Moses ben Nahman). *Commentary on the Torah: Exodus* (13th c.);
+  trans. Chavel, C.B. New York: Shilo Publishing, 1973. — Medieval exegesis of the breastplate stones.
+- Lindblom, J. "Lot-Casting in the Old Testament." *Vetus Testamentum* 12, no. 2 (1962): 164–178. —
+  Scholarly analysis of the consultation mechanism; argues for a sacred lot interpretation.
+- *Encyclopedia Judaica*, 2nd ed. Jerusalem: Keter, 2007. Articles "Urim and Thummim" (vol. 20, pp.
+  421–423) and "Breastplate" (vol. 4, pp. 158–161). — Standard scholarly reference.
+- Hershkovitz, M. "The Hoshen Mishpat and Its Stones." *Sinai* 93 (1983). — Mineralogical analysis.
+- Smeets, R. *Gems and Jewelry*. New York: Crescent Books, 1984. — Gemological cross-reference.
+- Agrippa, H.C. *De Occulta Philosophia Libri Tres*, II.22 (1531); trans. Tyson, D. St Paul:
+  Llewellyn, 1993. — Renaissance reception; astrological breastplate correspondences.
+- Pliny the Elder. *Naturalis Historia* XXXVII (c. 77 CE); trans. Rackham, H. Cambridge: Harvard
+  University Press / Loeb Classical Library, 1962. — Antique gemological descriptions used for
+  cross-referencing Hebrew stone names.
+- Sarna, N.M. *Exploring Exodus: The Heritage of Biblical Israel*. New York: Schocken Books, 1986. —
+  Modern biblical scholarship on the priestly vestments and Hoshen (ch. 8).
+
+---
+
 ## Sacred Frequencies
 
 **Source file:** `src/audio.rs`
@@ -1536,6 +1840,52 @@ The user may accept the suggested stem or provide a custom name at the save prom
   analysis of the twelve Hoshen gem names
 - Job 38:32 (MT) — sole biblical occurrence of *Mazzaroth* (מַזָּרוֹת)
 
+### Tarot
+
+- Crowley, A. *The Book of Thoth: A Short Essay on the Tarot of the Egyptians*. London: O.T.O., 1944.
+  (Repr. New York: Samuel Weiser, 1969.) — **Primary reference** for all Thoth Tarot attributions.
+- Crowley, A. *Liber AL vel Legis* (*The Book of the Law*). Cairo, 1904; first auth. ed. O.T.O., 1913. —
+  II:16 is the textual authority for the He/Tzaddi inversion.
+- Crowley, A. *Liber 777 vel Prolegomena Symbolica*. London: privately printed, 1909. —
+  Complete Hermetic correspondence tables; Tree of Life paths and Hebrew letter attributions.
+- DuQuette, L.M. *Understanding Aleister Crowley's Thoth Tarot*. San Francisco: Weiser, 2003. —
+  Modern exegesis; secondary reference for Harris's projective geometry symbolism.
+- Kaczynski, R. *Perdurabo: The Life of Aleister Crowley*, rev. ed. Berkeley: North Atlantic Books, 2010. —
+  Documents the Thoth Tarot project and Harris–Crowley correspondence.
+- Regardie, I. *The Golden Dawn*, 6th ed. St Paul: Llewellyn, 1989. — Pre-Thoth Golden Dawn attributions.
+- Wang, R. *The Qabalistic Tarot: A Textbook of Mystical Philosophy*. York Beach: Weiser, 1983. —
+  Comparative Qabalistic analysis of major arcana paths.
+- Mathers, S.L.M. *The Kabbalah Unveiled*. London: Redway, 1887. — Foundational Western Hermetic Qabalah.
+- Apel, W. *Gregorian Chant*. Bloomington: Indiana University Press, 1958. — Modal theory for chant synthesis.
+- Hiley, D. *Western Plainchant: A Handbook*. Oxford: Clarendon Press, 1993. — Modes and psalm tones.
+- Stäblein, B. *Monumenta Monodica Medii Aevi*, Vol. 1 (*Hymnen*). Kassel: Bärenreiter, 1956. —
+  Critical edition of *Veni Creator*, *Te Deum*, and Office hymns.
+- Connelly, J. *Hymns of the Roman Liturgy*. London: Longmans, 1957. — Translations and commentary.
+- *Liber Usualis* (1961 ed.; Desclée de Brouwer). — Standard Gregorian chant reference.
+- Jung, C.G. *The Archetypes and the Collective Unconscious* (CW 9/I). Princeton: Princeton
+  University Press, 1959. — Archetypal theory for OH Cards contemplative openings.
+- Ayalon, O. & Egetmeyer, M. *OH* (projective card set). OH Publishing, 1981. — Original OH Card system.
+
+### Urim & Thummim
+
+- Exodus 28:15–30; 1 Samuel 14:41 (LXX); Numbers 27:21 — Primary biblical texts (MT).
+- Josephus, Flavius. *Antiquities of the Jews* (*Antiquitates Judaicae*), III.7.5 (c. 93–94 CE);
+  trans. Whiston, W. Edinburgh: Nimmo, 1867. — Luminescence mechanism.
+- Talmud Bavli, *Yoma* 73a–73b; *Sotah* 48b. In *The Babylonian Talmud*, ed. Epstein, I.
+  London: Soncino Press, 1935–1952. — Rabbinic letter-illumination theory; cessation traditions.
+- Maimonides. *Mishneh Torah*, *Hilkhot Kelei ha-Mikdash* 10:10 (12th c.) — Consultation protocols.
+- Nahmanides. *Commentary on the Torah: Exodus* (13th c.); trans. Chavel, C.B. New York: Shilo, 1973.
+- Lindblom, J. "Lot-Casting in the Old Testament." *Vetus Testamentum* 12, no. 2 (1962): 164–178.
+- *Encyclopedia Judaica*, 2nd ed. Jerusalem: Keter, 2007. "Urim and Thummim" (vol. 20, pp. 421–423);
+  "Breastplate" (vol. 4, pp. 158–161).
+- Hershkovitz, M. "The Hoshen Mishpat and Its Stones." *Sinai* 93 (1983). — Mineralogical analysis.
+- Sarna, N.M. *Exploring Exodus: The Heritage of Biblical Israel*. New York: Schocken Books, 1986. —
+  Ch. 8 on the priestly vestments and Hoshen.
+- Pliny the Elder. *Naturalis Historia* XXXVII (c. 77 CE); trans. Rackham, H. Cambridge: Harvard /
+  Loeb Classical Library, 1962. — Antique gemological cross-reference.
+- Agrippa, H.C. *De Occulta Philosophia Libri Tres*, II.22 (1531); trans. Tyson, D. St Paul:
+  Llewellyn, 1993. — Renaissance astrological breastplate correspondences.
+
 ### Psi Research
 
 - Jahn, R.G. & Dunne, B.J. *Margins of Reality: The Role of Consciousness in the Physical World* (1987, Harcourt Brace)
@@ -1642,6 +1992,28 @@ approximations, or reflects modern rather than ancient constructions.
     with its own bīja mantra, Navaratna gem, Ayurvedic dosha, sacred day, and Jyotish planetary
     lore. Word totals will therefore be numerically identical across both systems; the spiritual
     readings will differ substantially.
+
+17. **Thoth Tarot — Thelemic theology.** The Crowley–Harris Thoth Tarot encodes the theology of
+    Thelema — a syncretic religious-philosophical system founded by Aleister Crowley after the
+    Cairo Working of 1904. The trump attributions, suit names, pip titles, and court card
+    correspondences are all grounded in Thelemic doctrine (*Liber AL vel Legis*; the A∴A∴ grade
+    system; *Liber 777*). The He/Tzaddi path swap (Emperor ↔ Star) is not an implementation
+    choice but a doctrinal directive from *Liber AL* II:16. These attributions are presented
+    descriptively; the application takes no position on Thelemic theological claims.
+
+18. **Urim & Thummim — oracle probabilities.** The 40% / 40% / 20% weighting for Urim, Thummim,
+    and Silence is a modern interpretive construction, not a historically attested probability
+    distribution. The biblical narrative suggests that silence (no answer) was less frequent than
+    a positive or negative response, but no ancient source provides numerical proportions. The
+    weighting is calibrated to reflect this qualitative pattern. Users should treat the oracle as
+    a reflective tool rather than a historically reconstructed ritual.
+
+19. **Gregorian chant synthesis.** The chant melodies synthesized in `hymn_synth.rs` are
+    composed approximations of the named modal traditions, not transcriptions of specific
+    historical manuscripts. Each melody is constructed from pitch sequences idiomatic to the
+    stated mode (e.g., Mode VII Mixolydian for *Sanctus*) but does not replicate any particular
+    notated chant. They are intended as meditative audio accompaniment, not musicological
+    reconstructions.
 
 15. **Psi–RNG experiment.** The experiment is provided as an interactive exploration tool, not
     as a validated measurement instrument. Single-trial outcomes — whether early matches or long

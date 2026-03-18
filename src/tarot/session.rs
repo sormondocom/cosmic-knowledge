@@ -80,6 +80,12 @@ static TAROT_ITEMS: &[MenuItem] = &[
         label: "View Reading History",
         hint: "Browse all recorded readings by user or globally",
     },
+    MenuItem {
+        key: "9",
+        icon: "🔯",
+        label: "Crowley Thoth Tarot  (78 cards)",
+        hint: "Major Arcana · Minor Arcana (Disks) · Draw · Book of Thoth",
+    },
 ];
 
 static TAROT_MENU: Menu = Menu {
@@ -135,8 +141,9 @@ pub fn run_tarot_session() {
             "6" => oracle_session(),
             "7" => oh_cards_session(),
             "8" => view_reading_history(),
+            "9" => thoth_session(),
             "0" | "" => break,
-            _ => println!("{}", "  Please enter 0–8.".yellow()),
+            _ => println!("{}", "  Please enter 0–9.".yellow()),
         }
     }
 }
@@ -891,6 +898,20 @@ fn do_draw(count: usize, querent: &str) {
     );
     println!();
 
+    // Sing an angelic hymn before the reading is revealed
+    let hymn_title = display_angelic_hymn(&rng_hw);
+
+    print!(
+        "{}",
+        "  ✦  Press Enter to reveal your reading...  ✦  "
+            .italic()
+            .bright_yellow()
+    );
+    io::stdout().flush().unwrap_or(());
+    let mut _pause = String::new();
+    io::stdin().read_line(&mut _pause).unwrap_or(0);
+    println!();
+
     for (draw_i, &card_idx) in indices[..count].iter().enumerate() {
         if count > 1 {
             println!(
@@ -966,7 +987,7 @@ fn do_draw(count: usize, querent: &str) {
         &format!("tarot_reading_{}", spread.to_lowercase().replace(' ', "_").replace('-', "_")),
         || {
             let lbs = ["Past", "Present", "Future"];
-            let mut s = format!("TAROT READING — {}\nGenerated: {}\n\n", spread, chrono_now());
+            let mut s = format!("TAROT READING — {}\nHymn: {}\nGenerated: {}\n\n", spread, hymn_title, chrono_now());
             for (i, &idx) in drawn_indices.iter().enumerate() {
                 if count > 1 { s.push_str(&format!("── {} ──\n", lbs[i])); }
                 if idx < 22 {
@@ -1667,9 +1688,24 @@ fn draw_oracle() {
     );
     println!(
         "{}",
-        "  ╚══════════════════════════════════════════════════════════╝"
+        "  ╠══════════════════════════════════════════════════════════╣"
             .bright_magenta()
     );
+    println!();
+
+    display_angelic_hymn(&rng_hw);
+
+    print!(
+        "{}",
+        "  ✦  Press Enter to reveal your oracle card...  ✦  "
+            .italic()
+            .bright_yellow()
+    );
+    io::stdout().flush().unwrap_or(());
+    let mut _pause = String::new();
+    io::stdin().read_line(&mut _pause).unwrap_or(0);
+    println!();
+
     print_oracle_card(&ORACLE[idx]);
 }
 
@@ -1788,6 +1824,20 @@ fn draw_oh_pair() {
         "  ╠══════════════════════════════════════════════════════════╣"
             .bright_white()
     );
+    println!();
+
+    display_contemplative_opening(&rng_hw);
+
+    print!(
+        "{}",
+        "  ✦  Press Enter to reveal your cards...  ✦  "
+            .italic()
+            .white()
+    );
+    io::stdout().flush().unwrap_or(());
+    let mut _pause = String::new();
+    io::stdin().read_line(&mut _pause).unwrap_or(0);
+    println!();
 
     // Image card
     println!(
@@ -1991,6 +2041,334 @@ fn browse_oh_words() {
     }
 }
 
+// ─── Angelic Hymns ────────────────────────────────────────────────────────────
+
+struct AngelicHymn {
+    title: &'static str,
+    source: &'static str,
+    verses: &'static [&'static str],
+}
+
+static ANGELIC_HYMNS: &[AngelicHymn] = &[
+    AngelicHymn {
+        title: "Sanctus",
+        source: "Roman Mass · Isaiah 6:2–3",
+        verses: &[
+            "Sanctus, Sanctus, Sanctus",
+            "Dominus Deus Sabaoth.",
+            "Pleni sunt caeli et terra gloria tua.",
+            "Hosanna in excelsis.",
+            "",
+            "Holy, Holy, Holy,",
+            "Lord God of Hosts.",
+            "Heaven and earth are full of Thy glory.",
+            "Hosanna in the highest.",
+        ],
+    },
+    AngelicHymn {
+        title: "Gloria in Excelsis Deo",
+        source: "Luke 2:14 · Greater Doxology",
+        verses: &[
+            "Gloria in excelsis Deo",
+            "et in terra pax hominibus bonae voluntatis.",
+            "",
+            "Glory to God in the highest,",
+            "and on earth peace to people of good will.",
+            "We praise Thee, we bless Thee, we adore Thee,",
+            "we glorify Thee, we give Thee thanks for Thy great glory.",
+        ],
+    },
+    AngelicHymn {
+        title: "Trisagion",
+        source: "Eastern Liturgy · 5th century",
+        verses: &[
+            "Agios o Theos,",
+            "Agios Ischyros,",
+            "Agios Athanatos,",
+            "eleison imas.",
+            "",
+            "Holy God,",
+            "Holy Mighty,",
+            "Holy Immortal,",
+            "have mercy on us.",
+        ],
+    },
+    AngelicHymn {
+        title: "Te Deum Laudamus",
+        source: "Nicetas of Remesiana · c. 400 CE",
+        verses: &[
+            "Te Deum laudamus: te Dominum confitemur.",
+            "Te aeternum Patrem omnis terra veneratur.",
+            "",
+            "Tibi omnes Angeli, tibi Caeli et universae Potestates,",
+            "Tibi Cherubim et Seraphim incessabili voce proclamant:",
+            "Sanctus, Sanctus, Sanctus, Dominus Deus Sabaoth.",
+            "",
+            "We praise Thee, O God; we acknowledge Thee to be the Lord.",
+            "All the Angels cry aloud, the Heavens and all the Powers therein:",
+            "Holy, Holy, Holy, Lord God of Sabaoth.",
+        ],
+    },
+    AngelicHymn {
+        title: "Agnus Dei",
+        source: "Roman Mass · 7th century",
+        verses: &[
+            "Agnus Dei, qui tollis peccata mundi,",
+            "miserere nobis.",
+            "Agnus Dei, qui tollis peccata mundi,",
+            "miserere nobis.",
+            "Agnus Dei, qui tollis peccata mundi,",
+            "dona nobis pacem.",
+            "",
+            "Lamb of God, who takest away the sins of the world,",
+            "have mercy on us.",
+            "Lamb of God, who takest away the sins of the world,",
+            "grant us peace.",
+        ],
+    },
+    AngelicHymn {
+        title: "Veni Creator Spiritus",
+        source: "Hrabanus Maurus · c. 9th century",
+        verses: &[
+            "Veni, Creator Spiritus,",
+            "mentes tuorum visita,",
+            "imple superna gratia",
+            "quae tu creasti pectora.",
+            "",
+            "Come, Holy Spirit, Creator blest,",
+            "and in our souls take up Thy rest;",
+            "come with Thy grace and heavenly aid",
+            "to fill the hearts which Thou hast made.",
+        ],
+    },
+    AngelicHymn {
+        title: "Alma Redemptoris Mater",
+        source: "Hermann Contractus · c. 1050 CE",
+        verses: &[
+            "Alma Redemptoris Mater, quae pervia caeli",
+            "porta manes, et stella maris, succurre cadenti,",
+            "surgere qui curat, populo:",
+            "",
+            "Loving Mother of the Redeemer,",
+            "gate of heaven, star of the sea,",
+            "assist your people who have fallen yet strive to rise again.",
+            "To the wonderment of nature you bore your Creator,",
+            "yet remained a virgin after as before.",
+        ],
+    },
+    AngelicHymn {
+        title: "O Lux Beata Trinitas",
+        source: "St. Ambrose of Milan · 4th century",
+        verses: &[
+            "O lux beata Trinitas",
+            "et principalis Unitas,",
+            "iam sol recedit igneus:",
+            "infunde lumen cordibus.",
+            "",
+            "O Trinity of blessed light,",
+            "O Unity of primal right,",
+            "the fiery sun now goes his way;",
+            "shed thou within our hearts thy ray.",
+        ],
+    },
+];
+
+/// Select a hymn using the shared RNG, display it, and start chant synthesis.
+/// Returns the hymn title for inclusion in the export.
+fn display_angelic_hymn(rng: &Option<RdRand>) -> &'static str {
+    let raw = match rng {
+        Some(r) => r.try_next_u64().unwrap_or_else(|_| os_u64()),
+        None => os_u64(),
+    };
+    let hymn_idx = raw as usize % ANGELIC_HYMNS.len();
+    let hymn = &ANGELIC_HYMNS[hymn_idx];
+
+    println!(
+        "{}",
+        "  ╔══════════════════════════════════════════════════════════╗"
+            .bright_yellow()
+    );
+    println!(
+        "  ║  {}  ║",
+        format!("✦  {}  ✦", hymn.title)
+            .bright_yellow()
+            .bold()
+    );
+    println!(
+        "  ║  {}  ║",
+        format!("   {}   ", hymn.source)
+            .italic()
+            .dimmed()
+    );
+    println!(
+        "{}",
+        "  ╠══════════════════════════════════════════════════════════╣"
+            .bright_yellow()
+    );
+    println!();
+    for verse in hymn.verses {
+        if verse.is_empty() {
+            println!();
+        } else {
+            println!("  {}  {}", "║".bright_yellow(), verse.italic().bright_white());
+        }
+    }
+    println!();
+    println!(
+        "{}",
+        "  ╚══════════════════════════════════════════════════════════╝"
+            .bright_yellow()
+    );
+    println!();
+
+    // Start Gregorian chant synthesis in background (non-blocking, cross-platform).
+    crate::hymn_synth::play_gregorian_chant(hymn_idx);
+
+    hymn.title
+}
+
+// ─── OH Cards — Contemplative Openings ───────────────────────────────────────
+
+struct ContemplativeOpening {
+    attribution: &'static str,
+    source: &'static str,
+    lines: &'static [&'static str],
+}
+
+static CONTEMPLATIVE_OPENINGS: &[ContemplativeOpening] = &[
+    ContemplativeOpening {
+        attribution: "C. G. Jung",
+        source: "Psychological Types, 1921",
+        lines: &[
+            "\"Your vision will become clear only when you look",
+            "into your own heart.",
+            "Who looks outside, dreams;",
+            "who looks inside, awakes.\"",
+        ],
+    },
+    ContemplativeOpening {
+        attribution: "Rainer Maria Rilke",
+        source: "Letters to a Young Poet, 1903",
+        lines: &[
+            "\"I would like to beg you, dear friend,",
+            "to have patience with everything unresolved in your heart",
+            "and try to love the questions themselves",
+            "as if they were locked rooms or books written",
+            "in a very foreign language.\"",
+        ],
+    },
+    ContemplativeOpening {
+        attribution: "C. G. Jung",
+        source: "Memories, Dreams, Reflections, 1962",
+        lines: &[
+            "\"The privilege of a lifetime is to become",
+            "who you truly are.",
+            "That which we do not bring to consciousness",
+            "appears in our lives as fate.\"",
+        ],
+    },
+    ContemplativeOpening {
+        attribution: "Simone Weil",
+        source: "Waiting for God, 1951",
+        lines: &[
+            "\"Attention is the rarest and purest form of generosity.",
+            "To pay attention, this is our endless",
+            "and proper work.\"",
+        ],
+    },
+    ContemplativeOpening {
+        attribution: "Martin Buber",
+        source: "I and Thou, 1923",
+        lines: &[
+            "\"All actual life is encounter.",
+            "The world is not an obstacle on your path to God —",
+            "it is the path itself.\"",
+        ],
+    },
+    ContemplativeOpening {
+        attribution: "Thich Nhất Hạnh",
+        source: "The Miracle of Mindfulness, 1975",
+        lines: &[
+            "\"The present moment is the only moment",
+            "available to us, and it is the door",
+            "to all moments.",
+            "Breathe. You have arrived.\"",
+        ],
+    },
+    ContemplativeOpening {
+        attribution: "D. W. Winnicott",
+        source: "Playing and Reality, 1971",
+        lines: &[
+            "\"It is in playing and only in playing",
+            "that the individual child or adult is able to be creative",
+            "and to use the whole personality,",
+            "and it is only in being creative",
+            "that the individual discovers the self.\"",
+        ],
+    },
+    ContemplativeOpening {
+        attribution: "Meister Eckhart",
+        source: "Sermons, c. 1300",
+        lines: &[
+            "\"The eye through which I see God",
+            "is the same eye through which God sees me;",
+            "my eye and God's eye are one eye,",
+            "one seeing, one knowing, one love.\"",
+        ],
+    },
+];
+
+/// Display a contemplative opening suited to the secular, projective OH Cards.
+fn display_contemplative_opening(rng: &Option<RdRand>) -> &'static str {
+    let raw = match rng {
+        Some(r) => r.try_next_u64().unwrap_or_else(|_| os_u64()),
+        None => os_u64(),
+    };
+    let opening_idx = raw as usize % CONTEMPLATIVE_OPENINGS.len();
+    let opening = &CONTEMPLATIVE_OPENINGS[opening_idx];
+
+    println!(
+        "{}",
+        "  ╔══════════════════════════════════════════════════════════╗"
+            .bright_white()
+    );
+    println!(
+        "  ║  {}  ║",
+        format!("✦  {}  ✦", opening.attribution)
+            .bright_white()
+            .bold()
+    );
+    println!(
+        "  ║  {}  ║",
+        format!("   {}   ", opening.source).italic().dimmed()
+    );
+    println!(
+        "{}",
+        "  ╠══════════════════════════════════════════════════════════╣"
+            .bright_white()
+    );
+    println!();
+    for line in opening.lines {
+        if line.is_empty() {
+            println!();
+        } else {
+            println!("  {}  {}", "║".bright_white(), line.italic().white());
+        }
+    }
+    println!();
+    println!(
+        "{}",
+        "  ╚══════════════════════════════════════════════════════════╝"
+            .bright_white()
+    );
+    println!();
+
+    // Start meditative modal tone in background (non-blocking, cross-platform).
+    crate::hymn_synth::play_contemplative_tone(opening_idx);
+
+    opening.attribution
+}
+
 // ─── Shared RNG helper ────────────────────────────────────────────────────────
 
 fn next_rnd(rng: &Option<RdRand>) -> u64 {
@@ -2009,6 +2387,527 @@ fn os_u64() -> u64 {
 }
 
 // ─── HTML escape helper ───────────────────────────────────────────────────────
+
+// ─── Crowley Thoth Tarot session ─────────────────────────────────────────────
+
+use super::thoth_major::{thoth_major_by_name, thoth_major_by_number, ThothMajor, THOTH_MAJOR};
+use super::thoth_minor::{thoth_minor_by_suit_rank, thoth_suit_cards, ThothMinor, THOTH_MINOR};
+
+static THOTH_ITEMS: &[MenuItem] = &[
+    MenuItem {
+        key: "1",
+        icon: "✦",
+        label: "Major Arcana — The 22 Trumps",
+        hint: "Adjustment · Lust · Art · The Aeon · The Universe",
+    },
+    MenuItem {
+        key: "2",
+        icon: "🔥",
+        label: "Minor Arcana — Wands (Fire)",
+        hint: "Dominion · Virtue · Completion · Strife · Victory …",
+    },
+    MenuItem {
+        key: "3",
+        icon: "💧",
+        label: "Minor Arcana — Cups (Water)",
+        hint: "Love · Abundance · Luxury · Debauch · Happiness …",
+    },
+    MenuItem {
+        key: "4",
+        icon: "⚡",
+        label: "Minor Arcana — Swords (Air)",
+        hint: "Peace · Sorrow · Defeat · Science · Ruin …",
+    },
+    MenuItem {
+        key: "5",
+        icon: "🌍",
+        label: "Minor Arcana — Disks (Earth)",
+        hint: "Change · Works · Power · Failure · Wealth …",
+    },
+    MenuItem {
+        key: "6",
+        icon: "🔮",
+        label: "Draw a Thoth Reading",
+        hint: "1-card or 3-card draw from the full 78-card deck · TRNG",
+    },
+];
+
+static THOTH_MENU: Menu = Menu {
+    title: "🔯  CROWLEY THOTH TAROT  ·  Book of Thoth",
+    border_color: MenuColor::Yellow,
+    items: THOTH_ITEMS,
+    back_key: "0",
+    back_label: "Back to Card Menu",
+};
+
+fn thoth_session() {
+    // Brief orientation note
+    println!();
+    println!(
+        "{}",
+        "  ╔══════════════════════════════════════════════════════════╗"
+            .bright_yellow()
+    );
+    println!(
+        "{}",
+        "  ║  🔯  CROWLEY THOTH TAROT  ·  The Book of Thoth         ║"
+            .bold()
+            .bright_yellow()
+    );
+    println!(
+        "{}",
+        "  ╠══════════════════════════════════════════════════════════╣"
+            .bright_yellow()
+    );
+    println!(
+        "{}",
+        "  ║  Designed by Aleister Crowley · Painted by Lady Frieda  ║".dimmed()
+    );
+    println!(
+        "{}",
+        "  ║  Harris · 1938–1943 · Published posthumously 1969.       ║".dimmed()
+    );
+    println!(
+        "{}",
+        "  ║  Based on Thelema, Hermetic Qabalah & projective         ║".dimmed()
+    );
+    println!(
+        "{}",
+        "  ║  geometry.  Source: The Book of Thoth (O.T.O., 1944).   ║".dimmed()
+    );
+    println!(
+        "{}",
+        "  ╚══════════════════════════════════════════════════════════╝"
+            .bright_yellow()
+    );
+
+    loop {
+        match THOTH_MENU.show_and_read().as_str() {
+            "1" => thoth_major_session(),
+            "2" => thoth_minor_session("Wands"),
+            "3" => thoth_minor_session("Cups"),
+            "4" => thoth_minor_session("Swords"),
+            "5" => thoth_minor_session("Disks"),
+            "6" => thoth_draw(),
+            "0" | "" => break,
+            _ => println!("{}", "  Please enter 0–6.".yellow()),
+        }
+    }
+}
+
+// ── Thoth Major Arcana ──────────────────────────────────────────────────────
+
+static THOTH_MAJOR_ITEMS: &[MenuItem] = &[
+    MenuItem { key: "1", icon: "📜", label: "Browse all 22 Trumps", hint: "Full table" },
+    MenuItem { key: "2", icon: "🔢", label: "Look up by number (0–21)", hint: "" },
+    MenuItem { key: "3", icon: "🔍", label: "Look up by name", hint: "Partial match works" },
+];
+static THOTH_MAJOR_MENU: Menu = Menu {
+    title: "🔯  THOTH MAJOR ARCANA  ·  22 Trumps",
+    border_color: MenuColor::Yellow,
+    items: THOTH_MAJOR_ITEMS,
+    back_key: "0",
+    back_label: "Back",
+};
+
+fn thoth_major_session() {
+    loop {
+        match THOTH_MAJOR_MENU.show_and_read().as_str() {
+            "1" => browse_thoth_major(),
+            "2" => lookup_thoth_major_by_number(),
+            "3" => lookup_thoth_major_by_name(),
+            "0" | "" => break,
+            _ => {}
+        }
+    }
+}
+
+fn browse_thoth_major() {
+    println!();
+    println!("{}", "  ══  THOTH MAJOR ARCANA  ══".bright_yellow().bold());
+    println!(
+        "  {:<4} {:<24} {:<20} {:<14} {}",
+        "#".bold(), "Name".bold(), "Hebrew".bold(), "Astrology".bold(), "Upright".bold()
+    );
+    println!("  {}", "─".repeat(90).dimmed());
+    for c in &THOTH_MAJOR {
+        let rws = if c.name != c.rws_name {
+            format!(" ({})", c.rws_name)
+        } else {
+            String::new()
+        };
+        println!(
+            "  {:<4} {:<24} {:<20} {:<14} {}",
+            c.number.to_string().bright_cyan(),
+            format!("{}{}", c.name, rws).bright_yellow(),
+            c.hebrew_letter.dimmed(),
+            c.astrology.cyan(),
+            tarot_esc(c.meaning_upright).chars().take(38).collect::<String>().white(),
+        );
+    }
+    println!();
+
+    let stem = "thoth_major_arcana";
+    handle_export(
+        stem,
+        || {
+            let mut s = format!("THOTH TAROT — MAJOR ARCANA\nGenerated: {}\n\n", chrono_now());
+            for c in &THOTH_MAJOR {
+                s.push_str(&format!("[{}] {}", c.number, c.name));
+                if c.name != c.rws_name { s.push_str(&format!(" (RWS: {})", c.rws_name)); }
+                s.push('\n');
+                s.push_str(&format!("  Hebrew: {}\n  Path {}: {}\n  Astrology: {}\n", c.hebrew_letter, c.path, c.sephiroth, c.astrology));
+                s.push_str(&format!("  Thelema: {}\n  Upright: {}\n\n", c.thelemic_title, c.meaning_upright));
+            }
+            s
+        },
+        || {
+            let mut rows = String::new();
+            for c in &THOTH_MAJOR {
+                rows.push_str(&format!(
+                    "<tr><td class=\"num\">{}</td>\
+                     <td class=\"sys\">{}{}</td>\
+                     <td>{}</td><td>{}</td>\
+                     <td class=\"meaning\">{}</td></tr>",
+                    c.number,
+                    tarot_esc(c.name),
+                    if c.name != c.rws_name { format!("<br><small style=\"color:var(--calc-color);\">RWS: {}</small>", tarot_esc(c.rws_name)) } else { String::new() },
+                    tarot_esc(c.hebrew_letter),
+                    tarot_esc(c.astrology),
+                    tarot_esc(c.meaning_upright),
+                ));
+            }
+            let body = format!(
+                "<h2 style=\"color:var(--accent);\">Thoth Tarot — Major Arcana</h2>\
+                 <table><thead><tr><th>#</th><th>Name</th><th>Hebrew</th><th>Astrology</th><th>Upright Meaning</th></tr></thead>\
+                 <tbody>{}</tbody></table>",
+                rows
+            );
+            wrap_html("Thoth Tarot — Major Arcana", &body, "angelic")
+        },
+    );
+}
+
+fn lookup_thoth_major_by_number() {
+    print!("{}", "  ▸ Enter card number (0–21): ".bold().bright_yellow());
+    io::stdout().flush().unwrap_or(());
+    let mut buf = String::new();
+    io::stdin().read_line(&mut buf).unwrap_or(0);
+    if let Ok(n) = buf.trim().parse::<u8>() {
+        if let Some(c) = thoth_major_by_number(n) {
+            print_thoth_major_card(c);
+        } else {
+            println!("  {}", "No card at that number.".yellow());
+        }
+    }
+}
+
+fn lookup_thoth_major_by_name() {
+    print!("{}", "  ▸ Enter card name (partial ok): ".bold().bright_yellow());
+    io::stdout().flush().unwrap_or(());
+    let mut buf = String::new();
+    io::stdin().read_line(&mut buf).unwrap_or(0);
+    match thoth_major_by_name(buf.trim()) {
+        Some(c) => print_thoth_major_card(c),
+        None => println!("  {}", "No matching Thoth card found.".yellow()),
+    }
+}
+
+pub fn print_thoth_major_card(c: &ThothMajor) {
+    println!();
+    println!(
+        "  {}",
+        format!("── Trump {}:  {}  ──────────────────────────────", c.number, c.name)
+            .bright_yellow()
+            .bold()
+    );
+    if c.name != c.rws_name {
+        println!("  {}", format!("  RWS equivalent: {}", c.rws_name).dimmed());
+    }
+    println!("  {} {}", "Hebrew:".bright_cyan(), c.hebrew_letter.white());
+    println!("  {} Path {} · {}", "Tree of Life:".bright_cyan(), c.path, c.sephiroth.white());
+    println!("  {} {}", "Astrology:".bright_cyan(), c.astrology.white());
+    println!("  {} {}", "Thelema:".bright_cyan(), c.thelemic_title.white());
+    println!();
+    println!("  {} {}", "Harris:".bright_yellow(), c.harris_symbolism.dimmed());
+    println!();
+    println!("  {} {}", "Upright:".bright_green(), c.meaning_upright.white());
+    println!("  {} {}", "Reversed:".bright_red(), c.meaning_reversed.white());
+    println!();
+}
+
+// ── Thoth Minor Arcana ──────────────────────────────────────────────────────
+
+fn thoth_minor_session(suit: &str) {
+    let cards = thoth_suit_cards(suit);
+    println!();
+    println!(
+        "{}",
+        format!("  ══  THOTH — {} ({} cards)  ══", suit.to_uppercase(), cards.len())
+            .bright_yellow()
+            .bold()
+    );
+    println!(
+        "  {:<14} {:<22} {:<20} {}",
+        "Rank".bold(), "Title".bold(), "Astrology".bold(), "Meaning".bold()
+    );
+    println!("  {}", "─".repeat(80).dimmed());
+    for c in &cards {
+        println!(
+            "  {:<14} {:<22} {:<20} {}",
+            c.rank_name.bright_yellow(),
+            c.title.bright_cyan(),
+            c.astrology.dimmed(),
+            tarot_esc(c.meaning).chars().take(36).collect::<String>().white(),
+        );
+    }
+    println!();
+
+    println!("{}", "  ▸ Enter rank to see full detail (e.g. \"Ace\", \"Three\", \"Queen\"), or Enter to skip: ".dimmed());
+    print!("  {} ", "▸".bold().bright_yellow());
+    io::stdout().flush().unwrap_or(());
+    let mut buf = String::new();
+    io::stdin().read_line(&mut buf).unwrap_or(0);
+    let rank = buf.trim();
+    if !rank.is_empty() {
+        if let Some(c) = thoth_minor_by_suit_rank(suit, rank) {
+            print_thoth_minor_card(c);
+        } else {
+            println!("  {}", format!("No {} card matching '{}'.", suit, rank).yellow());
+        }
+    }
+
+    let suit_owned = suit.to_string();
+    handle_export(
+        &format!("thoth_{}", suit.to_lowercase()),
+        || {
+            let mut s = format!("THOTH TAROT — {}\nGenerated: {}\n\n", suit_owned.to_uppercase(), chrono_now());
+            for c in &cards {
+                s.push_str(&format!("{} of {} — {}\n", c.rank_name, c.suit, c.title));
+                s.push_str(&format!("  Sephirah: {}  ·  Astrology: {}\n", c.sephirah, c.astrology));
+                s.push_str(&format!("  Upright: {}\n  Reversed: {}\n\n", c.meaning, c.reversed));
+            }
+            s
+        },
+        || {
+            let mut rows = String::new();
+            for c in &cards {
+                rows.push_str(&format!(
+                    "<tr><td class=\"sys\">{} of {}</td><td class=\"sys\">{}</td>\
+                     <td>{}</td><td>{}</td><td class=\"meaning\">{}</td></tr>",
+                    tarot_esc(c.rank_name), tarot_esc(c.suit),
+                    tarot_esc(c.title),
+                    tarot_esc(c.sephirah), tarot_esc(c.astrology),
+                    tarot_esc(c.meaning),
+                ));
+            }
+            let body = format!(
+                "<h2 style=\"color:var(--accent);\">Thoth Tarot — {}</h2>\
+                 <table><thead><tr><th>Card</th><th>Title</th><th>Sephirah</th><th>Astrology</th><th>Meaning</th></tr></thead>\
+                 <tbody>{}</tbody></table>",
+                tarot_esc(&suit_owned), rows
+            );
+            wrap_html(&format!("Thoth Tarot — {}", suit_owned), &body, "angelic")
+        },
+    );
+}
+
+fn print_thoth_minor_card(c: &ThothMinor) {
+    println!();
+    println!(
+        "  {}",
+        format!("── {} of {}  ·  \"{}\"  ──", c.rank_name, c.suit, c.title)
+            .bright_yellow()
+            .bold()
+    );
+    if !c.sephirah.is_empty() {
+        println!("  {} {}", "Sephirah:".bright_cyan(), c.sephirah.white());
+    }
+    println!("  {} {}", "Astrology:".bright_cyan(), c.astrology.white());
+    println!("  {} {}", "Element:".bright_cyan(), c.element.white());
+    println!();
+    println!("  {} {}", "Upright:".bright_green(), c.meaning.white());
+    println!("  {} {}", "Reversed:".bright_red(), c.reversed.white());
+    println!();
+}
+
+// ── Thoth Draw ──────────────────────────────────────────────────────────────
+
+fn thoth_draw() {
+    print!(
+        "{}",
+        "  ▸ Your name for the record (Enter for anonymous): "
+            .bold()
+            .bright_yellow()
+    );
+    io::stdout().flush().unwrap_or(());
+    let mut name_buf = String::new();
+    io::stdin().read_line(&mut name_buf).unwrap_or(0);
+    let querent = {
+        let t = name_buf.trim();
+        if t.is_empty() { "Anonymous" } else { t }.to_string()
+    };
+
+    static TDRAW_ITEMS: &[MenuItem] = &[
+        MenuItem { key: "1", icon: "◈", label: "Single card", hint: "" },
+        MenuItem { key: "2", icon: "◈◈◈", label: "Three-card reading", hint: "Past · Present · Future" },
+    ];
+    let draw_menu = Menu {
+        title: "Thoth Draw",
+        border_color: MenuColor::Yellow,
+        items: TDRAW_ITEMS,
+        back_key: "0",
+        back_label: "Back",
+    };
+    let count = match draw_menu.show_and_read().as_str() {
+        "1" => 1usize,
+        "2" => 3,
+        _ => return,
+    };
+
+    // Shuffle the 78-card Thoth deck: 0–21 = Major, 22–77 = THOTH_MINOR
+    let total = 22 + THOTH_MINOR.len();
+    let mut indices: Vec<usize> = (0..total).collect();
+    let rng_hw = RdRand::new().ok();
+    for i in 0..count.min(total) {
+        let r = next_rnd(&rng_hw);
+        let j = i + (r as usize % (total - i));
+        indices.swap(i, j);
+    }
+
+    // Display hymn + reveal prompt
+    let hymn_title = display_angelic_hymn(&rng_hw);
+    print!(
+        "{}",
+        "  ✦  Press Enter to reveal your Thoth reading...  ✦  "
+            .italic()
+            .bright_yellow()
+    );
+    io::stdout().flush().unwrap_or(());
+    let mut _p = String::new();
+    io::stdin().read_line(&mut _p).unwrap_or(0);
+    println!();
+
+    let labels = ["Past", "Present", "Future"];
+    println!();
+    println!("{}", "  ╔══════════════════════════════════════════════════════════╗".bright_yellow());
+    let hdr = if count == 1 {
+        "  ║        🔯  YOUR THOTH CARD  🔯                           ║"
+    } else {
+        "  ║      🔯  YOUR THOTH THREE-CARD READING  🔯               ║"
+    };
+    println!("{}", hdr.bold().bright_yellow());
+    println!("{}", "  ╠══════════════════════════════════════════════════════════╣".bright_yellow());
+    println!();
+
+    let drawn: Vec<usize> = indices[..count].to_vec();
+    for (i, &idx) in drawn.iter().enumerate() {
+        if count > 1 {
+            println!(
+                "  {}",
+                format!("── {} ──────────────────────────────", labels[i])
+                    .bold()
+                    .bright_cyan()
+            );
+            println!();
+        }
+        if idx < 22 {
+            if let Some(c) = thoth_major_by_number(idx as u8) {
+                print_thoth_major_card(c);
+            }
+        } else {
+            let mi = idx - 22;
+            if mi < THOTH_MINOR.len() {
+                print_thoth_minor_card(&THOTH_MINOR[mi]);
+            }
+        }
+    }
+
+    println!("{}", "  ╔══════════════════════════════════════════════════════════╗".bright_yellow());
+    println!("{}", "  ║  ✦  Do what thou wilt shall be the whole of the Law  ✦  ║".italic().bright_yellow());
+    println!("{}", "  ╚══════════════════════════════════════════════════════════╝".bright_yellow());
+    println!();
+
+    // Persist
+    let spread = if count == 1 { "Single Card" } else { "Three-Card Reading" };
+    {
+        let cards_text = drawn.iter().map(|&idx| {
+            if idx < 22 {
+                thoth_major_by_number(idx as u8)
+                    .map(|c| format!("Trump {}: {}", c.number, c.name))
+                    .unwrap_or_default()
+            } else {
+                let mi = idx - 22;
+                if mi < THOTH_MINOR.len() {
+                    let m = &THOTH_MINOR[mi];
+                    format!("{} of {} — {}", m.rank_name, m.suit, m.title)
+                } else { String::new() }
+            }
+        }).collect::<Vec<_>>().join("\n");
+        if let Ok(conn) = open_db() {
+            if let Ok((user, _)) = get_or_create_user(&conn, &querent) {
+                record_reading(&conn, &user.id, "Thoth Tarot", spread, &cards_text).ok();
+            }
+        }
+    }
+
+    // Export
+    let drawn_snap = drawn.clone();
+    let querent_snap = querent.clone();
+    let hymn_snap = hymn_title.to_string();
+    let spread_snap = spread.to_string();
+    handle_export(
+        &format!("thoth_reading_{}", spread.to_lowercase().replace(' ', "_")),
+        || {
+            let mut s = format!("THOTH READING — {}\nHymn: {}\nQuerent: {}\nGenerated: {}\n\n",
+                spread_snap, hymn_snap, querent_snap, chrono_now());
+            for (i, &idx) in drawn_snap.iter().enumerate() {
+                if count > 1 { s.push_str(&format!("── {} ──\n", labels[i])); }
+                if idx < 22 {
+                    if let Some(c) = thoth_major_by_number(idx as u8) {
+                        s.push_str(&format!("Trump {}: {}\n  Hebrew: {}\n  {}\n  Upright: {}\n\n",
+                            c.number, c.name, c.hebrew_letter, c.astrology, c.meaning_upright));
+                    }
+                } else if idx - 22 < THOTH_MINOR.len() {
+                    let m = &THOTH_MINOR[idx - 22];
+                    s.push_str(&format!("{} of {} — \"{}\"\n  {}\n  Upright: {}\n\n",
+                        m.rank_name, m.suit, m.title, m.astrology, m.meaning));
+                }
+            }
+            s
+        },
+        || {
+            let mut rows = String::new();
+            for (i, &idx) in drawn_snap.iter().enumerate() {
+                let pos = if count > 1 { labels.get(i).copied().unwrap_or("") } else { "" };
+                if idx < 22 {
+                    if let Some(c) = thoth_major_by_number(idx as u8) {
+                        rows.push_str(&format!(
+                            "<tr><td class=\"sys\">Trump {}: {}</td><td>{}</td><td>{}</td><td class=\"meaning\">{}</td></tr>",
+                            c.number, tarot_esc(c.name), tarot_esc(pos), tarot_esc(c.astrology), tarot_esc(c.meaning_upright)
+                        ));
+                    }
+                } else if idx - 22 < THOTH_MINOR.len() {
+                    let m = &THOTH_MINOR[idx - 22];
+                    rows.push_str(&format!(
+                        "<tr><td class=\"sys\">{} of {} — {}</td><td>{}</td><td>{}</td><td class=\"meaning\">{}</td></tr>",
+                        tarot_esc(m.rank_name), tarot_esc(m.suit), tarot_esc(m.title),
+                        tarot_esc(pos), tarot_esc(m.astrology), tarot_esc(m.meaning)
+                    ));
+                }
+            }
+            let body = format!(
+                "<h2 style=\"color:var(--accent);\">Thoth Reading — {}</h2>\
+                 <p class=\"meta\">Hymn: {} · Querent: {} · {}</p>\
+                 <table><thead><tr><th>Card</th><th>Position</th><th>Astrology</th><th>Meaning</th></tr></thead>\
+                 <tbody>{}</tbody></table>",
+                tarot_esc(spread), tarot_esc(&hymn_snap), tarot_esc(&querent_snap),
+                tarot_esc(&chrono_now()), rows
+            );
+            wrap_html(&format!("Thoth Reading — {}", spread), &body, "angelic")
+        },
+    );
+}
 
 // ─── Reading history ──────────────────────────────────────────────────────────
 
@@ -2075,6 +2974,199 @@ fn view_reading_history() {
     }
 }
 
+/// Parse a stored card line back to a card object and render it at full detail.
+///
+/// Stored formats:
+///   Major Arcana  — `"Major #0: The Fool"`
+///   Minor Arcana  — `"Ace of Wands"`
+fn recall_tarot_reading(record: &crate::persistence::ReadingRecord) {
+    let card_lines: Vec<&str> = record.cards.lines().collect();
+    let count = card_lines.len();
+
+    println!();
+    println!(
+        "{}",
+        "  ╔══════════════════════════════════════════════════════════╗"
+            .bright_magenta()
+    );
+    let header = if count == 1 {
+        "  ║           🔮  RECALLED READING  🔮                       ║"
+    } else {
+        "  ║         🔮  RECALLED READING (3-CARD)  🔮                ║"
+    };
+    println!("{}", header.bold().bright_magenta());
+    println!(
+        "  {}",
+        format!("  ║  {}  ·  {}", record.user_name, record.drawn_at)
+            .dimmed()
+    );
+    println!(
+        "{}",
+        "  ╠══════════════════════════════════════════════════════════╣"
+            .bright_magenta()
+    );
+    println!();
+
+    let labels = ["Past", "Present", "Future"];
+    for (i, line) in card_lines.iter().enumerate() {
+        if count > 1 {
+            let label = labels.get(i).copied().unwrap_or("Card");
+            println!(
+                "  {}",
+                format!("── {} ──────────────────────────────", label)
+                    .bold()
+                    .bright_cyan()
+            );
+            println!();
+        }
+
+        let line = line.trim();
+        if line.starts_with("Major #") {
+            // Parse "Major #N: Name"
+            let num_str = line
+                .trim_start_matches("Major #")
+                .splitn(2, ':')
+                .next()
+                .unwrap_or("")
+                .trim();
+            if let Ok(num) = num_str.parse::<u8>() {
+                if let Some(card) = major_by_number(num) {
+                    print_major_card(card);
+                }
+            }
+        } else if let Some(pos) = line.find(" of ") {
+            // Parse "Rank of Suit"
+            let rank = &line[..pos];
+            let suit = &line[pos + 4..];
+            if let Some(card) = crate::tarot::minor::minor_by_suit_rank(suit, rank) {
+                print_minor_card(card);
+            }
+        } else {
+            println!("  {}", line.dimmed());
+        }
+    }
+
+    println!(
+        "{}",
+        "  ╔══════════════════════════════════════════════════════════╗"
+            .bright_magenta()
+    );
+    println!(
+        "{}",
+        "  ║  ✦  May the angels illumine the path revealed here  ✦   ║"
+            .italic()
+            .bright_yellow()
+    );
+    println!(
+        "{}",
+        "  ╚══════════════════════════════════════════════════════════╝"
+            .bright_magenta()
+    );
+    println!();
+
+    // Export the recalled reading
+    let querent = record.user_name.clone();
+    let drawn_at = record.drawn_at.clone();
+    let spread = record.spread_type.clone();
+    let cards_text = record.cards.clone();
+    handle_export(
+        &format!(
+            "recalled_reading_{}",
+            record.drawn_at.replace(' ', "_").replace(':', "")
+        ),
+        || {
+            let mut s = format!(
+                "RECALLED READING — {}\nQuerent: {} · {}\n\n",
+                spread, querent, drawn_at
+            );
+            for line in cards_text.lines() {
+                let line = line.trim();
+                if line.starts_with("Major #") {
+                    let num_str = line
+                        .trim_start_matches("Major #")
+                        .splitn(2, ':')
+                        .next()
+                        .unwrap_or("")
+                        .trim();
+                    if let Ok(num) = num_str.parse::<u8>() {
+                        if let Some(c) = major_by_number(num) {
+                            s.push_str(&format!("MAJOR #{}: {}\n", c.number, c.name));
+                            s.push_str(&format!("Angel: {} | Element: {}\n", c.angel, c.element));
+                            s.push_str(&format!("Keywords: {}\n\n", c.keywords));
+                        }
+                    }
+                } else if let Some(pos) = line.find(" of ") {
+                    let rank = &line[..pos];
+                    let suit = &line[pos + 4..];
+                    if let Some(m) = crate::tarot::minor::minor_by_suit_rank(suit, rank) {
+                        s.push_str(&format!("{} of {}\n", m.rank_name, m.suit));
+                        s.push_str(&format!("Angel: {} | Element: {}\n", m.angel, m.element));
+                        s.push_str(&format!("Keywords: {}\n\n", m.keywords));
+                    }
+                }
+            }
+            s
+        },
+        || {
+            let mut rows = String::new();
+            for (i, line) in cards_text.lines().enumerate() {
+                let line = line.trim();
+                let pos_label = if count > 1 {
+                    labels.get(i).copied().unwrap_or("")
+                } else {
+                    ""
+                };
+                if line.starts_with("Major #") {
+                    let num_str = line
+                        .trim_start_matches("Major #")
+                        .splitn(2, ':')
+                        .next()
+                        .unwrap_or("")
+                        .trim();
+                    if let Ok(num) = num_str.parse::<u8>() {
+                        if let Some(c) = major_by_number(num) {
+                            rows.push_str(&format!(
+                                "<tr><td class=\"sys\">Major #{}: {}</td><td>{}</td>\
+                                 <td>{}</td><td class=\"meaning\">{}</td></tr>",
+                                c.number,
+                                tarot_esc(c.name),
+                                tarot_esc(pos_label),
+                                tarot_esc(c.angel),
+                                tarot_esc(c.keywords)
+                            ));
+                        }
+                    }
+                } else if let Some(p) = line.find(" of ") {
+                    let rank = &line[..p];
+                    let suit = &line[p + 4..];
+                    if let Some(m) = crate::tarot::minor::minor_by_suit_rank(suit, rank) {
+                        rows.push_str(&format!(
+                            "<tr><td class=\"sys\">{} of {}</td><td>{}</td>\
+                             <td>{}</td><td class=\"meaning\">{}</td></tr>",
+                            tarot_esc(m.rank_name),
+                            tarot_esc(m.suit),
+                            tarot_esc(pos_label),
+                            tarot_esc(m.angel),
+                            tarot_esc(m.keywords)
+                        ));
+                    }
+                }
+            }
+            let body = format!(
+                "<h2 style=\"color:var(--accent);\">Recalled Reading — {}</h2>\
+                 <p class=\"meta\">Querent: {} · {}</p>\
+                 <table><thead><tr><th>Card</th><th>Position</th><th>Angel</th><th>Keywords</th></tr></thead>\
+                 <tbody>{}</tbody></table>",
+                tarot_esc(&spread),
+                tarot_esc(&querent),
+                tarot_esc(&drawn_at),
+                rows
+            );
+            wrap_html(&format!("Recalled Reading — {}", spread), &body, "angelic")
+        },
+    );
+}
+
 fn print_readings_table(readings: &[crate::persistence::ReadingRecord], title: &str) {
     println!();
     println!("{}", format!("  ══  {}  ══", title).bright_magenta().bold());
@@ -2084,15 +3176,16 @@ fn print_readings_table(readings: &[crate::persistence::ReadingRecord], title: &
         return;
     }
     println!(
-        "  {:<20} {:<24} {:<18} {:<16} {}",
+        "  {:<4} {:<20} {:<24} {:<18} {:<16} {}",
+        "#".bold(),
         "User".bold(),
         "Date".bold(),
         "Tradition".bold(),
         "Spread".bold(),
         "Cards".bold(),
     );
-    println!("  {}", "─".repeat(90).dimmed());
-    for r in readings {
+    println!("  {}", "─".repeat(94).dimmed());
+    for (i, r) in readings.iter().enumerate() {
         let cards_preview: String = r.cards.lines().take(2).collect::<Vec<_>>().join(", ");
         let cards_preview = if r.cards.lines().count() > 2 {
             format!("{}, …", cards_preview)
@@ -2100,7 +3193,8 @@ fn print_readings_table(readings: &[crate::persistence::ReadingRecord], title: &
             cards_preview
         };
         println!(
-            "  {:<20} {:<24} {:<18} {:<16} {}",
+            "  {:<4} {:<20} {:<24} {:<18} {:<16} {}",
+            (i + 1).to_string().bright_cyan(),
             r.user_name.bright_yellow(),
             r.drawn_at.dimmed(),
             r.tradition.cyan(),
@@ -2109,6 +3203,23 @@ fn print_readings_table(readings: &[crate::persistence::ReadingRecord], title: &
         );
     }
     println!();
+
+    // Offer recall of individual reading
+    print!(
+        "{}",
+        "  ▸ Enter number to recall a reading in full detail (Enter to skip): "
+            .bold()
+            .bright_yellow()
+    );
+    io::stdout().flush().unwrap_or(());
+    let mut sel_buf = String::new();
+    io::stdin().read_line(&mut sel_buf).unwrap_or(0);
+    if let Ok(n) = sel_buf.trim().parse::<usize>() {
+        if n >= 1 && n <= readings.len() {
+            recall_tarot_reading(&readings[n - 1]);
+            return; // skip summary export after a recall
+        }
+    }
 
     // Export
     let readings_owned: Vec<crate::persistence::ReadingRecord> = readings.iter().map(|r| {
