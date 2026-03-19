@@ -27,6 +27,12 @@ letter that precedes all letters, burning in silence against the void."</em></p>
 </tr>
 </table>
 
+<p align="center">
+  <a href="https://buymeacoffee.com/sormondocom">
+    <img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me A Coffee"/>
+  </a>
+</p>
+
 ---
 
 ## Table of Contents
