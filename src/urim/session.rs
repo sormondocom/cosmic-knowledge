@@ -10,7 +10,6 @@
 use colored::*;
 use std::io::{self, Write};
 
-use rdrand::RdRand;
 
 use crate::export::{handle_export, wrap_html};
 use crate::menu::{Menu, MenuColor, MenuItem};
@@ -343,18 +342,15 @@ fn cast_oracle() {
         if t.is_empty() { "Anonymous" } else { t }.to_string()
     };
 
-    // Use hardware RNG (RDRAND) with OS-entropy fallback
-    let rng = RdRand::new().ok();
-
     // Determine the illuminating stone (random from 12)
-    let stone_idx = (oracle_rnd(&rng) % 12) as usize;
+    let stone_idx = (oracle_rnd() % 12) as usize;
     let illuminated = &BREASTPLATE[stone_idx];
 
     // Determine outcome using weighted probability:
     //   0..=39  → Urim    (40%)
     //  40..=79  → Thummim (40%)
     //  80..=99  → Silence (20%)
-    let weight_raw = oracle_rnd(&rng) % 100;
+    let weight_raw = oracle_rnd() % 100;
     let outcome = if weight_raw < 40 {
         Outcome::Urim
     } else if weight_raw < 80 {
@@ -369,7 +365,7 @@ fn cast_oracle() {
         Outcome::Thummim => THUMMIM_UTTERANCES,
         Outcome::Silence => SILENCE_UTTERANCES,
     };
-    let utterance_idx = (oracle_rnd(&rng) % utterances.len() as u64) as usize;
+    let utterance_idx = (oracle_rnd() % utterances.len() as u64) as usize;
     let utterance = utterances[utterance_idx];
 
     // ── Display ceremony ──────────────────────────────────────────────────────
@@ -799,11 +795,14 @@ fn print_readings_table(
 
 // ─── RNG helpers ─────────────────────────────────────────────────────────────
 
-fn oracle_rnd(rng: &Option<RdRand>) -> u64 {
-    match rng {
-        Some(r) => r.try_next_u64().unwrap_or_else(|_| os_u64()),
-        None => os_u64(),
+fn oracle_rnd() -> u64 {
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    if let Ok(rng) = rdrand::RdRand::new() {
+        if let Ok(v) = rng.try_next_u64() {
+            return v;
+        }
     }
+    os_u64()
 }
 
 fn os_u64() -> u64 {

@@ -30,14 +30,16 @@ use std::thread;
 use std::time::Duration;
 
 use colored::*;
-use rdrand::RdRand;
 
 use crate::persistence::{get_or_create_user, get_stats, open_db, record_session, CumulativeStats};
 
 // ─── Randomness source ────────────────────────────────────────────────────────
 
 enum RngSource {
-    Hardware(RdRand),
+    /// x86/x86_64 only: RDRAND hardware TRNG.
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    Hardware(rdrand::RdRand),
+    /// Used on all architectures as primary (non-x86) or fallback (x86).
     Software,
 }
 
@@ -45,6 +47,7 @@ impl RngSource {
     /// Draw one raw `u32`.  Falls back to OS entropy if RDRAND retries exhaust.
     fn next_u32(&self) -> u32 {
         match self {
+            #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
             RngSource::Hardware(rng) => rng.try_next_u32().unwrap_or_else(|_| os_u32()),
             RngSource::Software => os_u32(),
         }
@@ -52,6 +55,7 @@ impl RngSource {
 
     fn label(&self) -> &'static str {
         match self {
+            #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
             RngSource::Hardware(_) => "RDRAND  (Intel/AMD hardware TRNG)",
             RngSource::Software => "OS entropy  (getrandom / BCryptGenRandom)",
         }
@@ -65,10 +69,11 @@ fn os_u32() -> u32 {
 }
 
 fn init_rng() -> RngSource {
-    match RdRand::new() {
-        Ok(r) => RngSource::Hardware(r),
-        Err(_) => RngSource::Software,
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    if let Ok(r) = rdrand::RdRand::new() {
+        return RngSource::Hardware(r);
     }
+    RngSource::Software
 }
 
 // ─── Session configuration ────────────────────────────────────────────────────

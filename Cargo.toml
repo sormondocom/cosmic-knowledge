@@ -11,8 +11,12 @@ symphonia = { version = "0.5", features = ["mp3", "flac", "vorbis"] }
 chrono = "0.4"
 once_cell = "1"
 printpdf  = "0.6"
-rdrand    = "0.8"
 getrandom = "0.2"
+
+# rdrand uses the x86/x86_64 RDRAND CPU instruction and only compiles on those
+# targets.  All other architectures (ARM, RISC-V, …) fall through to getrandom.
+[target.'cfg(any(target_arch = "x86", target_arch = "x86_64"))'.dependencies]
+rdrand = "0.8"
 rusqlite  = { version = "0.31", features = ["bundled"] }
 crossterm = "0.27"
 ctrlc     = "3"

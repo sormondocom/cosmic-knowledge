@@ -10,7 +10,6 @@
 use colored::*;
 use std::io::{self, Write};
 
-use rdrand::RdRand;
 
 use crate::export::{handle_export, wrap_html};
 use crate::menu::{Menu, MenuColor, MenuItem};
@@ -470,22 +469,19 @@ fn draw_reading() {
         if t.is_empty() { "Anonymous" } else { t }.to_string()
     };
 
-    // Use hardware RNG (RDRAND) with OS-entropy fallback
-    let rng = RdRand::new().ok();
-
     // Draw from Elder Futhark (24 runes)
     let pool = ELDER_FUTHARK;
     let mut drawn: Vec<(&Rune, bool)> = Vec::with_capacity(count);
     let mut used: Vec<usize> = Vec::new();
 
     while drawn.len() < count {
-        let raw: u64 = rune_rnd(&rng);
+        let raw: u64 = rune_rnd();
         let idx = (raw % pool.len() as u64) as usize;
         if used.contains(&idx) {
             continue;
         }
         used.push(idx);
-        let raw2: u64 = rune_rnd(&rng);
+        let raw2: u64 = rune_rnd();
         let reversed = raw2 & 1 != 0; // use LSB for orientation
         drawn.push((&pool[idx], reversed));
     }
@@ -1365,11 +1361,14 @@ fn print_rune_readings_table(readings: &[crate::persistence::ReadingRecord], tit
 
 // ─── Hardware RNG helper ──────────────────────────────────────────────────────
 
-fn rune_rnd(rng: &Option<RdRand>) -> u64 {
-    match rng {
-        Some(r) => r.try_next_u64().unwrap_or_else(|_| os_rune_u64()),
-        None => os_rune_u64(),
+fn rune_rnd() -> u64 {
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    if let Ok(rng) = rdrand::RdRand::new() {
+        if let Ok(v) = rng.try_next_u64() {
+            return v;
+        }
     }
+    os_rune_u64()
 }
 
 fn os_rune_u64() -> u64 {

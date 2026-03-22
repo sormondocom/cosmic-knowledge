@@ -11,7 +11,6 @@
 use colored::*;
 use std::io::{self, Write};
 
-use rdrand::RdRand;
 
 use crate::export::{handle_export, wrap_html};
 use crate::menu::{Menu, MenuColor, MenuItem};
@@ -863,12 +862,9 @@ fn do_draw(count: usize, querent: &str) {
     let total = 22 + MINOR_ARCANA.len(); // always 78
     let mut indices: Vec<usize> = (0..total).collect();
 
-    // Use hardware TRNG if available, fall back to OS entropy.
-    let rng_hw = RdRand::new().ok();
-
     // Fisher-Yates shuffle for the first `count` positions.
     for i in 0..count.min(total) {
-        let rand_val = next_rnd(&rng_hw);
+        let rand_val = next_rnd();
         let j = i + (rand_val as usize % (total - i));
         indices.swap(i, j);
     }
@@ -899,7 +895,7 @@ fn do_draw(count: usize, querent: &str) {
     println!();
 
     // Sing an angelic hymn before the reading is revealed
-    let hymn_title = display_angelic_hymn(&rng_hw);
+    let hymn_title = display_angelic_hymn();
 
     print!(
         "{}",
@@ -1342,9 +1338,8 @@ fn draw_lenormand() {
 fn do_lenormand_draw(count: usize) {
     let total = LENORMAND.len();
     let mut indices: Vec<usize> = (0..total).collect();
-    let rng_hw = RdRand::new().ok();
     for i in 0..count.min(total) {
-        let j = i + (next_rnd(&rng_hw) as usize % (total - i));
+        let j = i + (next_rnd() as usize % (total - i));
         indices.swap(i, j);
     }
 
@@ -1672,8 +1667,7 @@ fn print_oracle_card(card: &OracleCard) {
 
 fn draw_oracle() {
     let total = ORACLE.len();
-    let rng_hw = RdRand::new().ok();
-    let idx = next_rnd(&rng_hw) as usize % total;
+    let idx = next_rnd() as usize % total;
     println!();
     println!(
         "{}",
@@ -1693,7 +1687,7 @@ fn draw_oracle() {
     );
     println!();
 
-    display_angelic_hymn(&rng_hw);
+    display_angelic_hymn();
 
     print!(
         "{}",
@@ -1801,9 +1795,8 @@ fn oh_cards_session() {
 }
 
 fn draw_oh_pair() {
-    let rng_hw = RdRand::new().ok();
-    let img_idx = next_rnd(&rng_hw) as usize % OH_IMAGES.len();
-    let word_idx = next_rnd(&rng_hw) as usize % OH_WORDS.len();
+    let img_idx = next_rnd() as usize % OH_IMAGES.len();
+    let word_idx = next_rnd() as usize % OH_WORDS.len();
     let img = &OH_IMAGES[img_idx];
     let word = &OH_WORDS[word_idx];
 
@@ -1826,7 +1819,7 @@ fn draw_oh_pair() {
     );
     println!();
 
-    display_contemplative_opening(&rng_hw);
+    display_contemplative_opening();
 
     print!(
         "{}",
@@ -2175,11 +2168,8 @@ static ANGELIC_HYMNS: &[AngelicHymn] = &[
 
 /// Select a hymn using the shared RNG, display it, and start chant synthesis.
 /// Returns the hymn title for inclusion in the export.
-fn display_angelic_hymn(rng: &Option<RdRand>) -> &'static str {
-    let raw = match rng {
-        Some(r) => r.try_next_u64().unwrap_or_else(|_| os_u64()),
-        None => os_u64(),
-    };
+fn display_angelic_hymn() -> &'static str {
+    let raw = next_rnd();
     let hymn_idx = raw as usize % ANGELIC_HYMNS.len();
     let hymn = &ANGELIC_HYMNS[hymn_idx];
 
@@ -2319,11 +2309,8 @@ static CONTEMPLATIVE_OPENINGS: &[ContemplativeOpening] = &[
 ];
 
 /// Display a contemplative opening suited to the secular, projective OH Cards.
-fn display_contemplative_opening(rng: &Option<RdRand>) -> &'static str {
-    let raw = match rng {
-        Some(r) => r.try_next_u64().unwrap_or_else(|_| os_u64()),
-        None => os_u64(),
-    };
+fn display_contemplative_opening() -> &'static str {
+    let raw = next_rnd();
     let opening_idx = raw as usize % CONTEMPLATIVE_OPENINGS.len();
     let opening = &CONTEMPLATIVE_OPENINGS[opening_idx];
 
@@ -2371,11 +2358,14 @@ fn display_contemplative_opening(rng: &Option<RdRand>) -> &'static str {
 
 // ─── Shared RNG helper ────────────────────────────────────────────────────────
 
-fn next_rnd(rng: &Option<RdRand>) -> u64 {
-    match rng {
-        Some(r) => r.try_next_u64().unwrap_or_else(|_| os_u64()),
-        None => os_u64(),
+fn next_rnd() -> u64 {
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    if let Ok(rng) = rdrand::RdRand::new() {
+        if let Ok(v) = rng.try_next_u64() {
+            return v;
+        }
     }
+    os_u64()
 }
 
 // ─── OS-entropy fallback ──────────────────────────────────────────────────────
@@ -2768,15 +2758,14 @@ fn thoth_draw() {
     // Shuffle the 78-card Thoth deck: 0–21 = Major, 22–77 = THOTH_MINOR
     let total = 22 + THOTH_MINOR.len();
     let mut indices: Vec<usize> = (0..total).collect();
-    let rng_hw = RdRand::new().ok();
     for i in 0..count.min(total) {
-        let r = next_rnd(&rng_hw);
+        let r = next_rnd();
         let j = i + (r as usize % (total - i));
         indices.swap(i, j);
     }
 
     // Display hymn + reveal prompt
-    let hymn_title = display_angelic_hymn(&rng_hw);
+    let hymn_title = display_angelic_hymn();
     print!(
         "{}",
         "  ✦  Press Enter to reveal your Thoth reading...  ✦  "
