@@ -1410,24 +1410,48 @@ This is the Command Prompt. Leave it open throughout the following steps.
 Alternatively, search for **Windows Terminal** in the Start menu — if it is installed, it
 renders the application's characters more crisply (see Troubleshooting if symbols look wrong).
 
-#### 2. Install Rust
+#### 2. Install the Microsoft C++ Build Tools
+
+Rust on Windows requires the Microsoft C++ compiler and Windows SDK. The fastest way to
+install them is a single **copy-paste command** using `winget`, which is built into every
+Windows 10 (2019+) and Windows 11 machine.
+
+Paste the following into your Command Prompt and press **Enter**:
+
+```cmd
+winget install --id Microsoft.VisualStudio.2022.BuildTools --silent --override "--quiet --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+```
+
+What this does:
+- Downloads and installs the **Visual Studio 2022 Build Tools** (the compiler suite only —
+  the full Visual Studio IDE is not installed)
+- Adds the **Desktop development with C++** workload, which includes the MSVC compiler,
+  Windows 11 SDK, and CMake
+- Runs silently in the background — a progress bar appears in the terminal
+
+This takes **five to fifteen minutes** depending on your connection. When the prompt returns,
+**close the Command Prompt completely and reopen it** before continuing.
+
+> **Already have Visual Studio installed?** You may already have the C++ tools. Skip this
+> step and proceed to step 3. If the build later fails with a linker error, come back and
+> run the command above — it will add only the missing components.
+
+#### 3. Install Rust
 
 1. Open your web browser and go to **https://rustup.rs**
 2. Click **DOWNLOAD RUSTUP-INIT.EXE (64-BIT)** and run the file once it downloads.
 3. A terminal window opens automatically and shows a menu. Type **1** and press **Enter** to
    proceed with the standard installation.
-4. The installer may detect that the **Microsoft C++ Build Tools** are missing and offer to
-   install them first. Allow it — this is required and takes a few minutes.
-5. When the installer finishes, **close the Command Prompt completely and reopen it** so
+4. When the installer finishes, **close the Command Prompt completely and reopen it** so
    Windows recognises the new tools.
-6. Confirm Rust installed correctly by typing this and pressing Enter:
+5. Confirm Rust installed correctly by typing this and pressing Enter:
    ```
    rustc --version
    ```
    You should see something like `rustc 1.78.0 (...)`. Any number beginning with 1.70 or
    higher is fine.
 
-#### 3. Download the application
+#### 4. Download the application
 
 **Option A — Using Git (lets you get future updates easily)**
 
@@ -1444,7 +1468,7 @@ Go to the repository on GitHub, click the green **Code** button, and choose **Do
 Once downloaded, right-click the ZIP file and choose *Extract All*. You will have a folder
 called `cosmic-knowledge-main` — you can rename it `cosmic-knowledge` if you wish.
 
-#### 4. Navigate to the application folder
+#### 5. Navigate to the application folder
 
 Type the following and press Enter:
 ```
@@ -1453,7 +1477,7 @@ cd %USERPROFILE%\cosmic-knowledge
 > **Tip:** Type `cd ` (with a trailing space), then drag the application folder from File
 > Explorer into the Command Prompt window. Windows will paste the full path for you.
 
-#### 5. Build the application
+#### 6. Build the application
 
 ```
 cargo build --release
@@ -1461,7 +1485,7 @@ cargo build --release
 Progress text scrolls past for **one to five minutes** — this is normal. Done when you see
 `Finished release`.
 
-#### 6. Run the application
+#### 7. Run the application
 
 ```
 cargo run --release
