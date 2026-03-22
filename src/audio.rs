@@ -98,6 +98,7 @@ struct IntroChord {
     total_samples: u32,
 }
 
+#[cfg(not(target_os = "android"))]
 impl IntroChord {
     const SAMPLE_RATE: u32 = 44100;
     const DURATION_S: u32 = 8;
