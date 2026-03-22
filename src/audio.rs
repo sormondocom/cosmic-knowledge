@@ -15,20 +15,27 @@ use std::thread;
 use std::time::Duration;
 
 use colored::*;
+#[cfg(not(target_os = "android"))]
 use rodio::{OutputStream, Sink, Source};
 
 // ─── Audio system ─────────────────────────────────────────────────────────────
 
 /// Owns the `rodio` output stream (must stay alive for audio to play) and a
 /// shared `Sink` that can be swapped out when the frequency changes.
+#[cfg(not(target_os = "android"))]
 pub struct AudioSystem {
     /// The stream handle must be kept alive — drop = silence.
     pub _stream: OutputStream,
     pub sink: Arc<Mutex<Sink>>,
 }
 
+/// Zero-sized placeholder used on Android where rodio is not available.
+#[cfg(target_os = "android")]
+pub struct AudioSystem;
+
 // ─── Sine wave source ─────────────────────────────────────────────────────────
 
+#[cfg(not(target_os = "android"))]
 /// Infinite iterator that yields single-channel `f32` PCM samples for a pure sine tone.
 ///
 /// Uses a normalised phase accumulator (0.0..1.0) rather than a raw sample counter.
@@ -41,6 +48,7 @@ pub struct SineWave {
     pub phase: f64,
 }
 
+#[cfg(not(target_os = "android"))]
 impl Iterator for SineWave {
     type Item = f32;
 
@@ -52,6 +60,7 @@ impl Iterator for SineWave {
     }
 }
 
+#[cfg(not(target_os = "android"))]
 impl Source for SineWave {
     fn current_frame_len(&self) -> Option<usize> {
         None
@@ -69,6 +78,7 @@ impl Source for SineWave {
 
 // ─── Intro chord ──────────────────────────────────────────────────────────────
 
+#[cfg(not(target_os = "android"))]
 /// An 8-second synth-pad chord modelled after the warm DX7-style FM pad heard
 /// in the introduction of *Lies* (Fleetwood Mac, *Tango in the Night*, 1987).
 ///
@@ -102,6 +112,7 @@ impl IntroChord {
     }
 }
 
+#[cfg(not(target_os = "android"))]
 impl Iterator for IntroChord {
     type Item = f32;
 
@@ -168,6 +179,7 @@ impl Iterator for IntroChord {
     }
 }
 
+#[cfg(not(target_os = "android"))]
 impl Source for IntroChord {
     fn current_frame_len(&self) -> Option<usize> {
         None
@@ -186,6 +198,7 @@ impl Source for IntroChord {
 /// Play the three-note intro chord and block until it finishes (8 s).
 ///
 /// Clears the sink before appending so no stale audio bleeds in.
+#[cfg(not(target_os = "android"))]
 pub fn play_intro_chord(system: &AudioSystem, freqs: [f32; 3]) {
     if let Ok(sink) = system.sink.lock() {
         sink.stop();
@@ -200,16 +213,25 @@ pub fn play_intro_chord(system: &AudioSystem, freqs: [f32; 3]) {
 /// Attempt to open the default audio output device.
 ///
 /// Returns `Err` if no output device is available (headless servers, CI, etc.).
+#[cfg(not(target_os = "android"))]
 pub fn initialize_audio() -> Result<AudioSystem, Box<dyn std::error::Error>> {
     let (_stream, stream_handle) = OutputStream::try_default()?;
     let sink = Arc::new(Mutex::new(Sink::try_new(&stream_handle)?));
     Ok(AudioSystem { _stream, sink })
 }
 
+/// Android: rodio/oboe requires the Android NDK which is not available in
+/// Termux.  Audio is always unavailable — use `--silent` or ignore this `Err`.
+#[cfg(target_os = "android")]
+pub fn initialize_audio() -> Result<AudioSystem, Box<dyn std::error::Error>> {
+    Err("audio unavailable on Android (no NDK) — run with --silent".into())
+}
+
 /// Replace the current tone with a new frequency.
 ///
 /// Stops the current sink, waits 100 ms for a clean transition, then starts the
 /// new frequency.  The brief silence prevents audible clicks.
+#[cfg(not(target_os = "android"))]
 pub fn change_frequency(system: &AudioSystem, frequency: f32) {
     if let Ok(sink) = system.sink.lock() {
         sink.stop();
@@ -226,12 +248,23 @@ pub fn change_frequency(system: &AudioSystem, frequency: f32) {
     }
 }
 
+#[cfg(target_os = "android")]
+pub fn change_frequency(_system: &AudioSystem, _frequency: f32) {}
+
 /// Stop all audio output.
+#[cfg(not(target_os = "android"))]
 pub fn stop_audio(system: &AudioSystem) {
     if let Ok(sink) = system.sink.lock() {
         sink.stop();
     }
 }
+
+#[cfg(target_os = "android")]
+pub fn stop_audio(_system: &AudioSystem) {}
+
+/// Android stub: play_intro_chord is a no-op without rodio.
+#[cfg(target_os = "android")]
+pub fn play_intro_chord(_system: &AudioSystem, _freqs: [f32; 3]) {}
 
 // ─── Frequency tables ─────────────────────────────────────────────────────────
 
@@ -275,6 +308,7 @@ pub fn get_frequency_name(frequency: f32) -> &'static str {
 /// * `binaural = true`  → stereo with right channel at `frequency + beat_hz`.
 ///
 /// The traditional theta-wave preset is 6 Hz; pass 6.0 when no specific beat is required.
+#[cfg(not(target_os = "android"))]
 pub fn generate_audio_file(
     frequency: f32,
     duration_seconds: u32,
@@ -311,10 +345,20 @@ pub fn generate_audio_file(
     Ok(())
 }
 
+/// Android: WAV export requires `hound` which is not compiled on Android.
+#[cfg(target_os = "android")]
+pub fn generate_audio_file(
+    _frequency: f32, _duration_seconds: u32, _filename: &str,
+    _binaural: bool, _beat_hz: f32,
+) -> Result<(), Box<dyn std::error::Error>> {
+    Err("WAV export is not available on Android".into())
+}
+
 /// Write a custom stereo binaural beat WAV file.
 ///
 /// Left channel: `base_freq` Hz; right channel: `base_freq + beat_freq` Hz.
 /// 1-second fade-in / fade-out is applied to prevent audible clicks.
+#[cfg(not(target_os = "android"))]
 pub fn generate_binaural_beat(
     base_freq: f32,
     beat_freq: f32,
@@ -358,6 +402,14 @@ pub fn generate_binaural_beat(
     }
     writer.finalize()?;
     Ok(())
+}
+
+/// Android stub for generate_binaural_beat.
+#[cfg(target_os = "android")]
+pub fn generate_binaural_beat(
+    _base_freq: f32, _beat_freq: f32, _duration_seconds: u32, _filename: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    Err("WAV export is not available on Android".into())
 }
 
 // ─── Export helpers ───────────────────────────────────────────────────────────

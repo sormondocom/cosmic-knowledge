@@ -9,7 +9,9 @@
 //! played on a background thread; the caller returns immediately so the hymn
 //! text remains visible while the music plays.
 
+#[cfg(not(target_os = "android"))]
 use rodio::{buffer::SamplesBuffer, OutputStream, Sink};
+#[cfg(not(target_os = "android"))]
 use std::f32::consts::PI;
 
 const SR: u32 = 44_100;
@@ -189,6 +191,7 @@ static CONTEMPLATIVE_MELODIES: &[&[Step]] = &[
 // ─── Synthesis ────────────────────────────────────────────────────────────────
 
 /// Render a melody to a buffer of mono f32 PCM samples at 44 100 Hz.
+#[cfg(not(target_os = "android"))]
 fn render_melody(steps: &[Step]) -> Vec<f32> {
     // Timbre constants — choral organ quality
     // Three voice layers detuned at −0.3 %, 0 %, +0.3 % for ensemble warmth.
@@ -287,6 +290,7 @@ fn apply_cathedral_reverb(buf: &mut Vec<f32>) {
 /// **Non-blocking** — returns immediately.  The chant plays on a background
 /// thread and stops naturally when the melody ends.  `hymn_index` matches
 /// the position of the hymn in `ANGELIC_HYMNS` in `tarot/session.rs`.
+#[cfg(not(target_os = "android"))]
 pub fn play_gregorian_chant(hymn_index: usize) {
     let steps = GREGORIAN_MELODIES[hymn_index % GREGORIAN_MELODIES.len()];
     // Collect into an owned Vec so it can cross the thread boundary.
@@ -306,6 +310,7 @@ pub fn play_gregorian_chant(hymn_index: usize) {
 ///
 /// **Non-blocking** — returns immediately.  `opening_index` matches the
 /// position of the text in `CONTEMPLATIVE_OPENINGS` in `tarot/session.rs`.
+#[cfg(not(target_os = "android"))]
 pub fn play_contemplative_tone(opening_index: usize) {
     let steps = CONTEMPLATIVE_MELODIES[opening_index % CONTEMPLATIVE_MELODIES.len()];
     let steps: Vec<Step> = steps.to_vec();
@@ -319,3 +324,13 @@ pub fn play_contemplative_tone(opening_index: usize) {
         sink.sleep_until_end();
     });
 }
+
+// ─── Android stubs ────────────────────────────────────────────────────────────
+// rodio is not compiled on Android (requires the NDK C++ runtime).
+// Both functions are no-ops; the hymn text is still displayed by the caller.
+
+#[cfg(target_os = "android")]
+pub fn play_gregorian_chant(_hymn_index: usize) {}
+
+#[cfg(target_os = "android")]
+pub fn play_contemplative_tone(_opening_index: usize) {}

@@ -5,9 +5,6 @@ edition = "2021"
 
 [dependencies]
 colored = "2"
-rodio = "0.17"
-hound = "3.5"
-symphonia = { version = "0.5", features = ["mp3", "flac", "vorbis"] }
 chrono = "0.4"
 once_cell = "1"
 printpdf  = "0.6"
@@ -15,12 +12,20 @@ getrandom = "0.2"
 crossterm = "0.27"
 ctrlc     = "3"
 
-# On desktop platforms (Windows, macOS, Linux x86) bundle SQLite for a
-# zero-dependency binary.  On Android/Termux the bundled build requires a C
-# toolchain and often fails; instead link the system SQLite provided by:
-#   pkg install sqlite
+# Audio and SQLite have platform-specific needs — see target sections below.
+#
+# Android/Termux:
+#   • rodio → cpal → oboe (C++ NDK library) — not available without the NDK
+#   • hound / symphonia — only meaningful when rodio is present
+#   • rusqlite bundled — compiles SQLite from C source; needs a C toolchain
+#     Install system SQLite instead: pkg install sqlite
+# All other platforms get the full set, SQLite bundled for a zero-dep binary.
+
 [target.'cfg(not(target_os = "android"))'.dependencies]
-rusqlite = { version = "0.31", features = ["bundled"] }
+rodio     = "0.17"
+hound     = "3.5"
+symphonia = { version = "0.5", features = ["mp3", "flac", "vorbis"] }
+rusqlite  = { version = "0.31", features = ["bundled"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 rusqlite = { version = "0.31" }

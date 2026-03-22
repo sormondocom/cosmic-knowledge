@@ -84,6 +84,7 @@ letter that precedes all letters, burning in silence against the void."</em></p>
   - [Windows — Full Walkthrough](#windows--full-walkthrough)
   - [macOS — Full Walkthrough](#macos--full-walkthrough)
   - [Linux — Full Walkthrough](#linux--full-walkthrough)
+  - [Android — Termux](#android--termux)
   - [Download the Application](#download-the-application)
   - [Build and Run](#build-and-run)
   - [Launch Options](#launch-options)
@@ -1608,6 +1609,47 @@ Done when you see `Finished release` (one to five minutes).
 ```
 cargo run --release
 ```
+
+---
+
+### Android — Termux
+
+[Termux](https://termux.dev) lets you run a full Linux-like shell and build Rust programs
+natively on an Android phone or tablet.
+
+> **Note on platform differences**
+> Audio playback (`rodio`) and WAV export (`hound`) require the Android NDK C++ runtime,
+> which is not available in Termux.  The application detects this automatically and starts
+> in silent mode — all text-based features (numerology, tarot, runes, rng, etc.) work fully.
+
+#### 1. Install system dependencies
+
+Open Termux and run:
+
+```
+pkg update && pkg upgrade
+pkg install rust git sqlite
+```
+
+`sqlite` provides the system SQLite library that replaces the bundled build used on desktop.
+Without it the linker will report `cannot find library lsqlite3`.
+
+#### 2. Clone and build
+
+```
+git clone <repository-url>
+cd cosmic-knowledge
+cargo build --release
+```
+
+#### 3. Run
+
+```
+./target/release/cosmic_knowledge --silent
+```
+
+The `--silent` flag suppresses the audio-unavailable warning that would otherwise appear at
+startup.  All non-audio features work normally.
 
 ---
 
