@@ -1628,11 +1628,11 @@ Open Termux and run:
 
 ```
 pkg update && pkg upgrade
-pkg install rust git sqlite
+pkg install rust git clang
 ```
 
-`sqlite` provides the system SQLite library that replaces the bundled build used on desktop.
-Without it the linker will report `cannot find library lsqlite3`.
+`clang` is required to compile SQLite from source (the `rusqlite` crate bundles SQLite
+and builds it via the C compiler — no system SQLite package is needed).
 
 #### 2. Clone and build
 

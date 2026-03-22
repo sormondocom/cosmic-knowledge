@@ -11,24 +11,23 @@ printpdf  = "0.6"
 getrandom = "0.2"
 crossterm = "0.27"
 ctrlc     = "3"
+rusqlite  = { version = "0.31", features = ["bundled"] }
 
 # Audio and SQLite have platform-specific needs — see target sections below.
 #
 # Android/Termux:
 #   • rodio → cpal → oboe (C++ NDK library) — not available without the NDK
 #   • hound / symphonia — only meaningful when rodio is present
-#   • rusqlite bundled — compiles SQLite from C source; needs a C toolchain
-#     Install system SQLite instead: pkg install sqlite
-# All other platforms get the full set, SQLite bundled for a zero-dep binary.
+#   • rusqlite "bundled" compiles SQLite from C source — requires a C compiler.
+#     Install one with: pkg install clang
+#     This avoids relying on pkg-config or non-standard Termux library paths.
+# All platforms use bundled SQLite for a zero-dependency binary.
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 rodio     = "0.17"
 hound     = "3.5"
 symphonia = { version = "0.5", features = ["mp3", "flac", "vorbis"] }
-rusqlite  = { version = "0.31", features = ["bundled"] }
 
-[target.'cfg(target_os = "android")'.dependencies]
-rusqlite = { version = "0.31" }
 
 # rdrand uses the x86/x86_64 RDRAND CPU instruction and only compiles on those
 # targets.  All other architectures (ARM, RISC-V, …) fall through to getrandom.
