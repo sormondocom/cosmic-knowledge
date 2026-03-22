@@ -1,0 +1,12 @@
+# ── Platform-specific compiler/linker settings ────────────────────────────────
+
+# Windows (MSVC toolchain)
+# Statically link the Visual C++ runtime into the binary so that end-users do
+# not need to install the Microsoft Visual C++ Redistributable separately.
+# Without this flag the binary depends on vcruntime140.dll / msvcp140.dll at
+# runtime and will refuse to launch on machines where those DLLs are absent.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.i686-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
