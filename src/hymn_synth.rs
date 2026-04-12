@@ -5,14 +5,26 @@
 //! layers) and a cathedral reverb tail.  Entirely cross-platform — all
 //! synthesis is pure Rust arithmetic via `rodio`.
 //!
-//! Both public functions are **non-blocking**: the chant is synthesised and
+//! All public play functions are **non-blocking**: the chant is synthesised and
 //! played on a background thread; the caller returns immediately so the hymn
 //! text remains visible while the music plays.
+//!
+//! Each function returns an [`AudioHandle`].  Dropping the handle (or calling
+//! [`AudioHandle::stop`]) silences the audio immediately.  This ensures that
+//! tones started for a reading session stop cleanly when the user exits, rather
+//! than bleeding into subsequent menus.
 
 #[cfg(not(target_os = "android"))]
 use rodio::{buffer::SamplesBuffer, OutputStream, Sink};
 #[cfg(not(target_os = "android"))]
-use std::f32::consts::PI;
+use std::{
+    f32::consts::PI,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
 
 const SR: u32 = 44_100;
 const SRF: f32 = SR as f32;
@@ -283,54 +295,189 @@ fn apply_cathedral_reverb(buf: &mut Vec<f32>) {
     }
 }
 
+// ─── AudioHandle ─────────────────────────────────────────────────────────────
+
+/// A handle to a background audio playback task.
+///
+/// Dropping this value (or calling [`AudioHandle::stop`]) sets a cancellation
+/// flag that the background thread checks on each ~100 ms tick, stopping
+/// playback within one tick.  This ensures that tones started for a reading
+/// session do not bleed into subsequent menus.
+pub struct AudioHandle {
+    #[cfg(not(target_os = "android"))]
+    stop: Arc<AtomicBool>,
+}
+
+impl AudioHandle {
+    /// Immediately signal the background thread to stop.
+    /// Equivalent to dropping the handle.
+    #[allow(dead_code)]
+    pub fn stop(self) {
+        drop(self); // triggers Drop
+    }
+
+    #[cfg(not(target_os = "android"))]
+    fn with_flag(stop: Arc<AtomicBool>) -> Self {
+        AudioHandle { stop }
+    }
+
+    fn silent() -> Self {
+        AudioHandle {
+            #[cfg(not(target_os = "android"))]
+            stop: Arc::new(AtomicBool::new(true)), // pre-cancelled — no thread to signal
+        }
+    }
+}
+
+impl Drop for AudioHandle {
+    fn drop(&mut self) {
+        #[cfg(not(target_os = "android"))]
+        self.stop.store(true, Ordering::Relaxed);
+    }
+}
+
+// ─── Drone synthesis ──────────────────────────────────────────────────────────
+
+/// Render a sustained pure-tone drone at `freq` Hz for `duration_s` seconds.
+/// Uses a 3-second raised-cosine fade-in and fade-out for gentle entry/exit.
+#[cfg(not(target_os = "android"))]
+fn render_drone(freq: f32, duration_s: f32) -> Vec<f32> {
+    let n = (duration_s * SRF) as usize;
+    let fade_n = (3.0_f32.min(duration_s * 0.15) * SRF) as usize;
+    const AMP: f32 = 0.14;
+    (0..n)
+        .map(|i| {
+            let env = if i < fade_n {
+                0.5 * (1.0 - (PI * i as f32 / fade_n as f32).cos())
+            } else if i + fade_n >= n {
+                0.5 * (1.0 - (PI * (n - i) as f32 / fade_n as f32).cos())
+            } else {
+                1.0_f32
+            };
+            let phi = (freq * i as f32 / SRF).fract();
+            (2.0 * PI * phi).sin() * env * AMP
+        })
+        .collect()
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /// Synthesise and play the Gregorian chant for the given hymn index.
 ///
 /// **Non-blocking** — returns immediately.  The chant plays on a background
-/// thread and stops naturally when the melody ends.  `hymn_index` matches
-/// the position of the hymn in `ANGELIC_HYMNS` in `tarot/session.rs`.
+/// thread and stops when the melody ends **or** when the returned
+/// [`AudioHandle`] is dropped.  `hymn_index` matches the position of the
+/// hymn in `ANGELIC_HYMNS` in `tarot/session.rs`.
 #[cfg(not(target_os = "android"))]
-pub fn play_gregorian_chant(hymn_index: usize) {
-    let steps = GREGORIAN_MELODIES[hymn_index % GREGORIAN_MELODIES.len()];
-    // Collect into an owned Vec so it can cross the thread boundary.
-    let steps: Vec<Step> = steps.to_vec();
+pub fn play_gregorian_chant(hymn_index: usize) -> AudioHandle {
+    let steps: Vec<Step> = GREGORIAN_MELODIES[hymn_index % GREGORIAN_MELODIES.len()].to_vec();
+    let stop = Arc::new(AtomicBool::new(false));
+    let stop_bg = stop.clone();
     std::thread::spawn(move || {
         let samples = render_melody(&steps);
+        if stop_bg.load(Ordering::Relaxed) {
+            return;
+        }
         let Ok((_stream, handle)) = OutputStream::try_default() else {
             return;
         };
-        let Ok(sink) = Sink::try_new(&handle) else { return };
+        let Ok(sink) = Sink::try_new(&handle) else {
+            return;
+        };
         sink.append(SamplesBuffer::new(1, SR, samples));
-        sink.sleep_until_end();
+        while !sink.empty() {
+            if stop_bg.load(Ordering::Relaxed) {
+                sink.stop();
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
     });
+    AudioHandle::with_flag(stop)
 }
 
 /// Synthesise and play the meditative modal tone for the given opening index.
 ///
-/// **Non-blocking** — returns immediately.  `opening_index` matches the
-/// position of the text in `CONTEMPLATIVE_OPENINGS` in `tarot/session.rs`.
+/// **Non-blocking** — returns immediately.  The tone plays on a background
+/// thread and stops when finished **or** when the returned [`AudioHandle`]
+/// is dropped.  `opening_index` matches the position of the text in
+/// `CONTEMPLATIVE_OPENINGS` in `tarot/session.rs`.
 #[cfg(not(target_os = "android"))]
-pub fn play_contemplative_tone(opening_index: usize) {
-    let steps = CONTEMPLATIVE_MELODIES[opening_index % CONTEMPLATIVE_MELODIES.len()];
-    let steps: Vec<Step> = steps.to_vec();
+pub fn play_contemplative_tone(opening_index: usize) -> AudioHandle {
+    let steps: Vec<Step> =
+        CONTEMPLATIVE_MELODIES[opening_index % CONTEMPLATIVE_MELODIES.len()].to_vec();
+    let stop = Arc::new(AtomicBool::new(false));
+    let stop_bg = stop.clone();
     std::thread::spawn(move || {
         let samples = render_melody(&steps);
+        if stop_bg.load(Ordering::Relaxed) {
+            return;
+        }
         let Ok((_stream, handle)) = OutputStream::try_default() else {
             return;
         };
-        let Ok(sink) = Sink::try_new(&handle) else { return };
+        let Ok(sink) = Sink::try_new(&handle) else {
+            return;
+        };
         sink.append(SamplesBuffer::new(1, SR, samples));
-        sink.sleep_until_end();
+        while !sink.empty() {
+            if stop_bg.load(Ordering::Relaxed) {
+                sink.stop();
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
     });
+    AudioHandle::with_flag(stop)
+}
+
+/// Play a sustained drone at the given Solfeggio frequency for the natal angel
+/// readout.  Non-blocking — plays in background, stops when handle is dropped.
+///
+/// Duration is 90 seconds; practically it will be stopped early by dropping
+/// the handle when the user exits the readout session.
+#[cfg(not(target_os = "android"))]
+pub fn play_natal_tone(freq_hz: f32) -> AudioHandle {
+    let stop = Arc::new(AtomicBool::new(false));
+    let stop_bg = stop.clone();
+    std::thread::spawn(move || {
+        let samples = render_drone(freq_hz, 90.0);
+        if stop_bg.load(Ordering::Relaxed) {
+            return;
+        }
+        let Ok((_stream, handle)) = OutputStream::try_default() else {
+            return;
+        };
+        let Ok(sink) = Sink::try_new(&handle) else {
+            return;
+        };
+        sink.append(SamplesBuffer::new(1, SR, samples));
+        while !sink.empty() {
+            if stop_bg.load(Ordering::Relaxed) {
+                sink.stop();
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+    });
+    AudioHandle::with_flag(stop)
 }
 
 // ─── Android stubs ────────────────────────────────────────────────────────────
 // rodio is not compiled on Android (requires the NDK C++ runtime).
-// Both functions are no-ops; the hymn text is still displayed by the caller.
+// Play functions return a silent no-op handle; the text content still displays.
 
 #[cfg(target_os = "android")]
-pub fn play_gregorian_chant(_hymn_index: usize) {}
+pub fn play_gregorian_chant(_hymn_index: usize) -> AudioHandle {
+    AudioHandle::silent()
+}
 
 #[cfg(target_os = "android")]
-pub fn play_contemplative_tone(_opening_index: usize) {}
+pub fn play_contemplative_tone(_opening_index: usize) -> AudioHandle {
+    AudioHandle::silent()
+}
+
+#[cfg(target_os = "android")]
+pub fn play_natal_tone(_freq_hz: f32) -> AudioHandle {
+    AudioHandle::silent()
+}

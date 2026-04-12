@@ -669,3 +669,43 @@ pub fn minor_by_suit_rank(suit: &str, rank: &str) -> Option<&'static MinorArcanu
         .iter()
         .find(|c| c.suit.to_lowercase() == s && c.rank_name.to_lowercase() == r)
 }
+
+// ─── Natal angel calculations ─────────────────────────────────────────────────
+
+/// Convert a birth date (month 1–12, day 1–31) to a Shem HaMephorash angel index (0-based, 0–71).
+///
+/// Uses the tropical zodiac: the spring equinox (≈ March 21) marks 0° Aries; the Sun advances
+/// ≈ 360 / 365° per day. The resulting solar longitude is divided by 5° to identify the
+/// governing angel.  No birth time is needed — this gives the approximate natal Sun angel.
+pub fn birth_date_to_angel_index(month: u8, day: u8) -> usize {
+    // Cumulative days before each month (1-indexed), 0-indexed from Jan 1, non-leap year.
+    const CUM: [u16; 13] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365];
+    let m = (month.clamp(1, 12) as usize).min(12);
+    let d = (day as u16).clamp(1, 31);
+    // Day-of-year, 0-indexed (Jan 1 = 0).
+    let doy = CUM[m - 1] + d.saturating_sub(1);
+    // Spring equinox ≈ March 21 = day 79 (0-indexed Jan 1 = 0).
+    const EQUINOX: u16 = 79;
+    // Days since spring equinox, wrapping through the year.
+    let since = (doy + 365u16.saturating_sub(EQUINOX)) % 365;
+    // Solar longitude 0–359° → angel index 0–71.
+    ((since as u32 * 360 / 365) as usize / 5) % 72
+}
+
+/// Return the three guiding angels for a birth date: physical, heart, and intellectual guardian.
+///
+/// The **physical guardian** (Nefesh / Body) governs the Sun's zodiacal degree at birth —
+/// this is the primary natal Shem HaMephorash angel.
+/// The **heart guardian** (Ruach / Emotional self) is the preceding angel in the sequence.
+/// The **intellectual guardian** (Neshamah / Mind & Spirit) is the following angel.
+///
+/// The three correspond to the classic Kabbalistic tripartite soul: Nefesh, Ruach, Neshamah.
+/// Source: Ambelain, *La Kabbale Pratique* (1951; trans. Rankine & Barron, 2002).
+pub fn three_guiding_angels(month: u8, day: u8) -> [&'static ShemAngel; 3] {
+    let idx = birth_date_to_angel_index(month, day);
+    [
+        &SHEM_HAMEPHORASH[idx],             // physical  — natal Sun angel
+        &SHEM_HAMEPHORASH[(idx + 71) % 72], // heart     — preceding angel
+        &SHEM_HAMEPHORASH[(idx + 1) % 72],  // intellect — following angel
+    ]
+}

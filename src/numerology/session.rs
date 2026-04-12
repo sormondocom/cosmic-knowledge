@@ -7,7 +7,7 @@
 use colored::*;
 use std::io::{self, Write};
 
-use crate::audio::{change_frequency, get_frequency_for_number, get_frequency_name, AudioSystem};
+use crate::audio::{change_frequency, get_frequency_for_number, get_frequency_name, stop_audio, AudioSystem};
 use crate::enochian::{aethyr_lookup, enochian_angelic_message, enochian_meaning};
 use crate::export::{
     build_numerology_html, export_html, export_pdf, export_text, prompt_export_format, ExportChoice,
@@ -239,6 +239,11 @@ pub fn run_numerology_session(audio_system: &Option<AudioSystem>) {
             ExportChoice::Skip => {}
         }
         println!();
+    }
+
+    // Stop the frequency tone when the user exits back to the main menu.
+    if let Some(ref sys) = audio_system {
+        stop_audio(sys);
     }
 }
 

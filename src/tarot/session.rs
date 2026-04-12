@@ -5,7 +5,9 @@
 //!  - `browse_major_arcana`         — display all 22 Major Arcana
 //!  - `lookup_major`                — look up one card by number or name
 //!  - `browse_minor_by_suit`        — display all 14 cards in a chosen suit
+//!  - `shem_hamephorash_menu`       — sub-menu: browse 72 angels or find 3 guiding angels
 //!  - `browse_shem_hamephorash`     — display all 72 Shem HaMephorash angels
+//!  - `find_guiding_angels`         — three natal guardians from birth date (Ambelain)
 //!  - `draw_reading`                — 1- or 3-card sacred draw using hardware RNG
 
 use colored::*;
@@ -19,7 +21,10 @@ use crate::reports::chrono_now;
 
 use super::lenormand::{lenormand_by_name, lenormand_by_number, LENORMAND};
 use super::major::{major_by_name, major_by_number, MajorArcanum, MAJOR_ARCANA};
-use super::minor::{suit_cards, MinorArcanum, MINOR_ARCANA, SHEM_HAMEPHORASH};
+use super::minor::{
+    birth_date_to_angel_index, suit_cards, three_guiding_angels, MinorArcanum, MINOR_ARCANA,
+    SHEM_HAMEPHORASH,
+};
 use super::oh_cards::{oh_image_by_number, oh_word_by_number, OH_IMAGES, OH_WORDS};
 use super::oracle::{oracle_by_number, oracle_suit_cards, OracleCard, ORACLE};
 
@@ -134,7 +139,7 @@ pub fn run_tarot_session() {
         match TAROT_MENU.show_and_read().as_str() {
             "1" => major_arcana_menu(),
             "2" => minor_arcana_menu(),
-            "3" => browse_shem_hamephorash(),
+            "3" => shem_hamephorash_menu(),
             "4" => draw_reading(),
             "5" => lenormand_session(),
             "6" => oracle_session(),
@@ -638,6 +643,40 @@ pub fn print_minor_card(card: &MinorArcanum) {
 
 // ─── Shem HaMephorash ─────────────────────────────────────────────────────────
 
+static SHEM_ITEMS: &[MenuItem] = &[
+    MenuItem {
+        key: "1",
+        icon: "✦",
+        label: "Browse All 72 Angels",
+        hint: "Full table — names, Hebrew roots, zodiacal degrees",
+    },
+    MenuItem {
+        key: "2",
+        icon: "👁",
+        label: "Your Three Guiding Angels",
+        hint: "Physical · Heart · Intellectual — from your birth date",
+    },
+];
+
+static SHEM_MENU: Menu = Menu {
+    title: "✦  THE SHEM HAMEPHORASH  ✦",
+    border_color: MenuColor::Yellow,
+    items: SHEM_ITEMS,
+    back_key: "0",
+    back_label: "Back to Tarot Menu",
+};
+
+fn shem_hamephorash_menu() {
+    loop {
+        match SHEM_MENU.show_and_read().as_str() {
+            "1" => browse_shem_hamephorash(),
+            "2" => find_guiding_angels(),
+            "0" | "" => break,
+            _ => println!("{}", "  Please enter 0–2.".yellow()),
+        }
+    }
+}
+
 fn browse_shem_hamephorash() {
     println!();
     println!(
@@ -802,6 +841,265 @@ fn browse_shem_hamephorash() {
     }
 }
 
+// ─── Three Guiding Angels ─────────────────────────────────────────────────────
+
+/// Map a zodiac sign name to a Solfeggio resonance frequency appropriate for
+/// that sign's classical element.
+///
+/// Element–frequency correspondences (modern Kabbalistic synthesis):
+/// - Fire (Aries, Leo, Sagittarius)       → 528 Hz  Love / Transformation
+/// - Earth (Taurus, Virgo, Capricorn)     → 417 Hz  Facilitating Change
+/// - Air (Gemini, Libra, Aquarius)        → 741 Hz  Awakening Intuition
+/// - Water (Cancer, Scorpio, Pisces)      → 639 Hz  Harmony / Connection
+fn natal_solfeggio_for_sign(sign: &str) -> (f32, &'static str) {
+    match sign {
+        "Aries" | "Leo" | "Sagittarius" => (528.0, "Love & Transformation"),
+        "Taurus" | "Virgo" | "Capricorn" => (417.0, "Facilitating Change"),
+        "Gemini" | "Libra" | "Aquarius" => (741.0, "Awakening Intuition"),
+        "Cancer" | "Scorpio" | "Pisces" => (639.0, "Harmony & Connection"),
+        _ => (528.0, "Love & Transformation"),
+    }
+}
+
+fn find_guiding_angels() {
+    println!();
+    println!(
+        "{}",
+        "  ╔══════════════════════════════════════════════════════════╗"
+            .bright_yellow()
+    );
+    println!(
+        "{}",
+        "  ║  👁  YOUR THREE GUIDING ANGELS  👁                      ║"
+            .bold()
+            .bright_yellow()
+    );
+    println!(
+        "{}",
+        "  ╠══════════════════════════════════════════════════════════╣"
+            .bright_yellow()
+    );
+    println!(
+        "{}",
+        "  ║  From the 72 Names of God — Shem HaMephorash            ║".dimmed()
+    );
+    println!(
+        "{}",
+        "  ║  Source: Ambelain, La Kabbale Pratique (1951)           ║".dimmed()
+    );
+    println!(
+        "{}",
+        "  ╚══════════════════════════════════════════════════════════╝"
+            .bright_yellow()
+    );
+    println!();
+
+    print!("  {} ", "Enter birth month (1–12):".bold().cyan());
+    io::stdout().flush().unwrap_or(());
+    let mut mbuf = String::new();
+    io::stdin().read_line(&mut mbuf).unwrap_or(0);
+    let month = mbuf.trim().parse::<u8>().unwrap_or(0);
+
+    print!("  {} ", "Enter birth day (1–31):".bold().cyan());
+    io::stdout().flush().unwrap_or(());
+    let mut dbuf = String::new();
+    io::stdin().read_line(&mut dbuf).unwrap_or(0);
+    let day = dbuf.trim().parse::<u8>().unwrap_or(0);
+
+    if !(1..=12).contains(&month) || !(1..=31).contains(&day) {
+        println!(
+            "{}",
+            "  Invalid date — please enter a valid month (1–12) and day.".yellow()
+        );
+        return;
+    }
+
+    let [physical, heart, intellectual] = three_guiding_angels(month, day);
+    let idx = birth_date_to_angel_index(month, day);
+    let approx_deg = idx * 5;
+
+    // Extract the zodiac sign name from the physical angel's degrees field.
+    // e.g. "10°–15° Gemini" → "Gemini"
+    let sign = physical
+        .degrees
+        .split_whitespace()
+        .last()
+        .unwrap_or("Unknown");
+
+    // ── Natal Solfeggio tone ───────────────────────────────────────────────────
+    // Map the physical angel's zodiac element to a Solfeggio resonance frequency.
+    // Dropped at end of function → tone stops when user exits the readout.
+    let (natal_freq, natal_freq_name) = natal_solfeggio_for_sign(sign);
+    let _natal_audio = crate::hymn_synth::play_natal_tone(natal_freq);
+
+    // ── Header ────────────────────────────────────────────────────────────────
+    println!();
+    println!(
+        "{}",
+        "  ╔══════════════════════════════════════════════════════════╗"
+            .bright_yellow()
+    );
+    let born_line = format!(
+        "Born: {:02}/{:02}  ·  Sun ~{:3}°–{:3}° {}",
+        month, day, approx_deg, approx_deg + 5, sign
+    );
+    println!("  {}", format!("║  {:<56}║", born_line).bright_white());
+    let freq_line = format!("Natal resonance: {} Hz  — {}", natal_freq as u32, natal_freq_name);
+    println!("  {}", format!("║  {:<56}║", freq_line).bright_cyan());
+    println!(
+        "{}",
+        "  ╠══════════════════════════════════════════════════════════╣"
+            .bright_yellow()
+    );
+    println!(
+        "{}",
+        "  ║  The three Shem HaMephorash angels of your nativity:    ║".dimmed()
+    );
+    println!(
+        "{}",
+        "  ║  Physical · Heart · Intellectual (Nefesh–Ruach–Neshamah)║".dimmed()
+    );
+
+    // ── Angel block printer (closure) ─────────────────────────────────────────
+    let print_angel_block =
+        |roman: &str, role: &str, soul: &str, angel: &crate::tarot::minor::ShemAngel| {
+            println!(
+                "{}",
+                "  ╠══════════════════════════════════════════════════════════╣"
+                    .bright_yellow()
+            );
+            // Title row
+            let title = format!("{}. {}  ·  {}", roman, role, soul);
+            println!(
+                "  {}",
+                format!("║  {:<56}║", title).bold().bright_yellow()
+            );
+            println!(
+                "{}",
+                "  ╠══════════════════════════════════════════════════════════╣"
+                    .bright_yellow()
+            );
+            // Angel name + Hebrew root + degrees
+            let name_line = format!(
+                "{}. {}  ·  {}  ·  {}",
+                angel.number, angel.name, angel.hebrew_root, angel.degrees
+            );
+            println!(
+                "  {}",
+                format!("║  {:<56}║", name_line).bright_white()
+            );
+            println!(
+                "{}",
+                "  ╠══════════════════════════════════════════════════════════╣"
+                    .dimmed()
+            );
+            // Quality — word-wrapped into the box
+            wrap_box_line(angel.quality, 54);
+        };
+
+    print_angel_block("I",   "Physical Guardian",     "Nefesh — Body",          physical);
+    print_angel_block("II",  "Heart Guardian",         "Ruach — Emotional Self", heart);
+    print_angel_block("III", "Intellectual Guardian",  "Neshamah — Mind",        intellectual);
+
+    println!(
+        "{}",
+        "  ╚══════════════════════════════════════════════════════════╝"
+            .bright_yellow()
+    );
+    println!();
+    println!(
+        "  {}",
+        "Note: angels are approximated from birth date using the tropical zodiac."
+            .italic()
+            .dimmed()
+    );
+    println!(
+        "  {}",
+        "For exact placement, the precise solar degree at birth is required."
+            .italic()
+            .dimmed()
+    );
+    println!();
+
+    // Stop the natal tone before the export prompt — user has left the readout.
+    drop(_natal_audio);
+
+    // ── Export ────────────────────────────────────────────────────────────────
+    let month_c = month;
+    let day_c = day;
+    let natal_freq_hz = natal_freq as u32;
+    let natal_freq_name_c = natal_freq_name;
+    handle_export(
+        "three_guiding_angels",
+        || {
+            let mut s = format!(
+                "YOUR THREE GUIDING ANGELS\nGenerated: {}\n\nBirth date: {:02}/{:02}   Sun ≈ {}°–{}° {}\nNatal resonance: {} Hz  —  {}\n\n",
+                chrono_now(), month_c, day_c, approx_deg, approx_deg + 5, sign,
+                natal_freq_hz, natal_freq_name_c
+            );
+            for (roman, role, soul, angel) in [
+                ("I",   "Physical Guardian",    "Nefesh — Body",          physical),
+                ("II",  "Heart Guardian",        "Ruach — Emotional Self", heart),
+                ("III", "Intellectual Guardian", "Neshamah — Mind",        intellectual),
+            ] {
+                s.push_str(&format!(
+                    "{}. {} · {}\n{} · {} · {}\n{}\n\n",
+                    roman, role, soul,
+                    angel.number, angel.name, angel.degrees,
+                    angel.quality
+                ));
+            }
+            s.push_str(
+                "Source: Ambelain, La Kabbale Pratique (1951; trans. Rankine & Barron, 2002).\n\
+                 Note: angels are approximated from birth date using the tropical zodiac.\n"
+            );
+            s
+        },
+        || {
+            let mut rows = String::new();
+            for (roman, role, soul, angel) in [
+                ("I",   "Physical Guardian",    "Nefesh — Body",          physical),
+                ("II",  "Heart Guardian",        "Ruach — Emotional Self", heart),
+                ("III", "Intellectual Guardian", "Neshamah — Mind",        intellectual),
+            ] {
+                rows.push_str(&format!(
+                    "<tr>\
+                     <td class=\"num\">{}</td>\
+                     <td class=\"sys\">{}</td>\
+                     <td>{}</td>\
+                     <td class=\"num\">{}</td>\
+                     <td class=\"sys\">{}</td>\
+                     <td>{}</td>\
+                     <td class=\"meaning\">{}</td>\
+                     </tr>",
+                    roman,
+                    tarot_esc(role),
+                    tarot_esc(soul),
+                    angel.number,
+                    tarot_esc(angel.name),
+                    tarot_esc(angel.degrees),
+                    tarot_esc(angel.quality)
+                ));
+            }
+            let body = format!(
+                "<p style=\"font-size:8.5pt;margin-bottom:6pt;\">\
+                 Birth date: {:02}/{:02} &nbsp;&middot;&nbsp; Sun &asymp; {}°&ndash;{}° {}<br/>\
+                 Natal resonance: <strong>{} Hz</strong> &mdash; {}<br/>\
+                 Source: Ambelain, <em>La Kabbale Pratique</em> (1951). \
+                 Angels approximate the natal Sun angel from birth date using the tropical zodiac.\
+                 </p>\
+                 <table><thead><tr>\
+                 <th>#</th><th>Role</th><th>Soul Level</th>\
+                 <th>Angel #</th><th>Name</th><th>Degrees</th><th>Quality</th>\
+                 </tr></thead><tbody>{}</tbody></table>",
+                month_c, day_c, approx_deg, approx_deg + 5, sign,
+                natal_freq_hz, natal_freq_name_c, rows
+            );
+            wrap_html("Your Three Guiding Angels", &body, "hebrew")
+        },
+    );
+}
+
 // ─── Sacred reading ───────────────────────────────────────────────────────────
 
 static READING_ITEMS: &[MenuItem] = &[
@@ -894,8 +1192,9 @@ fn do_draw(count: usize, querent: &str) {
     );
     println!();
 
-    // Sing an angelic hymn before the reading is revealed
-    let hymn_title = display_angelic_hymn();
+    // Sing an angelic hymn before the reading is revealed.
+    // _audio is dropped explicitly before the export prompt, stopping the chant.
+    let (hymn_title, _audio) = display_angelic_hymn();
 
     print!(
         "{}",
@@ -977,6 +1276,9 @@ fn do_draw(count: usize, querent: &str) {
             }
         }
     }
+
+    // Stop the chant before the export prompt — user has left the reading.
+    drop(_audio);
 
     // Export the reading
     handle_export(
@@ -1687,7 +1989,8 @@ fn draw_oracle() {
     );
     println!();
 
-    display_angelic_hymn();
+    // _audio dropped at end of scope → chant stops when oracle card is dismissed.
+    let (_oracle_hymn, _audio) = display_angelic_hymn();
 
     print!(
         "{}",
@@ -1819,7 +2122,8 @@ fn draw_oh_pair() {
     );
     println!();
 
-    display_contemplative_opening();
+    // _audio dropped at end of scope → tone stops when OH Cards session exits.
+    let (_oh_attribution, _audio) = display_contemplative_opening();
 
     print!(
         "{}",
@@ -2168,7 +2472,7 @@ static ANGELIC_HYMNS: &[AngelicHymn] = &[
 
 /// Select a hymn using the shared RNG, display it, and start chant synthesis.
 /// Returns the hymn title for inclusion in the export.
-fn display_angelic_hymn() -> &'static str {
+fn display_angelic_hymn() -> (&'static str, crate::hymn_synth::AudioHandle) {
     let raw = next_rnd();
     let hymn_idx = raw as usize % ANGELIC_HYMNS.len();
     let hymn = &ANGELIC_HYMNS[hymn_idx];
@@ -2212,9 +2516,10 @@ fn display_angelic_hymn() -> &'static str {
     println!();
 
     // Start Gregorian chant synthesis in background (non-blocking, cross-platform).
-    crate::hymn_synth::play_gregorian_chant(hymn_idx);
+    // Return the handle so callers can stop the audio when the session ends.
+    let audio = crate::hymn_synth::play_gregorian_chant(hymn_idx);
 
-    hymn.title
+    (hymn.title, audio)
 }
 
 // ─── OH Cards — Contemplative Openings ───────────────────────────────────────
@@ -2309,7 +2614,7 @@ static CONTEMPLATIVE_OPENINGS: &[ContemplativeOpening] = &[
 ];
 
 /// Display a contemplative opening suited to the secular, projective OH Cards.
-fn display_contemplative_opening() -> &'static str {
+fn display_contemplative_opening() -> (&'static str, crate::hymn_synth::AudioHandle) {
     let raw = next_rnd();
     let opening_idx = raw as usize % CONTEMPLATIVE_OPENINGS.len();
     let opening = &CONTEMPLATIVE_OPENINGS[opening_idx];
@@ -2351,9 +2656,10 @@ fn display_contemplative_opening() -> &'static str {
     println!();
 
     // Start meditative modal tone in background (non-blocking, cross-platform).
-    crate::hymn_synth::play_contemplative_tone(opening_idx);
+    // Return the handle so callers can stop the audio when the session ends.
+    let audio = crate::hymn_synth::play_contemplative_tone(opening_idx);
 
-    opening.attribution
+    (opening.attribution, audio)
 }
 
 // ─── Shared RNG helper ────────────────────────────────────────────────────────
@@ -2764,8 +3070,8 @@ fn thoth_draw() {
         indices.swap(i, j);
     }
 
-    // Display hymn + reveal prompt
-    let hymn_title = display_angelic_hymn();
+    // Display hymn + reveal prompt.  _audio dropped explicitly before the export prompt.
+    let (hymn_title, _audio) = display_angelic_hymn();
     print!(
         "{}",
         "  ✦  Press Enter to reveal your Thoth reading...  ✦  "
@@ -2839,6 +3145,9 @@ fn thoth_draw() {
             }
         }
     }
+
+    // Stop the chant before the export prompt — user has left the reading.
+    drop(_audio);
 
     // Export
     let drawn_snap = drawn.clone();
