@@ -6,6 +6,7 @@
 
 // ─── Module declarations ──────────────────────────────────────────────────────
 mod audio;
+mod bible;
 mod cosmology;
 mod enochian;
 mod export;
@@ -32,6 +33,7 @@ use audio::{
     export_all_frequencies_cli, initialize_audio, play_intro_chord, show_frequency_menu,
     stop_audio, AudioSystem,
 };
+use bible::run_bible_session;
 use cosmology::run_world_systems_session;
 use enochian::{random_aethyr_chord, run_enochian_session, show_aethyr_info, show_aethyr_table};
 use menu::{print_angel_banner, show_help, show_loading_screen, show_main_menu, MainMode};
@@ -147,6 +149,7 @@ fn main() {
             MainMode::Tarot => run_tarot_session(),
             MainMode::Runes => run_runes_session(),
             MainMode::Urim => run_urim_session(),
+            MainMode::Bible => run_bible_session(),
             MainMode::Help => show_help(),
             MainMode::Quit => {
                 if let Some(ref sys) = audio_system {

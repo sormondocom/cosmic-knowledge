@@ -162,6 +162,7 @@ pub enum MainMode {
     Tarot,
     Runes,
     Urim,
+    Bible,
     Help,
     Quit,
 }
@@ -222,6 +223,12 @@ static MAIN_ITEMS: &[MenuItem] = &[
         hint: "Oracle of the High Priest · Breastplate · Binary Oracle",
     },
     MenuItem {
+        key: "10",
+        icon: "📖",
+        label: "KJV Bible Search  (beta)",
+        hint: "FTS5 full-text search · verse lookup · chapter browse",
+    },
+    MenuItem {
         key: "h",
         icon: "❓",
         label: "Help & Reference",
@@ -250,9 +257,10 @@ pub fn show_main_menu() -> MainMode {
             "7" => return MainMode::Tarot,
             "8" => return MainMode::Runes,
             "9" => return MainMode::Urim,
+            "10" => return MainMode::Bible,
             "h" | "H" => return MainMode::Help,
             "0" | "" => return MainMode::Quit,
-            _ => println!("{}", "  Please enter 0–9 or h.".yellow()),
+            _ => println!("{}", "  Please enter 0–10 or h.".yellow()),
         }
     }
 }

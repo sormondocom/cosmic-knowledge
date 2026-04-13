@@ -62,7 +62,7 @@ pub static MAZZAROTH: &[MazzarothSign] = &[
         tribe: "Judah (יְהוּדָה)",
         hebrew_month: "Nisan (נִיסָן)",
         letter: "Heh (ה)",
-        hoshen_stone: "Nofekh (נֹפֶךְ) — Turquoise / Carbuncle",
+        hoshen_stone: "Nofekh (נֹפֶךְ) — Carbuncle / Garnet",
         quality: "Cardinal · Initiative, leadership, the spark of creation",
     },
     MazzarothSign {
@@ -137,7 +137,7 @@ pub static MAZZAROTH: &[MazzarothSign] = &[
         tribe: "Gad (גָּד)",
         hebrew_month: "Elul (אֱלוּל)",
         letter: "Yod (י)",
-        hoshen_stone: "Shevo (שְׁבוֹ) — Agate / Banded Quartz",
+        hoshen_stone: "Ahlamah (אַחְלָמָה) — Amethyst",
         quality: "Mutable · Discernment, teshuvah (return), the harvest of refinement",
     },
     MazzarothSign {
@@ -152,7 +152,7 @@ pub static MAZZAROTH: &[MazzarothSign] = &[
         tribe: "Ephraim (אֶפְרַיִם)",
         hebrew_month: "Tishrei (תִּשְׁרֵי)",
         letter: "Lamed (ל)",
-        hoshen_stone: "Leshem (לֶשֶׁם) — Ligure / Jacinth",
+        hoshen_stone: "Shoham (שֹׁהַם) — Onyx / Beryl",
         quality: "Cardinal · Justice, divine balance, the scales of Rosh Hashanah",
     },
     MazzarothSign {
@@ -197,7 +197,7 @@ pub static MAZZAROTH: &[MazzarothSign] = &[
         tribe: "Dan (דָּן)",
         hebrew_month: "Tevet (טֵבֵת)",
         letter: "Ayin (ע)",
-        hoshen_stone: "Achlamah (אַחְלָמָה) — Amethyst",
+        hoshen_stone: "Leshem (לֶשֶׁם) — Jacinth / Amber",
         quality: "Cardinal · Discipline, the mountain of ascent, winter solstice",
     },
     MazzarothSign {
@@ -227,7 +227,7 @@ pub static MAZZAROTH: &[MazzarothSign] = &[
         tribe: "Naphtali (נַפְתָּלִי)",
         hebrew_month: "Adar (אֲדָר)",
         letter: "Kuf (ק)",
-        hoshen_stone: "Bareket (בָּרֶקֶת) — Emerald",
+        hoshen_stone: "Shevo (שְׁבוֹ) — Agate / Turquoise",
         quality: "Mutable · Compassion, hidden faith, the sea of Adar joy",
     },
 ];

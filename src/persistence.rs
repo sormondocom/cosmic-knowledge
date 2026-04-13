@@ -58,6 +58,32 @@ CREATE TABLE IF NOT EXISTS readings (
     cards       TEXT    NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
+CREATE TABLE IF NOT EXISTS meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS verses (
+    id      INTEGER PRIMARY KEY,
+    book    TEXT    NOT NULL,
+    chapter INTEGER NOT NULL,
+    verse   INTEGER NOT NULL,
+    text    TEXT    NOT NULL
+);
+CREATE VIRTUAL TABLE IF NOT EXISTS verses_fts USING fts5(
+    text,
+    content='verses',
+    content_rowid='id'
+);
+CREATE TRIGGER IF NOT EXISTS verses_ai AFTER INSERT ON verses BEGIN
+    INSERT INTO verses_fts(rowid, text) VALUES (new.id, new.text);
+END;
+CREATE TRIGGER IF NOT EXISTS verses_ad AFTER DELETE ON verses BEGIN
+    INSERT INTO verses_fts(verses_fts, rowid, text) VALUES ('delete', old.id, old.text);
+END;
+CREATE TRIGGER IF NOT EXISTS verses_au AFTER UPDATE ON verses BEGIN
+    INSERT INTO verses_fts(verses_fts, rowid, text) VALUES ('delete', old.id, old.text);
+    INSERT INTO verses_fts(rowid, text) VALUES (new.id, new.text);
+END;
 ";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -305,7 +331,185 @@ pub fn get_all_readings(conn: &Connection) -> rusqlite::Result<Vec<ReadingRecord
     rows.collect()
 }
 
-// ─── Tests ───────────────────────────────────────────────────────────────────
+// ─── Bible / KJV queries ─────────────────────────────────────────────────────
+
+/// One verse returned from the Bible database.
+pub struct BibleVerse {
+    pub id: i64,
+    pub book: String,
+    pub chapter: u32,
+    pub verse: u32,
+    pub text: String,
+}
+
+/// True when the `verses` table has been populated by the import script.
+pub fn bible_is_loaded(conn: &Connection) -> bool {
+    conn.query_row("SELECT COUNT(*) FROM verses", [], |r| r.get::<_, i64>(0))
+        .map(|n| n > 0)
+        .unwrap_or(false)
+}
+
+/// Return (verse_count, book_count) from the `meta` table (or 0 if absent).
+pub fn bible_stats(conn: &Connection) -> (u32, u32) {
+    let vc: u32 = conn
+        .query_row(
+            "SELECT value FROM meta WHERE key='kjv_verse_count'",
+            [],
+            |r| r.get::<_, String>(0),
+        )
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0);
+    let bc: u32 = conn
+        .query_row(
+            "SELECT value FROM meta WHERE key='kjv_book_count'",
+            [],
+            |r| r.get::<_, String>(0),
+        )
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0);
+    (vc, bc)
+}
+
+/// Full-text search across all verses using FTS5.
+///
+/// `query` follows SQLite FTS5 syntax:
+///   - plain words: `love mercy`  — any verse containing both words
+///   - phrase:      `"love mercy"` — exact phrase
+///   - prefix:      `mercif*`      — prefix wildcard
+///   - boolean:     `love AND NOT hate`
+///
+/// Results are returned in relevance order (BM25 rank).
+pub fn search_verses(
+    conn: &Connection,
+    query: &str,
+    limit: usize,
+) -> rusqlite::Result<Vec<BibleVerse>> {
+    let mut stmt = conn.prepare(
+        "SELECT v.id, v.book, v.chapter, v.verse, v.text
+         FROM verses_fts f
+         JOIN verses v ON f.rowid = v.id
+         WHERE verses_fts MATCH ?1
+         ORDER BY rank
+         LIMIT ?2",
+    )?;
+    let rows = stmt.query_map(params![query, limit as i64], |row| {
+        Ok(BibleVerse {
+            id: row.get(0)?,
+            book: row.get(1)?,
+            chapter: row.get(2)?,
+            verse: row.get(3)?,
+            text: row.get(4)?,
+        })
+    })?;
+    rows.collect()
+}
+
+/// Look up a single verse by canonical book name, chapter, and verse number.
+pub fn lookup_verse(
+    conn: &Connection,
+    book: &str,
+    chapter: u32,
+    verse: u32,
+) -> rusqlite::Result<Option<BibleVerse>> {
+    let result = conn.query_row(
+        "SELECT id, book, chapter, verse, text FROM verses
+         WHERE lower(book) = lower(?1) AND chapter = ?2 AND verse = ?3",
+        params![book, chapter, verse],
+        |row| {
+            Ok(BibleVerse {
+                id: row.get(0)?,
+                book: row.get(1)?,
+                chapter: row.get(2)?,
+                verse: row.get(3)?,
+                text: row.get(4)?,
+            })
+        },
+    );
+    match result {
+        Ok(v) => Ok(Some(v)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e),
+    }
+}
+
+/// Return all verses in a chapter, ordered by verse number.
+pub fn get_chapter(
+    conn: &Connection,
+    book: &str,
+    chapter: u32,
+) -> rusqlite::Result<Vec<BibleVerse>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, book, chapter, verse, text FROM verses
+         WHERE lower(book) = lower(?1) AND chapter = ?2
+         ORDER BY verse",
+    )?;
+    let rows = stmt.query_map(params![book, chapter], |row| {
+        Ok(BibleVerse {
+            id: row.get(0)?,
+            book: row.get(1)?,
+            chapter: row.get(2)?,
+            verse: row.get(3)?,
+            text: row.get(4)?,
+        })
+    })?;
+    rows.collect()
+}
+
+/// Seed the `verses` table from the embedded static data in `bible::verses_data`.
+///
+/// Called automatically by [`run_bible_session`] when the table is empty.
+/// Uses a single transaction for speed; rebuilds the FTS index afterwards.
+pub fn seed_bible_from_static(conn: &Connection) -> rusqlite::Result<()> {
+    use crate::bible::verses_data::KJV_VERSES;
+
+    conn.execute_batch("BEGIN")?;
+    {
+        let mut stmt =
+            conn.prepare("INSERT INTO verses (book, chapter, verse, text) VALUES (?1,?2,?3,?4)")?;
+        for &(book, chapter, verse, text) in KJV_VERSES {
+            stmt.execute(params![book, chapter, verse, text])?;
+        }
+    }
+    conn.execute_batch("COMMIT")?;
+
+    // Rebuild FTS index in one shot (much faster than per-row triggers)
+    conn.execute_batch("INSERT INTO verses_fts(verses_fts) VALUES ('rebuild')")?;
+
+    // Persist meta counts
+    let book_count = KJV_VERSES
+        .iter()
+        .map(|&(b, _, _, _)| b)
+        .collect::<std::collections::HashSet<_>>()
+        .len();
+    conn.execute(
+        "INSERT OR REPLACE INTO meta VALUES ('kjv_source', ?1)",
+        params!["King James Version — embedded static data (Project Gutenberg EBook #10)"],
+    )?;
+    conn.execute(
+        "INSERT OR REPLACE INTO meta VALUES ('kjv_verse_count', ?1)",
+        params![KJV_VERSES.len().to_string()],
+    )?;
+    conn.execute(
+        "INSERT OR REPLACE INTO meta VALUES ('kjv_book_count', ?1)",
+        params![book_count.to_string()],
+    )?;
+
+    Ok(())
+}
+
+/// Return the number of chapters in a book (0 if book not found).
+pub fn chapter_count(conn: &Connection, book: &str) -> u32 {
+    conn.query_row(
+        "SELECT MAX(chapter) FROM verses WHERE lower(book) = lower(?1)",
+        params![book],
+        |r| r.get::<_, Option<u32>>(0),
+    )
+    .ok()
+    .flatten()
+    .unwrap_or(0)
+}
 
 #[cfg(test)]
 mod tests {
