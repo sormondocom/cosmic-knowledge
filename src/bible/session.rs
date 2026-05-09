@@ -6,9 +6,15 @@ use colored::*;
 
 use crate::menu::{Menu, MenuColor, MenuItem};
 use crate::persistence::{
-    bible_is_loaded, bible_stats, chapter_count, get_chapter, lookup_verse, open_db, search_verses,
-    seed_bible_from_static, verse_count, BibleVerse,
+    bible_is_loaded, bible_stats, chapter_count, get_chapter, load_text_position, lookup_verse,
+    open_db, save_text_position, search_verses, seed_bible_from_static, verse_count, BibleVerse,
 };
+use crate::tts_reader::{
+    build_chapter_speech, clean_for_tts, tts_auto_read, tts_nav_hint, tts_speak, tts_stop,
+    tts_toggle_auto, tts_toggle_pause,
+};
+
+use crate::utils::read_key;
 
 use super::resolve_book;
 
@@ -83,6 +89,26 @@ pub fn run_bible_session() {
         verse_count,
     );
 
+    // Offer to resume the last reading position
+    if let Some((saved_book, saved_chap, saved_verse)) = load_text_position(&conn, "kjv") {
+        println!(
+            "  {}  Last read: {} {}:{}",
+            "↩".bright_cyan(),
+            saved_book.bright_yellow(),
+            saved_chap.to_string().bright_cyan(),
+            saved_verse.to_string().bright_cyan(),
+        );
+        print!("{}", "  Resume? Enter=yes / n=skip: ".dimmed());
+        io::stdout().flush().unwrap_or(());
+        let mut buf = String::new();
+        io::stdin().read_line(&mut buf).unwrap_or(0);
+        if buf.trim().to_lowercase() != "n" {
+            if let Ok(Some(v)) = lookup_verse(&conn, &saved_book, saved_chap, saved_verse) {
+                navigate_verses(&conn, v);
+            }
+        }
+    }
+
     loop {
         let choice = BIBLE_MENU.show_and_read();
         match choice.trim() {
@@ -90,7 +116,7 @@ pub fn run_bible_session() {
             "2" => lookup_session(&conn),
             "3" => chapter_session(&conn),
             "4" => list_books(),
-            "0" | "" => break,
+            "0" | "" => { tts_stop(); break; }
             _ => println!("{}", "  Please enter 1–4 or 0.".yellow()),
         }
     }
@@ -183,42 +209,39 @@ fn lookup_session(conn: &rusqlite::Connection) {
 
 /// Show a verse and let the user step forward/back one verse at a time.
 fn navigate_verses(conn: &rusqlite::Connection, start: BibleVerse) {
-    let mut book = start.book.as_str();
     // Resolve to a static book name so we can pass it to lookup functions.
     // (BibleVerse.book is a String; canonicalize it through the alias table.)
-    let book_static: &'static str = match super::resolve_book(&start.book) {
+    let book: &'static str = match super::resolve_book(&start.book) {
         Some(b) => b,
         None => {
             print_verse_card(&start);
             return;
         }
     };
-    book = book_static;
 
-    let mut chap  = start.chapter;
-    let mut verse = start.verse;
+    let mut chap      = start.chapter;
+    let mut verse     = start.verse;
+    let mut cur_text  = start.text.clone();
     print_verse_card(&start);
+    if tts_auto_read() { tts_speak(&clean_for_tts(&cur_text)); }
 
     loop {
-        let max_chap = chapter_count(conn, book);
+        let max_chap  = chapter_count(conn, book);
         let max_verse = verse_count(conn, book, chap);
-
-        // Build navigation hint based on position
-        let at_start = chap == 1 && verse == 1;
-        let at_end = chap == max_chap && verse == max_verse;
+        let at_start  = chap == 1 && verse == 1;
+        let at_end    = chap == max_chap && verse == max_verse;
 
         let mut hint = String::from("  ── ");
         if !at_start { hint.push_str("p=prev  "); }
         if !at_end   { hint.push_str("n=next  "); }
-        hint.push_str("c=chapter  q=back: ");
+        hint.push_str("c=chapter  ");
+        hint.push_str(&tts_nav_hint("s"));
+        hint.push_str("q=back");
 
         print!("{}", hint.dimmed());
-        io::stdout().flush().unwrap_or(());
-        let mut buf = String::new();
-        io::stdin().read_line(&mut buf).unwrap_or(0);
 
-        match buf.trim().to_lowercase().as_str() {
-            "n" | "" if !at_end => {
+        match read_key() {
+            'n' | '\n' if !at_end => {
                 let (nc, nv) = if verse < max_verse {
                     (chap, verse + 1)
                 } else {
@@ -227,13 +250,15 @@ fn navigate_verses(conn: &rusqlite::Connection, start: BibleVerse) {
                 match lookup_verse(conn, book, nc, nv) {
                     Ok(Some(v)) => {
                         chap = nc; verse = nv;
+                        cur_text = v.text.clone();
                         print_verse_card(&v);
+                        if tts_auto_read() { tts_speak(&clean_for_tts(&cur_text)); }
                     }
                     Ok(None) => println!("{}", "  (no next verse found)".yellow()),
-                    Err(e) => println!("{}", format!("  DB error: {e}").red()),
+                    Err(e)   => println!("{}", format!("  DB error: {e}").red()),
                 }
             }
-            "p" if !at_start => {
+            'p' if !at_start => {
                 let (nc, nv) = if verse > 1 {
                     (chap, verse - 1)
                 } else {
@@ -244,17 +269,28 @@ fn navigate_verses(conn: &rusqlite::Connection, start: BibleVerse) {
                 match lookup_verse(conn, book, nc, nv) {
                     Ok(Some(v)) => {
                         chap = nc; verse = nv;
+                        cur_text = v.text.clone();
                         print_verse_card(&v);
+                        if tts_auto_read() { tts_speak(&clean_for_tts(&cur_text)); }
                     }
                     Ok(None) => println!("{}", "  (no prev verse found)".yellow()),
-                    Err(e) => println!("{}", format!("  DB error: {e}").red()),
+                    Err(e)   => println!("{}", format!("  DB error: {e}").red()),
                 }
             }
-            "c" => {
-                // Jump to chapter view at current chapter
+            'c' => {
                 read_chapter(conn, book, chap, max_chap);
             }
-            "q" | "" => break,
+            'r' => tts_speak(&clean_for_tts(&cur_text)),
+            'a' => {
+                let on = tts_toggle_auto();
+                println!("  {}", if on { "Auto-read ON".bright_green() } else { "Auto-read OFF".yellow() });
+            }
+            't' => { tts_toggle_pause(); }
+            's' => tts_stop(),
+            'q' | '\n' => {
+                save_text_position(conn, "kjv", book, chap, verse).ok();
+                break;
+            }
             _ => {}
         }
     }
@@ -334,6 +370,12 @@ fn read_chapter(conn: &rusqlite::Connection, book: &str, chap: u32, max_chap: u3
         "  ──────────────────────────────────────────────────────".dimmed()
     );
 
+    // Auto-read the whole chapter if enabled
+    if tts_auto_read() {
+        let texts: Vec<&str> = verses.iter().map(|v| v.text.as_str()).collect();
+        tts_speak(&build_chapter_speech(book, chap, &texts));
+    }
+
     const PAGE: usize = 5;
     let total = verses.len();
     let mut start = 0;
@@ -352,23 +394,30 @@ fn read_chapter(conn: &rusqlite::Connection, book: &str, chap: u32, max_chap: u3
         } else {
             nav_hint.push_str(&format!("── {start}/{total} shown ── Enter=more  "));
         }
-        if chap > 1        { nav_hint.push_str("p=prev ch  "); }
-        if chap < max_chap { nav_hint.push_str("n=next ch  "); }
-        nav_hint.push_str("q=back: ");
+        if chap > 1        { nav_hint.push_str("p=prev  "); }
+        if chap < max_chap { nav_hint.push_str("n=next  "); }
+        nav_hint.push_str(&tts_nav_hint("s"));
+        nav_hint.push_str("q=back");
 
         print!("  {}", nav_hint.dimmed());
-        io::stdout().flush().unwrap_or(());
-        let mut buf = String::new();
-        io::stdin().read_line(&mut buf).unwrap_or(0);
 
-        match buf.trim().to_lowercase().as_str() {
-            "n" if chap < max_chap => return ChapterNav::Next,
-            "p" if chap > 1       => return ChapterNav::Prev,
-            "q"                   => return ChapterNav::Done,
-            "" if at_end          => return ChapterNav::Done,
-            _                     => {
+        match read_key() {
+            'n' if chap < max_chap => return ChapterNav::Next,
+            'p' if chap > 1       => return ChapterNav::Prev,
+            'r' => {
+                let texts: Vec<&str> = verses.iter().map(|v| v.text.as_str()).collect();
+                tts_speak(&build_chapter_speech(book, chap, &texts));
+            }
+            'a' => {
+                let on = tts_toggle_auto();
+                println!("  {}", if on { "Auto-read ON".bright_green() } else { "Auto-read OFF".yellow() });
+            }
+            't' => { tts_toggle_pause(); }
+            's' => tts_stop(),
+            'q'            => return ChapterNav::Done,
+            '\n' if at_end => return ChapterNav::Done,
+            _ => {
                 if at_end { return ChapterNav::Done; }
-                // else: continue reading
             }
         }
     }

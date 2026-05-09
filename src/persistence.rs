@@ -136,6 +136,12 @@ CREATE TRIGGER IF NOT EXISTS apocrypha_au AFTER UPDATE ON apocrypha_verses BEGIN
     INSERT INTO apocrypha_fts(rowid, book, chapter, verse, text)
     VALUES (new.id, new.book, new.chapter, new.verse, new.text);
 END;
+CREATE TABLE IF NOT EXISTS text_positions (
+    module  TEXT PRIMARY KEY,
+    book    TEXT NOT NULL,
+    chapter INTEGER NOT NULL,
+    verse   INTEGER NOT NULL
+);
 ";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -853,6 +859,38 @@ pub fn apocr_chapter_count(conn: &Connection, book: &str) -> u32 {
     .ok()
     .flatten()
     .unwrap_or(0)
+}
+
+// ─── Text position (reading bookmark) ────────────────────────────────────────
+
+/// Save or overwrite the reading bookmark for `module` ("kjv", "quran", "apocr").
+pub fn save_text_position(
+    conn: &Connection,
+    module: &str,
+    book: &str,
+    chapter: u32,
+    verse: u32,
+) -> rusqlite::Result<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO text_positions (module, book, chapter, verse) \
+         VALUES (?1, ?2, ?3, ?4)",
+        params![module, book, chapter, verse],
+    )?;
+    Ok(())
+}
+
+/// Load the saved reading bookmark for `module`.
+/// Returns `Some((book, chapter, verse))` or `None` if not set.
+pub fn load_text_position(
+    conn: &Connection,
+    module: &str,
+) -> Option<(String, u32, u32)> {
+    conn.query_row(
+        "SELECT book, chapter, verse FROM text_positions WHERE module = ?1",
+        params![module],
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, u32>(1)?, row.get::<_, u32>(2)?)),
+    )
+    .ok()
 }
 
 /// Seed the `apocrypha_verses` table from the embedded static data.

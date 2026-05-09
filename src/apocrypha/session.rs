@@ -8,9 +8,15 @@ use colored::*;
 use crate::menu::{Menu, MenuColor, MenuItem};
 use crate::persistence::{
     apocr_chapter_count, apocr_verse_count, apocrypha_is_loaded, apocrypha_stats,
-    get_apocr_chapter, lookup_apocr_verse, open_db, search_apocrypha, seed_apocrypha_from_static,
-    ApocrVerse,
+    get_apocr_chapter, load_text_position, lookup_apocr_verse, open_db, save_text_position,
+    search_apocrypha, seed_apocrypha_from_static, ApocrVerse,
 };
+use crate::tts_reader::{
+    build_chapter_speech, clean_for_tts, tts_auto_read, tts_nav_hint, tts_speak, tts_stop,
+    tts_toggle_auto, tts_toggle_pause,
+};
+
+use crate::utils::read_key;
 
 use super::{resolve_book, BOOKS};
 
@@ -85,6 +91,26 @@ pub fn run_apocrypha_session() {
         verse_total,
     );
 
+    // Offer to resume the last reading position
+    if let Some((saved_book, saved_chap, saved_verse)) = load_text_position(&conn, "apocr") {
+        println!(
+            "  {}  Last read: {} {}.{}",
+            "↩".bright_cyan(),
+            saved_book.bright_yellow(),
+            saved_chap.to_string().bright_cyan(),
+            saved_verse.to_string().bright_cyan(),
+        );
+        print!("{}", "  Resume? Enter=yes / n=skip: ".dimmed());
+        io::stdout().flush().unwrap_or(());
+        let mut buf = String::new();
+        io::stdin().read_line(&mut buf).unwrap_or(0);
+        if buf.trim().to_lowercase() != "n" {
+            if let Ok(Some(v)) = lookup_apocr_verse(&conn, &saved_book, saved_chap, saved_verse) {
+                navigate_verses(&conn, v);
+            }
+        }
+    }
+
     loop {
         let choice = APOCR_MENU.show_and_read();
         match choice.trim() {
@@ -92,7 +118,7 @@ pub fn run_apocrypha_session() {
             "2" => lookup_session(&conn),
             "3" => browse_session(&conn),
             "4" => list_books(),
-            "0" | "" => break,
+            "0" | "" => { tts_stop(); break; }
             _ => println!("{}", "  Please enter 1–4 or 0.".yellow()),
         }
     }
@@ -180,7 +206,9 @@ fn navigate_verses(conn: &rusqlite::Connection, start: ApocrVerse) {
     let book      = start.book.clone();
     let mut chap  = start.chapter;
     let mut verse = start.verse;
+    let mut cur_text = start.text.clone();
     print_verse_card(&start);
+    if tts_auto_read() { tts_speak(&clean_for_tts(&cur_text)); }
 
     loop {
         let max_chap  = apocr_chapter_count(conn, &book);
@@ -191,27 +219,31 @@ fn navigate_verses(conn: &rusqlite::Connection, start: ApocrVerse) {
         let mut hint = String::from("  ── ");
         if !at_start { hint.push_str("p=prev  "); }
         if !at_end   { hint.push_str("n=next  "); }
-        hint.push_str("c=chapter  q=back: ");
+        hint.push_str("c=chapter  ");
+        hint.push_str(&tts_nav_hint("s"));
+        hint.push_str("q=back");
 
         print!("{}", hint.dimmed());
-        io::stdout().flush().unwrap_or(());
-        let mut buf = String::new();
-        io::stdin().read_line(&mut buf).unwrap_or(0);
 
-        match buf.trim().to_lowercase().as_str() {
-            "n" | "" if !at_end => {
+        match read_key() {
+            'n' | '\n' if !at_end => {
                 let (nc, nv) = if verse < max_verse {
                     (chap, verse + 1)
                 } else {
                     (chap + 1, 1)
                 };
                 match lookup_apocr_verse(conn, &book, nc, nv) {
-                    Ok(Some(v)) => { chap = nc; verse = nv; print_verse_card(&v); }
-                    Ok(None)    => println!("{}", "  (no next verse found)".yellow()),
-                    Err(e)      => println!("{}", format!("  DB error: {e}").red()),
+                    Ok(Some(v)) => {
+                        chap = nc; verse = nv;
+                        cur_text = v.text.clone();
+                        print_verse_card(&v);
+                        if tts_auto_read() { tts_speak(&clean_for_tts(&cur_text)); }
+                    }
+                    Ok(None) => println!("{}", "  (no next verse found)".yellow()),
+                    Err(e)   => println!("{}", format!("  DB error: {e}").red()),
                 }
             }
-            "p" if !at_start => {
+            'p' if !at_start => {
                 let (nc, nv) = if verse > 1 {
                     (chap, verse - 1)
                 } else if chap > 1 {
@@ -222,16 +254,31 @@ fn navigate_verses(conn: &rusqlite::Connection, start: ApocrVerse) {
                     (chap, verse)
                 };
                 match lookup_apocr_verse(conn, &book, nc, nv) {
-                    Ok(Some(v)) => { chap = nc; verse = nv; print_verse_card(&v); }
-                    Ok(None)    => println!("{}", "  (no prev verse found)".yellow()),
-                    Err(e)      => println!("{}", format!("  DB error: {e}").red()),
+                    Ok(Some(v)) => {
+                        chap = nc; verse = nv;
+                        cur_text = v.text.clone();
+                        print_verse_card(&v);
+                        if tts_auto_read() { tts_speak(&clean_for_tts(&cur_text)); }
+                    }
+                    Ok(None) => println!("{}", "  (no prev verse found)".yellow()),
+                    Err(e)   => println!("{}", format!("  DB error: {e}").red()),
                 }
             }
-            "c" => {
+            'c' => {
                 let book_clone = book.clone();
                 read_chapter(conn, &book_clone, chap, max_chap);
             }
-            "q" | "" => break,
+            'r' => tts_speak(&clean_for_tts(&cur_text)),
+            'a' => {
+                let on = tts_toggle_auto();
+                println!("  {}", if on { "Auto-read ON".bright_green() } else { "Auto-read OFF".yellow() });
+            }
+            't' => { tts_toggle_pause(); }
+            's' => tts_stop(),
+            'q' | '\n' => {
+                save_text_position(conn, "apocr", &book, chap, verse).ok();
+                break;
+            }
             _ => {}
         }
     }
@@ -311,6 +358,12 @@ fn read_chapter(
         "  ──────────────────────────────────────────────────────".dimmed()
     );
 
+    // Auto-read the whole chapter if enabled
+    if tts_auto_read() {
+        let texts: Vec<&str> = verses.iter().map(|v| v.text.as_str()).collect();
+        tts_speak(&build_chapter_speech(book, chapter, &texts));
+    }
+
     const PAGE: usize = 5;
     let total  = verses.len();
     let mut start = 0;
@@ -331,20 +384,29 @@ fn read_chapter(
         }
         if chapter > 1        { nav.push_str("p=prev  "); }
         if chapter < max_chap { nav.push_str("n=next  "); }
-        nav.push_str("q=back: ");
+        nav.push_str(&tts_nav_hint("s"));
+        nav.push_str("q=back");
 
         print!("  {}", nav.dimmed());
-        io::stdout().flush().unwrap_or(());
-        let mut buf = String::new();
-        io::stdin().read_line(&mut buf).unwrap_or(0);
 
-        match buf.trim().to_lowercase().as_str() {
-            "n" if chapter < max_chap => return ChapNav::Next,
-            "p" if chapter > 1        => return ChapNav::Prev,
-            "q"                       => return ChapNav::Done,
-            "" if at_end              => return ChapNav::Done,
-            _ if at_end               => return ChapNav::Done,
-            _                         => {}
+        match read_key() {
+            'n' if chapter < max_chap => return ChapNav::Next,
+            'p' if chapter > 1        => return ChapNav::Prev,
+            'r' => {
+                let texts: Vec<&str> = verses.iter().map(|v| v.text.as_str()).collect();
+                tts_speak(&build_chapter_speech(book, chapter, &texts));
+            }
+            'a' => {
+                let on = tts_toggle_auto();
+                println!("  {}", if on { "Auto-read ON".bright_green() } else { "Auto-read OFF".yellow() });
+            }
+            't' => { tts_toggle_pause(); }
+            's' => tts_stop(),
+            'q'            => return ChapNav::Done,
+            '\n' if at_end => return ChapNav::Done,
+            _ => {
+                if at_end { return ChapNav::Done; }
+            }
         }
     }
 }

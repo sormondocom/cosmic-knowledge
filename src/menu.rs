@@ -166,6 +166,7 @@ pub enum MainMode {
     Bible,
     Quran,
     Apocrypha,
+    TtsSettings,
     Help,
     Quit,
 }
@@ -244,6 +245,12 @@ static MAIN_ITEMS: &[MenuItem] = &[
         hint: "FTS5 search · verse lookup · chapter browse",
     },
     MenuItem {
+        key: "13",
+        icon: "🔊",
+        label: "Text-to-Speech Settings",
+        hint: "Voice · rate · volume · auto-read toggle",
+    },
+    MenuItem {
         key: "h",
         icon: "❓",
         label: "Help & Reference",
@@ -275,9 +282,10 @@ pub fn show_main_menu() -> MainMode {
             "10" => return MainMode::Bible,
             "11" => return MainMode::Quran,
             "12" => return MainMode::Apocrypha,
+            "13" => return MainMode::TtsSettings,
             "h" | "H" => return MainMode::Help,
             "0" | "" => return MainMode::Quit,
-            _ => println!("{}", "  Please enter 0–12 or h.".yellow()),
+            _ => println!("{}", "  Please enter 0–13 or h.".yellow()),
         }
     }
 }

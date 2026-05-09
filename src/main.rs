@@ -18,6 +18,8 @@ mod persistence;
 mod reports;
 mod rng;
 mod hymn_synth;
+mod tts_reader;
+mod tts_session;
 mod runes;
 mod tarot;
 mod urim;
@@ -95,6 +97,9 @@ fn main() {
     })
     .ok();
 
+    // ── TTS initialisation ────────────────────────────────────────────────────
+    tts_reader::init_tts();
+
     // ── Audio initialisation ──────────────────────────────────────────────────
     let audio_system: Option<AudioSystem> = if enable_audio {
         match initialize_audio() {
@@ -156,8 +161,10 @@ fn main() {
             MainMode::Bible => run_bible_session(),
             MainMode::Quran => run_quran_session(),
             MainMode::Apocrypha => run_apocrypha_session(),
+            MainMode::TtsSettings => tts_session::run_tts_session(),
             MainMode::Help => show_help(),
             MainMode::Quit => {
+                tts_reader::tts_stop();
                 if let Some(ref sys) = audio_system {
                     stop_audio(sys);
                 }

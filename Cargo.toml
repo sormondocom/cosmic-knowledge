@@ -27,6 +27,7 @@ rusqlite  = { version = "0.31", features = ["bundled"] }
 rodio     = "0.17"
 hound     = "3.5"
 symphonia = { version = "0.5", features = ["mp3", "flac", "vorbis"] }
+tts       = "0.26"
 
 
 # rdrand uses the x86/x86_64 RDRAND CPU instruction and only compiles on those

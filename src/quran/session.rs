@@ -6,9 +6,15 @@ use colored::*;
 
 use crate::menu::{Menu, MenuColor, MenuItem};
 use crate::persistence::{
-    get_surah, lookup_ayah, open_db, quran_is_loaded, quran_stats, search_quran,
-    seed_quran_from_static, QuranVerse,
+    get_surah, load_text_position, lookup_ayah, open_db, quran_is_loaded, quran_stats,
+    save_text_position, search_quran, seed_quran_from_static, QuranVerse,
 };
+use crate::tts_reader::{
+    build_chapter_speech, clean_for_tts, tts_auto_read, tts_nav_hint, tts_speak, tts_stop,
+    tts_toggle_auto, tts_toggle_pause,
+};
+
+use crate::utils::read_key;
 
 use super::{resolve_surah, SURAHS};
 
@@ -83,6 +89,26 @@ pub fn run_quran_session() {
         ayah_count_total,
     );
 
+    // Offer to resume the last reading position
+    if let Some((saved_surah_name, saved_surah, saved_ayah)) = load_text_position(&conn, "quran") {
+        println!(
+            "  {}  Last read: {} {}:{}",
+            "↩".bright_cyan(),
+            saved_surah_name.bright_yellow(),
+            saved_surah.to_string().bright_cyan(),
+            saved_ayah.to_string().bright_cyan(),
+        );
+        print!("{}", "  Resume? Enter=yes / n=skip: ".dimmed());
+        io::stdout().flush().unwrap_or(());
+        let mut buf = String::new();
+        io::stdin().read_line(&mut buf).unwrap_or(0);
+        if buf.trim().to_lowercase() != "n" {
+            if let Ok(Some(v)) = lookup_ayah(&conn, saved_surah, saved_ayah) {
+                navigate_ayahs(&conn, v);
+            }
+        }
+    }
+
     loop {
         let choice = QURAN_MENU.show_and_read();
         match choice.trim() {
@@ -90,7 +116,7 @@ pub fn run_quran_session() {
             "2" => lookup_session(&conn),
             "3" => surah_browse_session(&conn),
             "4" => list_surahs(),
-            "0" | "" => break,
+            "0" | "" => { tts_stop(); break; }
             _ => println!("{}", "  Please enter 1–4 or 0.".yellow()),
         }
     }
@@ -177,40 +203,48 @@ fn lookup_session(conn: &rusqlite::Connection) {
 }
 
 fn navigate_ayahs(conn: &rusqlite::Connection, start: QuranVerse) {
-    let mut surah = start.surah;
-    let mut ayah  = start.ayah;
+    let mut surah     = start.surah;
+    let mut ayah      = start.ayah;
+    let mut cur_text  = start.text.clone();
+    let mut cur_name  = start.surah_name.clone();
     print_ayah_card(&start);
+    if tts_auto_read() { tts_speak(&clean_for_tts(&cur_text)); }
 
     loop {
-        let surah_info  = SURAHS.iter().find(|s| s.number == surah);
-        let max_ayah    = surah_info.map_or(0, |s| s.ayahs);
-        let at_start    = surah == 1 && ayah == 1;
-        let at_end      = surah == 114 && ayah == max_ayah;
+        let surah_info = SURAHS.iter().find(|s| s.number == surah);
+        let max_ayah   = surah_info.map_or(0, |s| s.ayahs);
+        let at_start   = surah == 1 && ayah == 1;
+        let at_end     = surah == 114 && ayah == max_ayah;
 
         let mut hint = String::from("  ── ");
         if !at_start { hint.push_str("p=prev  "); }
         if !at_end   { hint.push_str("n=next  "); }
-        hint.push_str("s=surah  q=back: ");
+        hint.push_str("s=surah  ");
+        hint.push_str(&tts_nav_hint("o"));  // 'o'=stop; 's' is surah
+        hint.push_str("q=back");
 
         print!("{}", hint.dimmed());
-        io::stdout().flush().unwrap_or(());
-        let mut buf = String::new();
-        io::stdin().read_line(&mut buf).unwrap_or(0);
 
-        match buf.trim().to_lowercase().as_str() {
-            "n" | "" if !at_end => {
+        match read_key() {
+            'n' | '\n' if !at_end => {
                 let (ns, na) = if ayah < max_ayah {
                     (surah, ayah + 1)
                 } else {
                     (surah + 1, 1)
                 };
                 match lookup_ayah(conn, ns, na) {
-                    Ok(Some(v)) => { surah = ns; ayah = na; print_ayah_card(&v); }
-                    Ok(None)    => println!("{}", "  (no next ayah found)".yellow()),
-                    Err(e)      => println!("{}", format!("  DB error: {e}").red()),
+                    Ok(Some(v)) => {
+                        surah = ns; ayah = na;
+                        cur_text = v.text.clone();
+                        cur_name = v.surah_name.clone();
+                        print_ayah_card(&v);
+                        if tts_auto_read() { tts_speak(&clean_for_tts(&cur_text)); }
+                    }
+                    Ok(None) => println!("{}", "  (no next ayah found)".yellow()),
+                    Err(e)   => println!("{}", format!("  DB error: {e}").red()),
                 }
             }
-            "p" if !at_start => {
+            'p' if !at_start => {
                 let (ns, na) = if ayah > 1 {
                     (surah, ayah - 1)
                 } else {
@@ -219,16 +253,32 @@ fn navigate_ayahs(conn: &rusqlite::Connection, start: QuranVerse) {
                     (ps, pa)
                 };
                 match lookup_ayah(conn, ns, na) {
-                    Ok(Some(v)) => { surah = ns; ayah = na; print_ayah_card(&v); }
-                    Ok(None)    => println!("{}", "  (no prev ayah found)".yellow()),
-                    Err(e)      => println!("{}", format!("  DB error: {e}").red()),
+                    Ok(Some(v)) => {
+                        surah = ns; ayah = na;
+                        cur_text = v.text.clone();
+                        cur_name = v.surah_name.clone();
+                        print_ayah_card(&v);
+                        if tts_auto_read() { tts_speak(&clean_for_tts(&cur_text)); }
+                    }
+                    Ok(None) => println!("{}", "  (no prev ayah found)".yellow()),
+                    Err(e)   => println!("{}", format!("  DB error: {e}").red()),
                 }
             }
-            "s" => {
+            's' => {
                 let max_surah = SURAHS.last().map_or(114, |s| s.number);
                 read_surah(conn, surah, max_surah);
             }
-            "q" | "" => break,
+            'r' => tts_speak(&clean_for_tts(&cur_text)),
+            'a' => {
+                let on = tts_toggle_auto();
+                println!("  {}", if on { "Auto-read ON".bright_green() } else { "Auto-read OFF".yellow() });
+            }
+            't' => { tts_toggle_pause(); }
+            'o' => tts_stop(),
+            'q' | '\n' => {
+                save_text_position(conn, "quran", &cur_name, surah, ayah).ok();
+                break;
+            }
             _ => {}
         }
     }
@@ -307,6 +357,12 @@ fn read_surah(conn: &rusqlite::Connection, surah: u32, max_surah: u32) -> SurahN
         "  ──────────────────────────────────────────────────────".dimmed()
     );
 
+    // Auto-read the whole surah if enabled (use surah name as "book", surah number as chapter)
+    if tts_auto_read() {
+        let texts: Vec<&str> = ayahs.iter().map(|v| v.text.as_str()).collect();
+        tts_speak(&build_chapter_speech(name, surah, &texts));
+    }
+
     const PAGE: usize = 5;
     let total   = ayahs.len();
     let mut start = 0;
@@ -321,22 +377,31 @@ fn read_surah(conn: &rusqlite::Connection, surah: u32, max_surah: u32) -> SurahN
         let at_end = start >= total;
         let mut nav = String::new();
         if at_end { nav.push_str("── End of surah ── "); } else { nav.push_str(&format!("── {start}/{total} ── Enter=more  ")); }
-        if surah > 1        { nav.push_str("p=prev  "); }
-        if surah < max_surah{ nav.push_str("n=next  "); }
-        nav.push_str("q=back: ");
+        if surah > 1         { nav.push_str("p=prev  "); }
+        if surah < max_surah { nav.push_str("n=next  "); }
+        nav.push_str(&tts_nav_hint("o"));
+        nav.push_str("q=back");
 
         print!("  {}", nav.dimmed());
-        io::stdout().flush().unwrap_or(());
-        let mut buf = String::new();
-        io::stdin().read_line(&mut buf).unwrap_or(0);
 
-        match buf.trim().to_lowercase().as_str() {
-            "n" if surah < max_surah => return SurahNav::Next,
-            "p" if surah > 1        => return SurahNav::Prev,
-            "q"                     => return SurahNav::Done,
-            "" if at_end            => return SurahNav::Done,
-            _ if at_end             => return SurahNav::Done,
-            _                       => {}
+        match read_key() {
+            'n' if surah < max_surah => return SurahNav::Next,
+            'p' if surah > 1        => return SurahNav::Prev,
+            'r' => {
+                let texts: Vec<&str> = ayahs.iter().map(|v| v.text.as_str()).collect();
+                tts_speak(&build_chapter_speech(name, surah, &texts));
+            }
+            'a' => {
+                let on = tts_toggle_auto();
+                println!("  {}", if on { "Auto-read ON".bright_green() } else { "Auto-read OFF".yellow() });
+            }
+            't' => { tts_toggle_pause(); }
+            'o' => tts_stop(),
+            'q'            => return SurahNav::Done,
+            '\n' if at_end => return SurahNav::Done,
+            _ => {
+                if at_end { return SurahNav::Done; }
+            }
         }
     }
 }
