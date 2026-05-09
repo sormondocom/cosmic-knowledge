@@ -163,6 +163,7 @@ pub enum MainMode {
     Runes,
     Urim,
     Bible,
+    Quran,
     Help,
     Quit,
 }
@@ -229,6 +230,12 @@ static MAIN_ITEMS: &[MenuItem] = &[
         hint: "FTS5 full-text search · verse lookup · chapter browse",
     },
     MenuItem {
+        key: "11",
+        icon: "📿",
+        label: "Quran Search  (Pickthall, beta)",
+        hint: "FTS5 search · ayah lookup · surah browse",
+    },
+    MenuItem {
         key: "h",
         icon: "❓",
         label: "Help & Reference",
@@ -258,9 +265,10 @@ pub fn show_main_menu() -> MainMode {
             "8" => return MainMode::Runes,
             "9" => return MainMode::Urim,
             "10" => return MainMode::Bible,
+            "11" => return MainMode::Quran,
             "h" | "H" => return MainMode::Help,
             "0" | "" => return MainMode::Quit,
-            _ => println!("{}", "  Please enter 0–10 or h.".yellow()),
+            _ => println!("{}", "  Please enter 0–11 or h.".yellow()),
         }
     }
 }

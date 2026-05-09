@@ -7,7 +7,7 @@ use colored::*;
 use crate::menu::{Menu, MenuColor, MenuItem};
 use crate::persistence::{
     bible_is_loaded, bible_stats, chapter_count, get_chapter, lookup_verse, open_db, search_verses,
-    seed_bible_from_static, BibleVerse,
+    seed_bible_from_static, verse_count, BibleVerse,
 };
 
 use super::resolve_book;
@@ -131,7 +131,7 @@ fn search_session(conn: &rusqlite::Connection) {
                     total.to_string().bright_yellow().bold(),
                     if total == 1 { "" } else { "s" }
                 );
-                paginate_verses(&results, 15);
+                paginate_verses(&results);
             }
             Err(e) => {
                 println!(
@@ -143,7 +143,7 @@ fn search_session(conn: &rusqlite::Connection) {
     }
 }
 
-// ─── Verse lookup ─────────────────────────────────────────────────────────────
+// ─── Verse lookup with verse-by-verse navigation ─────────────────────────────
 
 fn lookup_session(conn: &rusqlite::Connection) {
     println!();
@@ -165,8 +165,11 @@ fn lookup_session(conn: &rusqlite::Connection) {
         match parse_verse_ref(raw) {
             Some((book, chapter, verse)) => {
                 match lookup_verse(conn, book, chapter, verse) {
-                    Ok(Some(v)) => print_verse_card(&v),
-                    Ok(None) => println!("{}", format!("  Not found: {book} {chapter}:{verse}").yellow()),
+                    Ok(Some(v)) => navigate_verses(conn, v),
+                    Ok(None) => println!(
+                        "{}",
+                        format!("  Not found: {book} {chapter}:{verse}").yellow()
+                    ),
                     Err(e) => println!("{}", format!("  DB error: {e}").red()),
                 }
             }
@@ -174,6 +177,85 @@ fn lookup_session(conn: &rusqlite::Connection) {
                 "{}",
                 "  Could not parse reference — try 'John 3:16' or 'Gen 1:1'".yellow()
             ),
+        }
+    }
+}
+
+/// Show a verse and let the user step forward/back one verse at a time.
+fn navigate_verses(conn: &rusqlite::Connection, start: BibleVerse) {
+    let mut book = start.book.as_str();
+    // Resolve to a static book name so we can pass it to lookup functions.
+    // (BibleVerse.book is a String; canonicalize it through the alias table.)
+    let book_static: &'static str = match super::resolve_book(&start.book) {
+        Some(b) => b,
+        None => {
+            print_verse_card(&start);
+            return;
+        }
+    };
+    book = book_static;
+
+    let mut chap  = start.chapter;
+    let mut verse = start.verse;
+    print_verse_card(&start);
+
+    loop {
+        let max_chap = chapter_count(conn, book);
+        let max_verse = verse_count(conn, book, chap);
+
+        // Build navigation hint based on position
+        let at_start = chap == 1 && verse == 1;
+        let at_end = chap == max_chap && verse == max_verse;
+
+        let mut hint = String::from("  ── ");
+        if !at_start { hint.push_str("p=prev  "); }
+        if !at_end   { hint.push_str("n=next  "); }
+        hint.push_str("c=chapter  q=back: ");
+
+        print!("{}", hint.dimmed());
+        io::stdout().flush().unwrap_or(());
+        let mut buf = String::new();
+        io::stdin().read_line(&mut buf).unwrap_or(0);
+
+        match buf.trim().to_lowercase().as_str() {
+            "n" | "" if !at_end => {
+                let (nc, nv) = if verse < max_verse {
+                    (chap, verse + 1)
+                } else {
+                    (chap + 1, 1)
+                };
+                match lookup_verse(conn, book, nc, nv) {
+                    Ok(Some(v)) => {
+                        chap = nc; verse = nv;
+                        print_verse_card(&v);
+                    }
+                    Ok(None) => println!("{}", "  (no next verse found)".yellow()),
+                    Err(e) => println!("{}", format!("  DB error: {e}").red()),
+                }
+            }
+            "p" if !at_start => {
+                let (nc, nv) = if verse > 1 {
+                    (chap, verse - 1)
+                } else {
+                    let pc = chap - 1;
+                    let pv = verse_count(conn, book, pc);
+                    (pc, pv)
+                };
+                match lookup_verse(conn, book, nc, nv) {
+                    Ok(Some(v)) => {
+                        chap = nc; verse = nv;
+                        print_verse_card(&v);
+                    }
+                    Ok(None) => println!("{}", "  (no prev verse found)".yellow()),
+                    Err(e) => println!("{}", format!("  DB error: {e}").red()),
+                }
+            }
+            "c" => {
+                // Jump to chapter view at current chapter
+                read_chapter(conn, book, chap, max_chap);
+            }
+            "q" | "" => break,
+            _ => {}
         }
     }
 }
@@ -204,34 +286,90 @@ fn chapter_session(conn: &rusqlite::Connection) {
                     println!("{}", format!("  Book '{book}' not found.").yellow());
                     continue;
                 }
-                let chap = if chapter == 0 { 1 } else { chapter.min(max) };
-                match get_chapter(conn, book, chap) {
-                    Ok(verses) if verses.is_empty() => {
-                        println!(
-                            "{}",
-                            format!("  {book} has {max} chapters; chapter {chap} not found.").yellow()
-                        );
+                let start_chap = if chapter == 0 { 1 } else { chapter.min(max) };
+                let mut cur = start_chap;
+                loop {
+                    match read_chapter(conn, book, cur, max) {
+                        ChapterNav::Next if cur < max => cur += 1,
+                        ChapterNav::Prev if cur > 1   => cur -= 1,
+                        _ => break,
                     }
-                    Ok(verses) => {
-                        println!();
-                        println!(
-                            "  {} {}  Chapter {}  ({} verses)",
-                            "📖".bright_white(),
-                            book.bright_yellow().bold(),
-                            chap.to_string().bright_cyan(),
-                            verses.len()
-                        );
-                        println!("{}", "  ──────────────────────────────────────────────────────".dimmed());
-                        paginate_verses(&verses, 20);
-                        println!(
-                            "{}",
-                            format!("  ({book} has {max} chapters total)").dimmed()
-                        );
-                    }
-                    Err(e) => println!("{}", format!("  DB error: {e}").red()),
                 }
             }
-            None => println!("{}", "  Could not parse — try 'Genesis 1' or 'John 3'".yellow()),
+            None => println!(
+                "{}",
+                "  Could not parse — try 'Genesis 1' or 'John 3'".yellow()
+            ),
+        }
+    }
+}
+
+/// Display all verses of one chapter with full text and prev/next navigation.
+/// Returns the direction the user wants to move, or `Done` to exit.
+enum ChapterNav { Prev, Next, Done }
+
+fn read_chapter(conn: &rusqlite::Connection, book: &str, chap: u32, max_chap: u32) -> ChapterNav {
+    let verses = match get_chapter(conn, book, chap) {
+        Ok(v) if !v.is_empty() => v,
+        Ok(_) => {
+            println!("{}", format!("  No verses found for {book} {chap}.").yellow());
+            return ChapterNav::Done;
+        }
+        Err(e) => {
+            println!("{}", format!("  DB error: {e}").red());
+            return ChapterNav::Done;
+        }
+    };
+
+    println!();
+    println!(
+        "  {} {}  Chapter {}  ({} verses)",
+        "📖".bright_white(),
+        book.bright_yellow().bold(),
+        chap.to_string().bright_cyan(),
+        verses.len()
+    );
+    println!(
+        "{}",
+        "  ──────────────────────────────────────────────────────".dimmed()
+    );
+
+    const PAGE: usize = 5;
+    let total = verses.len();
+    let mut start = 0;
+
+    loop {
+        let end = (start + PAGE).min(total);
+        for v in &verses[start..end] {
+            print_verse_full(v);
+        }
+        start = end;
+
+        let at_end = start >= total;
+        let mut nav_hint = String::new();
+        if at_end {
+            nav_hint.push_str("── End of chapter ── ");
+        } else {
+            nav_hint.push_str(&format!("── {start}/{total} shown ── Enter=more  "));
+        }
+        if chap > 1        { nav_hint.push_str("p=prev ch  "); }
+        if chap < max_chap { nav_hint.push_str("n=next ch  "); }
+        nav_hint.push_str("q=back: ");
+
+        print!("  {}", nav_hint.dimmed());
+        io::stdout().flush().unwrap_or(());
+        let mut buf = String::new();
+        io::stdin().read_line(&mut buf).unwrap_or(0);
+
+        match buf.trim().to_lowercase().as_str() {
+            "n" if chap < max_chap => return ChapterNav::Next,
+            "p" if chap > 1       => return ChapterNav::Prev,
+            "q"                   => return ChapterNav::Done,
+            "" if at_end          => return ChapterNav::Done,
+            _                     => {
+                if at_end { return ChapterNav::Done; }
+                // else: continue reading
+            }
         }
     }
 }
@@ -311,6 +449,7 @@ fn regex_cv(input: &str) -> Option<(&str, u32, u32)> {
 
 // ─── Display helpers ──────────────────────────────────────────────────────────
 
+/// Full card display — used for single-verse lookup and verse-by-verse navigation.
 fn print_verse_card(v: &BibleVerse) {
     let sep = "  ──────────────────────────────────────────────────────";
     println!();
@@ -323,31 +462,32 @@ fn print_verse_card(v: &BibleVerse) {
         "KJV".dimmed(),
     );
     println!("{}", sep.dimmed());
-    // Word-wrap at ~70 chars
-    for line in word_wrap(&v.text, 70) {
+    for line in word_wrap(&v.text, 68) {
         println!("  {}", line.bright_white());
     }
     println!("{}", sep.dimmed());
     println!();
 }
 
-fn print_verse_row(v: &BibleVerse) {
+/// Compact full-text row — used in paginated lists (search results, chapter view).
+fn print_verse_full(v: &BibleVerse) {
     let ref_tag = format!("{}  {}:{}", v.book, v.chapter, v.verse);
-    println!(
-        "  {:<28} {}",
-        ref_tag.bright_yellow(),
-        v.text.chars().take(60).collect::<String>().bright_white()
-    );
+    println!("  {}  {}", ref_tag.bright_yellow().bold(), "KJV".dimmed());
+    for line in word_wrap(&v.text, 68) {
+        println!("  {}", line.bright_white());
+    }
+    println!();
 }
 
-/// Show verses with a simple "press Enter for more" paginator.
-fn paginate_verses(verses: &[BibleVerse], page_size: usize) {
+/// Paginate a verse list with full text, 5 verses per page.
+fn paginate_verses(verses: &[BibleVerse]) {
+    const PAGE: usize = 5;
     let mut start = 0;
     let total = verses.len();
     loop {
-        let end = (start + page_size).min(total);
+        let end = (start + PAGE).min(total);
         for v in &verses[start..end] {
-            print_verse_row(v);
+            print_verse_full(v);
         }
         start = end;
         if start >= total {
@@ -356,7 +496,7 @@ fn paginate_verses(verses: &[BibleVerse], page_size: usize) {
         print!(
             "{}",
             format!(
-                "  ── {} of {} shown — press Enter for more, or q to stop: ",
+                "  ── {} of {} shown — Enter=more, q=stop: ",
                 start, total
             )
             .dimmed()

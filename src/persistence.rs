@@ -84,6 +84,28 @@ CREATE TRIGGER IF NOT EXISTS verses_au AFTER UPDATE ON verses BEGIN
     INSERT INTO verses_fts(verses_fts, rowid, text) VALUES ('delete', old.id, old.text);
     INSERT INTO verses_fts(rowid, text) VALUES (new.id, new.text);
 END;
+CREATE TABLE IF NOT EXISTS quran_verses (
+    id         INTEGER PRIMARY KEY,
+    surah      INTEGER NOT NULL,
+    ayah       INTEGER NOT NULL,
+    surah_name TEXT    NOT NULL,
+    text       TEXT    NOT NULL
+);
+CREATE VIRTUAL TABLE IF NOT EXISTS quran_fts USING fts5(
+    text,
+    content='quran_verses',
+    content_rowid='id'
+);
+CREATE TRIGGER IF NOT EXISTS quran_ai AFTER INSERT ON quran_verses BEGIN
+    INSERT INTO quran_fts(rowid, text) VALUES (new.id, new.text);
+END;
+CREATE TRIGGER IF NOT EXISTS quran_ad AFTER DELETE ON quran_verses BEGIN
+    INSERT INTO quran_fts(quran_fts, rowid, text) VALUES ('delete', old.id, old.text);
+END;
+CREATE TRIGGER IF NOT EXISTS quran_au AFTER UPDATE ON quran_verses BEGIN
+    INSERT INTO quran_fts(quran_fts, rowid, text) VALUES ('delete', old.id, old.text);
+    INSERT INTO quran_fts(rowid, text) VALUES (new.id, new.text);
+END;
 ";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -499,6 +521,18 @@ pub fn seed_bible_from_static(conn: &Connection) -> rusqlite::Result<()> {
     Ok(())
 }
 
+/// Return the number of verses in a specific chapter (0 if not found).
+pub fn verse_count(conn: &Connection, book: &str, chapter: u32) -> u32 {
+    conn.query_row(
+        "SELECT MAX(verse) FROM verses WHERE lower(book) = lower(?1) AND chapter = ?2",
+        params![book, chapter],
+        |r| r.get::<_, Option<u32>>(0),
+    )
+    .ok()
+    .flatten()
+    .unwrap_or(0)
+}
+
 /// Return the number of chapters in a book (0 if book not found).
 pub fn chapter_count(conn: &Connection, book: &str) -> u32 {
     conn.query_row(
@@ -509,6 +543,156 @@ pub fn chapter_count(conn: &Connection, book: &str) -> u32 {
     .ok()
     .flatten()
     .unwrap_or(0)
+}
+
+// ─── Quran / Pickthall queries ────────────────────────────────────────────────
+
+/// One ayah returned from the Quran table.
+pub struct QuranVerse {
+    pub surah:      u32,
+    pub ayah:       u32,
+    pub surah_name: String,
+    pub text:       String,
+}
+
+/// True when the `quran_verses` table has been populated.
+pub fn quran_is_loaded(conn: &Connection) -> bool {
+    conn.query_row("SELECT COUNT(*) FROM quran_verses", [], |r| r.get::<_, i64>(0))
+        .map(|n| n > 0)
+        .unwrap_or(false)
+}
+
+/// Return (ayah_count, surah_count) from `meta` (or 0 if absent).
+pub fn quran_stats(conn: &Connection) -> (u32, u32) {
+    let ac: u32 = conn
+        .query_row("SELECT value FROM meta WHERE key='quran_ayah_count'", [], |r| {
+            r.get::<_, String>(0)
+        })
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0);
+    let sc: u32 = conn
+        .query_row("SELECT value FROM meta WHERE key='quran_surah_count'", [], |r| {
+            r.get::<_, String>(0)
+        })
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0);
+    (ac, sc)
+}
+
+/// Full-text search across all ayahs using FTS5.
+pub fn search_quran(
+    conn: &Connection,
+    query: &str,
+    limit: usize,
+) -> rusqlite::Result<Vec<QuranVerse>> {
+    let mut stmt = conn.prepare(
+        "SELECT q.surah, q.ayah, q.surah_name, q.text
+         FROM quran_fts f
+         JOIN quran_verses q ON f.rowid = q.id
+         WHERE quran_fts MATCH ?1
+         ORDER BY rank
+         LIMIT ?2",
+    )?;
+    let rows = stmt.query_map(params![query, limit as i64], |row| {
+        Ok(QuranVerse {
+            surah:      row.get(0)?,
+            ayah:       row.get(1)?,
+            surah_name: row.get(2)?,
+            text:       row.get(3)?,
+        })
+    })?;
+    rows.collect()
+}
+
+/// Look up a single ayah by surah and ayah number.
+pub fn lookup_ayah(
+    conn: &Connection,
+    surah: u32,
+    ayah: u32,
+) -> rusqlite::Result<Option<QuranVerse>> {
+    let result = conn.query_row(
+        "SELECT surah, ayah, surah_name, text FROM quran_verses
+         WHERE surah = ?1 AND ayah = ?2",
+        params![surah, ayah],
+        |row| {
+            Ok(QuranVerse {
+                surah:      row.get(0)?,
+                ayah:       row.get(1)?,
+                surah_name: row.get(2)?,
+                text:       row.get(3)?,
+            })
+        },
+    );
+    match result {
+        Ok(v)                                       => Ok(Some(v)),
+        Err(rusqlite::Error::QueryReturnedNoRows)   => Ok(None),
+        Err(e)                                      => Err(e),
+    }
+}
+
+/// Return all ayahs in a surah, ordered by ayah number.
+pub fn get_surah(conn: &Connection, surah: u32) -> rusqlite::Result<Vec<QuranVerse>> {
+    let mut stmt = conn.prepare(
+        "SELECT surah, ayah, surah_name, text FROM quran_verses
+         WHERE surah = ?1
+         ORDER BY ayah",
+    )?;
+    let rows = stmt.query_map(params![surah], |row| {
+        Ok(QuranVerse {
+            surah:      row.get(0)?,
+            ayah:       row.get(1)?,
+            surah_name: row.get(2)?,
+            text:       row.get(3)?,
+        })
+    })?;
+    rows.collect()
+}
+
+/// Return the highest ayah number in a surah (0 if not found).
+pub fn ayah_count(conn: &Connection, surah: u32) -> u32 {
+    conn.query_row(
+        "SELECT MAX(ayah) FROM quran_verses WHERE surah = ?1",
+        params![surah],
+        |r| r.get::<_, Option<u32>>(0),
+    )
+    .ok()
+    .flatten()
+    .unwrap_or(0)
+}
+
+/// Seed the `quran_verses` table from the embedded static data.
+pub fn seed_quran_from_static(conn: &Connection) -> rusqlite::Result<()> {
+    use crate::quran::verses_data::QURAN_VERSES;
+
+    conn.execute_batch("BEGIN")?;
+    {
+        let mut stmt = conn.prepare(
+            "INSERT INTO quran_verses (surah, ayah, surah_name, text) VALUES (?1,?2,?3,?4)",
+        )?;
+        for &(surah, ayah, surah_name, text) in QURAN_VERSES {
+            stmt.execute(params![surah, ayah, surah_name, text])?;
+        }
+    }
+    conn.execute_batch("COMMIT")?;
+
+    conn.execute_batch("INSERT INTO quran_fts(quran_fts) VALUES ('rebuild')")?;
+
+    conn.execute(
+        "INSERT OR REPLACE INTO meta VALUES ('quran_source', ?1)",
+        params!["Pickthall English translation — Project Gutenberg EBook #16955"],
+    )?;
+    conn.execute(
+        "INSERT OR REPLACE INTO meta VALUES ('quran_ayah_count', ?1)",
+        params![QURAN_VERSES.len().to_string()],
+    )?;
+    conn.execute(
+        "INSERT OR REPLACE INTO meta VALUES ('quran_surah_count', '114')",
+        [],
+    )?;
+
+    Ok(())
 }
 
 #[cfg(test)]
