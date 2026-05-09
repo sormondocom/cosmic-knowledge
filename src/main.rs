@@ -5,6 +5,7 @@
 //! interactive sessions, and sub-menus live in the modules declared below.
 
 // ─── Module declarations ──────────────────────────────────────────────────────
+mod apocrypha;
 mod audio;
 mod bible;
 mod quran;
@@ -34,6 +35,7 @@ use audio::{
     export_all_frequencies_cli, initialize_audio, play_intro_chord, show_frequency_menu,
     stop_audio, AudioSystem,
 };
+use apocrypha::run_apocrypha_session;
 use bible::run_bible_session;
 use quran::run_quran_session;
 use cosmology::run_world_systems_session;
@@ -153,6 +155,7 @@ fn main() {
             MainMode::Urim => run_urim_session(),
             MainMode::Bible => run_bible_session(),
             MainMode::Quran => run_quran_session(),
+            MainMode::Apocrypha => run_apocrypha_session(),
             MainMode::Help => show_help(),
             MainMode::Quit => {
                 if let Some(ref sys) = audio_system {

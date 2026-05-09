@@ -58,6 +58,7 @@ pub enum MenuColor {
     Cyan,
     White,
     Magenta,
+    BrightMagenta,
     Green,
 }
 
@@ -74,7 +75,7 @@ impl Menu {
                 MenuColor::Yellow => s.bright_yellow(),
                 MenuColor::Cyan => s.bright_cyan(),
                 MenuColor::White => s.bright_white(),
-                MenuColor::Magenta => s.bright_magenta(),
+                MenuColor::Magenta | MenuColor::BrightMagenta => s.bright_magenta(),
                 MenuColor::Green => s.bright_green(),
             }
         };
@@ -164,6 +165,7 @@ pub enum MainMode {
     Urim,
     Bible,
     Quran,
+    Apocrypha,
     Help,
     Quit,
 }
@@ -236,6 +238,12 @@ static MAIN_ITEMS: &[MenuItem] = &[
         hint: "FTS5 search · ayah lookup · surah browse",
     },
     MenuItem {
+        key: "12",
+        icon: "📜",
+        label: "Apocrypha  (1 & 2 Enoch · Jubilees, beta)",
+        hint: "FTS5 search · verse lookup · chapter browse",
+    },
+    MenuItem {
         key: "h",
         icon: "❓",
         label: "Help & Reference",
@@ -266,9 +274,10 @@ pub fn show_main_menu() -> MainMode {
             "9" => return MainMode::Urim,
             "10" => return MainMode::Bible,
             "11" => return MainMode::Quran,
+            "12" => return MainMode::Apocrypha,
             "h" | "H" => return MainMode::Help,
             "0" | "" => return MainMode::Quit,
-            _ => println!("{}", "  Please enter 0–11 or h.".yellow()),
+            _ => println!("{}", "  Please enter 0–12 or h.".yellow()),
         }
     }
 }

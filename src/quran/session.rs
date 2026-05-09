@@ -6,7 +6,7 @@ use colored::*;
 
 use crate::menu::{Menu, MenuColor, MenuItem};
 use crate::persistence::{
-    ayah_count, get_surah, lookup_ayah, open_db, quran_is_loaded, quran_stats, search_quran,
+    get_surah, lookup_ayah, open_db, quran_is_loaded, quran_stats, search_quran,
     seed_quran_from_static, QuranVerse,
 };
 

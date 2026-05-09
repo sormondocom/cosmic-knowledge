@@ -106,6 +106,36 @@ CREATE TRIGGER IF NOT EXISTS quran_au AFTER UPDATE ON quran_verses BEGIN
     INSERT INTO quran_fts(quran_fts, rowid, text) VALUES ('delete', old.id, old.text);
     INSERT INTO quran_fts(rowid, text) VALUES (new.id, new.text);
 END;
+CREATE TABLE IF NOT EXISTS apocrypha_verses (
+    id      INTEGER PRIMARY KEY,
+    book    TEXT    NOT NULL,
+    chapter INTEGER NOT NULL,
+    verse   INTEGER NOT NULL,
+    text    TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS apocrypha_book_chap ON apocrypha_verses(book, chapter, verse);
+CREATE VIRTUAL TABLE IF NOT EXISTS apocrypha_fts USING fts5(
+    book UNINDEXED,
+    chapter UNINDEXED,
+    verse UNINDEXED,
+    text,
+    content='apocrypha_verses',
+    content_rowid='id'
+);
+CREATE TRIGGER IF NOT EXISTS apocrypha_ai AFTER INSERT ON apocrypha_verses BEGIN
+    INSERT INTO apocrypha_fts(rowid, book, chapter, verse, text)
+    VALUES (new.id, new.book, new.chapter, new.verse, new.text);
+END;
+CREATE TRIGGER IF NOT EXISTS apocrypha_ad AFTER DELETE ON apocrypha_verses BEGIN
+    INSERT INTO apocrypha_fts(apocrypha_fts, rowid, book, chapter, verse, text)
+    VALUES ('delete', old.id, old.book, old.chapter, old.verse, old.text);
+END;
+CREATE TRIGGER IF NOT EXISTS apocrypha_au AFTER UPDATE ON apocrypha_verses BEGIN
+    INSERT INTO apocrypha_fts(apocrypha_fts, rowid, book, chapter, verse, text)
+    VALUES ('delete', old.id, old.book, old.chapter, old.verse, old.text);
+    INSERT INTO apocrypha_fts(rowid, book, chapter, verse, text)
+    VALUES (new.id, new.book, new.chapter, new.verse, new.text);
+END;
 ";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -690,6 +720,165 @@ pub fn seed_quran_from_static(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute(
         "INSERT OR REPLACE INTO meta VALUES ('quran_surah_count', '114')",
         [],
+    )?;
+
+    Ok(())
+}
+
+// ─── Apocrypha queries ────────────────────────────────────────────────────────
+
+/// One verse from the apocrypha table.
+pub struct ApocrVerse {
+    pub id:      i64,
+    pub book:    String,
+    pub chapter: u32,
+    pub verse:   u32,
+    pub text:    String,
+}
+
+/// True when the `apocrypha_verses` table has been populated.
+pub fn apocrypha_is_loaded(conn: &Connection) -> bool {
+    conn.query_row("SELECT COUNT(*) FROM apocrypha_verses", [], |r| r.get::<_, i64>(0))
+        .map(|n| n > 0)
+        .unwrap_or(false)
+}
+
+/// Return (verse_count, book_count) for the apocrypha.
+pub fn apocrypha_stats(conn: &Connection) -> (u32, u32) {
+    let vc: u32 = conn
+        .query_row("SELECT COUNT(*) FROM apocrypha_verses", [], |r| r.get::<_, u32>(0))
+        .unwrap_or(0);
+    let bc: u32 = conn
+        .query_row("SELECT COUNT(DISTINCT book) FROM apocrypha_verses", [], |r| r.get::<_, u32>(0))
+        .unwrap_or(0);
+    (vc, bc)
+}
+
+/// Full-text search across all apocrypha verses using FTS5.
+pub fn search_apocrypha(
+    conn: &Connection,
+    query: &str,
+    limit: usize,
+) -> rusqlite::Result<Vec<ApocrVerse>> {
+    let mut stmt = conn.prepare(
+        "SELECT a.id, a.book, a.chapter, a.verse, a.text
+         FROM apocrypha_fts f
+         JOIN apocrypha_verses a ON f.rowid = a.id
+         WHERE apocrypha_fts MATCH ?1
+         ORDER BY rank
+         LIMIT ?2",
+    )?;
+    let rows = stmt.query_map(params![query, limit as i64], |row| {
+        Ok(ApocrVerse {
+            id:      row.get(0)?,
+            book:    row.get(1)?,
+            chapter: row.get(2)?,
+            verse:   row.get(3)?,
+            text:    row.get(4)?,
+        })
+    })?;
+    rows.collect()
+}
+
+/// Look up a single apocrypha verse by book, chapter, and verse number.
+pub fn lookup_apocr_verse(
+    conn: &Connection,
+    book: &str,
+    chapter: u32,
+    verse: u32,
+) -> rusqlite::Result<Option<ApocrVerse>> {
+    let result = conn.query_row(
+        "SELECT id, book, chapter, verse, text FROM apocrypha_verses
+         WHERE lower(book) = lower(?1) AND chapter = ?2 AND verse = ?3",
+        params![book, chapter, verse],
+        |row| {
+            Ok(ApocrVerse {
+                id:      row.get(0)?,
+                book:    row.get(1)?,
+                chapter: row.get(2)?,
+                verse:   row.get(3)?,
+                text:    row.get(4)?,
+            })
+        },
+    );
+    match result {
+        Ok(v)                                     => Ok(Some(v)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e)                                    => Err(e),
+    }
+}
+
+/// Return all verses in an apocrypha chapter, ordered by verse number.
+pub fn get_apocr_chapter(
+    conn: &Connection,
+    book: &str,
+    chapter: u32,
+) -> rusqlite::Result<Vec<ApocrVerse>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, book, chapter, verse, text FROM apocrypha_verses
+         WHERE lower(book) = lower(?1) AND chapter = ?2
+         ORDER BY verse",
+    )?;
+    let rows = stmt.query_map(params![book, chapter], |row| {
+        Ok(ApocrVerse {
+            id:      row.get(0)?,
+            book:    row.get(1)?,
+            chapter: row.get(2)?,
+            verse:   row.get(3)?,
+            text:    row.get(4)?,
+        })
+    })?;
+    rows.collect()
+}
+
+/// Return the highest verse number in a chapter (0 if not found).
+pub fn apocr_verse_count(conn: &Connection, book: &str, chapter: u32) -> u32 {
+    conn.query_row(
+        "SELECT MAX(verse) FROM apocrypha_verses WHERE lower(book) = lower(?1) AND chapter = ?2",
+        params![book, chapter],
+        |r| r.get::<_, Option<u32>>(0),
+    )
+    .ok()
+    .flatten()
+    .unwrap_or(0)
+}
+
+/// Return the highest chapter number for a book (0 if not found).
+pub fn apocr_chapter_count(conn: &Connection, book: &str) -> u32 {
+    conn.query_row(
+        "SELECT MAX(chapter) FROM apocrypha_verses WHERE lower(book) = lower(?1)",
+        params![book],
+        |r| r.get::<_, Option<u32>>(0),
+    )
+    .ok()
+    .flatten()
+    .unwrap_or(0)
+}
+
+/// Seed the `apocrypha_verses` table from the embedded static data.
+pub fn seed_apocrypha_from_static(conn: &Connection) -> rusqlite::Result<()> {
+    use crate::apocrypha::verses_data::APOCRYPHA_VERSES;
+
+    conn.execute_batch("BEGIN")?;
+    {
+        let mut stmt = conn.prepare(
+            "INSERT INTO apocrypha_verses (book, chapter, verse, text) VALUES (?1,?2,?3,?4)",
+        )?;
+        for &(book, chapter, verse, text) in APOCRYPHA_VERSES {
+            stmt.execute(params![book, chapter, verse, text])?;
+        }
+    }
+    conn.execute_batch("COMMIT")?;
+
+    conn.execute_batch("INSERT INTO apocrypha_fts(apocrypha_fts) VALUES ('rebuild')")?;
+
+    conn.execute(
+        "INSERT OR REPLACE INTO meta VALUES ('apocr_source', ?1)",
+        params!["1 Enoch (R.H. Charles 1917), 2 Enoch & Jubilees (sacred-texts.com)"],
+    )?;
+    conn.execute(
+        "INSERT OR REPLACE INTO meta VALUES ('apocr_verse_count', ?1)",
+        params![APOCRYPHA_VERSES.len().to_string()],
     )?;
 
     Ok(())
