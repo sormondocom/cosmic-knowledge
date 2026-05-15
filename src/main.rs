@@ -24,6 +24,7 @@ mod runes;
 mod tarot;
 mod urim;
 mod utils;
+mod pistis_sophia;
 mod zodiac;
 mod zohar;
 
@@ -49,6 +50,7 @@ use rng::run_rng_session;
 use runes::run_runes_session;
 use tarot::run_tarot_session;
 use urim::run_urim_session;
+use pistis_sophia::run_ps_session;
 use zodiac::run_zodiac_session;
 use zohar::run_zohar_session;
 
@@ -164,6 +166,7 @@ fn main() {
             MainMode::Quran => run_quran_session(),
             MainMode::Apocrypha => run_apocrypha_session(),
             MainMode::Zohar => run_zohar_session(),
+            MainMode::PistisSophia => run_ps_session(),
             MainMode::TtsSettings => tts_session::run_tts_session(),
             MainMode::Help => show_help(),
             MainMode::Quit => {

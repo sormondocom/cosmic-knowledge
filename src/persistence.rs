@@ -142,6 +142,36 @@ CREATE TABLE IF NOT EXISTS text_positions (
     chapter INTEGER NOT NULL,
     verse   INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS pistis_sophia_verses (
+    id      INTEGER PRIMARY KEY,
+    book    TEXT    NOT NULL,
+    chapter INTEGER NOT NULL,
+    verse   INTEGER NOT NULL,
+    text    TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ps_book_chap ON pistis_sophia_verses(book, chapter, verse);
+CREATE VIRTUAL TABLE IF NOT EXISTS pistis_sophia_fts USING fts5(
+    book UNINDEXED,
+    chapter UNINDEXED,
+    verse UNINDEXED,
+    text,
+    content='pistis_sophia_verses',
+    content_rowid='id'
+);
+CREATE TRIGGER IF NOT EXISTS ps_ai AFTER INSERT ON pistis_sophia_verses BEGIN
+    INSERT INTO pistis_sophia_fts(rowid, book, chapter, verse, text)
+    VALUES (new.id, new.book, new.chapter, new.verse, new.text);
+END;
+CREATE TRIGGER IF NOT EXISTS ps_ad AFTER DELETE ON pistis_sophia_verses BEGIN
+    INSERT INTO pistis_sophia_fts(pistis_sophia_fts, rowid, book, chapter, verse, text)
+    VALUES ('delete', old.id, old.book, old.chapter, old.verse, old.text);
+END;
+CREATE TRIGGER IF NOT EXISTS ps_au AFTER UPDATE ON pistis_sophia_verses BEGIN
+    INSERT INTO pistis_sophia_fts(pistis_sophia_fts, rowid, book, chapter, verse, text)
+    VALUES ('delete', old.id, old.book, old.chapter, old.verse, old.text);
+    INSERT INTO pistis_sophia_fts(rowid, book, chapter, verse, text)
+    VALUES (new.id, new.book, new.chapter, new.verse, new.text);
+END;
 CREATE TABLE IF NOT EXISTS zohar_verses (
     id      INTEGER PRIMARY KEY,
     book    TEXT    NOT NULL,
@@ -921,6 +951,177 @@ pub fn load_text_position(
         |row| Ok((row.get::<_, String>(0)?, row.get::<_, u32>(1)?, row.get::<_, u32>(2)?)),
     )
     .ok()
+}
+
+// ─── Pistis Sophia ───────────────────────────────────────────────────────────
+
+/// A single Pistis Sophia paragraph record.
+pub struct PsVerse {
+    pub id:      i64,
+    pub book:    String,
+    pub chapter: u32,
+    pub verse:   u32,
+    pub text:    String,
+}
+
+/// True when the `pistis_sophia_verses` table has been populated.
+pub fn ps_is_loaded(conn: &Connection) -> bool {
+    conn.query_row("SELECT COUNT(*) FROM pistis_sophia_verses", [], |r| r.get::<_, i64>(0))
+        .map(|n| n > 0)
+        .unwrap_or(false)
+}
+
+/// Return (paragraph_count, book_count) for the Pistis Sophia.
+pub fn ps_stats(conn: &Connection) -> (u32, u32) {
+    let vc: u32 = conn
+        .query_row("SELECT COUNT(*) FROM pistis_sophia_verses", [], |r| r.get::<_, u32>(0))
+        .unwrap_or(0);
+    let bc: u32 = conn
+        .query_row("SELECT COUNT(DISTINCT book) FROM pistis_sophia_verses", [], |r| r.get::<_, u32>(0))
+        .unwrap_or(0);
+    (vc, bc)
+}
+
+/// Full-text search across all Pistis Sophia paragraphs using FTS5.
+pub fn search_ps(
+    conn: &Connection,
+    query: &str,
+    limit: usize,
+) -> rusqlite::Result<Vec<PsVerse>> {
+    let mut stmt = conn.prepare(
+        "SELECT a.id, a.book, a.chapter, a.verse, a.text
+         FROM pistis_sophia_fts f
+         JOIN pistis_sophia_verses a ON f.rowid = a.id
+         WHERE pistis_sophia_fts MATCH ?1
+         ORDER BY rank
+         LIMIT ?2",
+    )?;
+    let rows = stmt.query_map(params![query, limit as i64], |row| {
+        Ok(PsVerse {
+            id:      row.get(0)?,
+            book:    row.get(1)?,
+            chapter: row.get(2)?,
+            verse:   row.get(3)?,
+            text:    row.get(4)?,
+        })
+    })?;
+    rows.collect()
+}
+
+/// Look up a single Pistis Sophia paragraph by book, chapter, and paragraph number.
+pub fn lookup_ps_verse(
+    conn: &Connection,
+    book: &str,
+    chapter: u32,
+    verse: u32,
+) -> rusqlite::Result<Option<PsVerse>> {
+    let result = conn.query_row(
+        "SELECT id, book, chapter, verse, text FROM pistis_sophia_verses
+         WHERE lower(book) = lower(?1) AND chapter = ?2 AND verse = ?3",
+        params![book, chapter, verse],
+        |row| {
+            Ok(PsVerse {
+                id:      row.get(0)?,
+                book:    row.get(1)?,
+                chapter: row.get(2)?,
+                verse:   row.get(3)?,
+                text:    row.get(4)?,
+            })
+        },
+    );
+    match result {
+        Ok(v)                                     => Ok(Some(v)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e)                                    => Err(e),
+    }
+}
+
+/// Return all paragraphs in a Pistis Sophia chapter.
+pub fn get_ps_chapter(
+    conn: &Connection,
+    book: &str,
+    chapter: u32,
+) -> rusqlite::Result<Vec<PsVerse>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, book, chapter, verse, text FROM pistis_sophia_verses
+         WHERE lower(book) = lower(?1) AND chapter = ?2
+         ORDER BY verse",
+    )?;
+    let rows = stmt.query_map(params![book, chapter], |row| {
+        Ok(PsVerse {
+            id:      row.get(0)?,
+            book:    row.get(1)?,
+            chapter: row.get(2)?,
+            verse:   row.get(3)?,
+            text:    row.get(4)?,
+        })
+    })?;
+    rows.collect()
+}
+
+/// Return the highest paragraph number in a chapter (0 if not found).
+pub fn ps_verse_count(conn: &Connection, book: &str, chapter: u32) -> u32 {
+    conn.query_row(
+        "SELECT MAX(verse) FROM pistis_sophia_verses WHERE lower(book) = lower(?1) AND chapter = ?2",
+        params![book, chapter],
+        |r| r.get::<_, Option<u32>>(0),
+    )
+    .ok()
+    .flatten()
+    .unwrap_or(0)
+}
+
+/// Return the highest chapter number for a book (0 if not found).
+pub fn ps_chapter_count(conn: &Connection, book: &str) -> u32 {
+    conn.query_row(
+        "SELECT MAX(chapter) FROM pistis_sophia_verses WHERE lower(book) = lower(?1)",
+        params![book],
+        |r| r.get::<_, Option<u32>>(0),
+    )
+    .ok()
+    .flatten()
+    .unwrap_or(0)
+}
+
+/// Return the lowest chapter number for a book (0 if not found).
+pub fn ps_chapter_min(conn: &Connection, book: &str) -> u32 {
+    conn.query_row(
+        "SELECT MIN(chapter) FROM pistis_sophia_verses WHERE lower(book) = lower(?1)",
+        params![book],
+        |r| r.get::<_, Option<u32>>(0),
+    )
+    .ok()
+    .flatten()
+    .unwrap_or(1)
+}
+
+/// Seed the `pistis_sophia_verses` table from the embedded static data.
+pub fn seed_ps_from_static(conn: &Connection) -> rusqlite::Result<()> {
+    use crate::pistis_sophia::verses_data::PISTIS_SOPHIA_VERSES;
+
+    conn.execute_batch("BEGIN")?;
+    {
+        let mut stmt = conn.prepare(
+            "INSERT INTO pistis_sophia_verses (book, chapter, verse, text) VALUES (?1,?2,?3,?4)",
+        )?;
+        for &(book, chapter, verse, text) in PISTIS_SOPHIA_VERSES {
+            stmt.execute(params![book, chapter, verse, text])?;
+        }
+    }
+    conn.execute_batch("COMMIT")?;
+
+    conn.execute_batch("INSERT INTO pistis_sophia_fts(pistis_sophia_fts) VALUES ('rebuild')")?;
+
+    conn.execute(
+        "INSERT OR REPLACE INTO meta VALUES ('ps_source', ?1)",
+        params!["Pistis Sophia, tr. G.R.S. Mead [1921], public domain"],
+    )?;
+    conn.execute(
+        "INSERT OR REPLACE INTO meta VALUES ('ps_para_count', ?1)",
+        params![PISTIS_SOPHIA_VERSES.len().to_string()],
+    )?;
+
+    Ok(())
 }
 
 // ─── Zohar ────────────────────────────────────────────────────────────────────

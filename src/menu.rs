@@ -167,6 +167,7 @@ pub enum MainMode {
     Quran,
     Apocrypha,
     Zohar,
+    PistisSophia,
     TtsSettings,
     Help,
     Quit,
@@ -253,6 +254,12 @@ static MAIN_ITEMS: &[MenuItem] = &[
     },
     MenuItem {
         key: "14",
+        icon: "✨",
+        label: "Pistis Sophia  (G.R.S. Mead, 1921)",
+        hint: "6 books · 148 chapters · FTS5 search · browse",
+    },
+    MenuItem {
+        key: "15",
         icon: "🔊",
         label: "Text-to-Speech Settings",
         hint: "Voice · rate · volume · auto-read toggle",
@@ -290,10 +297,11 @@ pub fn show_main_menu() -> MainMode {
             "11" => return MainMode::Quran,
             "12" => return MainMode::Apocrypha,
             "13" => return MainMode::Zohar,
-            "14" => return MainMode::TtsSettings,
+            "14" => return MainMode::PistisSophia,
+            "15" => return MainMode::TtsSettings,
             "h" | "H" => return MainMode::Help,
             "0" | "" => return MainMode::Quit,
-            _ => println!("{}", "  Please enter 0–14 or h.".yellow()),
+            _ => println!("{}", "  Please enter 0–15 or h.".yellow()),
         }
     }
 }
