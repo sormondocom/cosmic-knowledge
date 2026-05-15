@@ -25,6 +25,7 @@ mod tarot;
 mod urim;
 mod utils;
 mod zodiac;
+mod zohar;
 
 // ─── Selective imports ────────────────────────────────────────────────────────
 use std::io;
@@ -49,6 +50,7 @@ use runes::run_runes_session;
 use tarot::run_tarot_session;
 use urim::run_urim_session;
 use zodiac::run_zodiac_session;
+use zohar::run_zohar_session;
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
@@ -161,6 +163,7 @@ fn main() {
             MainMode::Bible => run_bible_session(),
             MainMode::Quran => run_quran_session(),
             MainMode::Apocrypha => run_apocrypha_session(),
+            MainMode::Zohar => run_zohar_session(),
             MainMode::TtsSettings => tts_session::run_tts_session(),
             MainMode::Help => show_help(),
             MainMode::Quit => {

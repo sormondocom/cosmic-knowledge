@@ -166,6 +166,7 @@ pub enum MainMode {
     Bible,
     Quran,
     Apocrypha,
+    Zohar,
     TtsSettings,
     Help,
     Quit,
@@ -246,6 +247,12 @@ static MAIN_ITEMS: &[MenuItem] = &[
     },
     MenuItem {
         key: "13",
+        icon: "🔯",
+        label: "Zohar  (Bereshith · Lekh Lekha, beta)",
+        hint: "FTS5 search · passage lookup · chapter browse",
+    },
+    MenuItem {
+        key: "14",
         icon: "🔊",
         label: "Text-to-Speech Settings",
         hint: "Voice · rate · volume · auto-read toggle",
@@ -282,10 +289,11 @@ pub fn show_main_menu() -> MainMode {
             "10" => return MainMode::Bible,
             "11" => return MainMode::Quran,
             "12" => return MainMode::Apocrypha,
-            "13" => return MainMode::TtsSettings,
+            "13" => return MainMode::Zohar,
+            "14" => return MainMode::TtsSettings,
             "h" | "H" => return MainMode::Help,
             "0" | "" => return MainMode::Quit,
-            _ => println!("{}", "  Please enter 0–13 or h.".yellow()),
+            _ => println!("{}", "  Please enter 0–14 or h.".yellow()),
         }
     }
 }
