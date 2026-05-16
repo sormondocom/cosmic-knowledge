@@ -142,6 +142,36 @@ CREATE TABLE IF NOT EXISTS text_positions (
     chapter INTEGER NOT NULL,
     verse   INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS trimorphic_verses (
+    id      INTEGER PRIMARY KEY,
+    book    TEXT    NOT NULL,
+    chapter INTEGER NOT NULL,
+    verse   INTEGER NOT NULL,
+    text    TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS trim_chap ON trimorphic_verses(book, chapter, verse);
+CREATE VIRTUAL TABLE IF NOT EXISTS trimorphic_fts USING fts5(
+    book UNINDEXED,
+    chapter UNINDEXED,
+    verse UNINDEXED,
+    text,
+    content='trimorphic_verses',
+    content_rowid='id'
+);
+CREATE TRIGGER IF NOT EXISTS trim_ai AFTER INSERT ON trimorphic_verses BEGIN
+    INSERT INTO trimorphic_fts(rowid, book, chapter, verse, text)
+    VALUES (new.id, new.book, new.chapter, new.verse, new.text);
+END;
+CREATE TRIGGER IF NOT EXISTS trim_ad AFTER DELETE ON trimorphic_verses BEGIN
+    INSERT INTO trimorphic_fts(trimorphic_fts, rowid, book, chapter, verse, text)
+    VALUES ('delete', old.id, old.book, old.chapter, old.verse, old.text);
+END;
+CREATE TRIGGER IF NOT EXISTS trim_au AFTER UPDATE ON trimorphic_verses BEGIN
+    INSERT INTO trimorphic_fts(trimorphic_fts, rowid, book, chapter, verse, text)
+    VALUES ('delete', old.id, old.book, old.chapter, old.verse, old.text);
+    INSERT INTO trimorphic_fts(rowid, book, chapter, verse, text)
+    VALUES (new.id, new.book, new.chapter, new.verse, new.text);
+END;
 CREATE TABLE IF NOT EXISTS pistis_sophia_verses (
     id      INTEGER PRIMARY KEY,
     book    TEXT    NOT NULL,
@@ -951,6 +981,134 @@ pub fn load_text_position(
         |row| Ok((row.get::<_, String>(0)?, row.get::<_, u32>(1)?, row.get::<_, u32>(2)?)),
     )
     .ok()
+}
+
+// ─── Trimorphic Protennoia ────────────────────────────────────────────────────
+
+/// A single Trimorphic Protennoia paragraph record.
+pub struct TrimorphicVerse {
+    pub id:      i64,
+    pub book:    String,
+    pub chapter: u32,   // 1=Thought, 2=Voice, 3=Word
+    pub verse:   u32,
+    pub text:    String,
+}
+
+pub fn trimorphic_is_loaded(conn: &Connection) -> bool {
+    conn.query_row("SELECT COUNT(*) FROM trimorphic_verses", [], |r| r.get::<_, i64>(0))
+        .map(|n| n > 0)
+        .unwrap_or(false)
+}
+
+pub fn trimorphic_stats(conn: &Connection) -> (u32, u32) {
+    let vc: u32 = conn
+        .query_row("SELECT COUNT(*) FROM trimorphic_verses", [], |r| r.get::<_, u32>(0))
+        .unwrap_or(0);
+    let dc: u32 = conn
+        .query_row("SELECT COUNT(DISTINCT chapter) FROM trimorphic_verses", [], |r| r.get::<_, u32>(0))
+        .unwrap_or(0);
+    (vc, dc)
+}
+
+pub fn search_trimorphic(
+    conn: &Connection,
+    query: &str,
+    limit: usize,
+) -> rusqlite::Result<Vec<TrimorphicVerse>> {
+    let mut stmt = conn.prepare(
+        "SELECT a.id, a.book, a.chapter, a.verse, a.text
+         FROM trimorphic_fts f
+         JOIN trimorphic_verses a ON f.rowid = a.id
+         WHERE trimorphic_fts MATCH ?1
+         ORDER BY rank
+         LIMIT ?2",
+    )?;
+    let rows = stmt.query_map(params![query, limit as i64], |row| {
+        Ok(TrimorphicVerse {
+            id:      row.get(0)?,
+            book:    row.get(1)?,
+            chapter: row.get(2)?,
+            verse:   row.get(3)?,
+            text:    row.get(4)?,
+        })
+    })?;
+    rows.collect()
+}
+
+pub fn lookup_trimorphic_verse(
+    conn: &Connection,
+    chapter: u32,
+    verse: u32,
+) -> rusqlite::Result<Option<TrimorphicVerse>> {
+    let result = conn.query_row(
+        "SELECT id, book, chapter, verse, text FROM trimorphic_verses
+         WHERE chapter = ?1 AND verse = ?2",
+        params![chapter, verse],
+        |row| Ok(TrimorphicVerse {
+            id:      row.get(0)?,
+            book:    row.get(1)?,
+            chapter: row.get(2)?,
+            verse:   row.get(3)?,
+            text:    row.get(4)?,
+        }),
+    );
+    match result {
+        Ok(v)                                     => Ok(Some(v)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e)                                    => Err(e),
+    }
+}
+
+pub fn get_trimorphic_discourse(
+    conn: &Connection,
+    chapter: u32,
+) -> rusqlite::Result<Vec<TrimorphicVerse>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, book, chapter, verse, text FROM trimorphic_verses
+         WHERE chapter = ?1 ORDER BY verse",
+    )?;
+    let rows = stmt.query_map(params![chapter], |row| {
+        Ok(TrimorphicVerse {
+            id:      row.get(0)?,
+            book:    row.get(1)?,
+            chapter: row.get(2)?,
+            verse:   row.get(3)?,
+            text:    row.get(4)?,
+        })
+    })?;
+    rows.collect()
+}
+
+pub fn trimorphic_verse_count(conn: &Connection, chapter: u32) -> u32 {
+    conn.query_row(
+        "SELECT MAX(verse) FROM trimorphic_verses WHERE chapter = ?1",
+        params![chapter],
+        |r| r.get::<_, Option<u32>>(0),
+    )
+    .ok()
+    .flatten()
+    .unwrap_or(0)
+}
+
+pub fn seed_trimorphic_from_static(conn: &Connection) -> rusqlite::Result<()> {
+    use crate::trimorphic::verses_data::TRIMORPHIC_VERSES;
+
+    conn.execute_batch("BEGIN")?;
+    {
+        let mut stmt = conn.prepare(
+            "INSERT INTO trimorphic_verses (book, chapter, verse, text) VALUES (?1,?2,?3,?4)",
+        )?;
+        for &(book, chapter, verse, text) in TRIMORPHIC_VERSES {
+            stmt.execute(params![book, chapter, verse, text])?;
+        }
+    }
+    conn.execute_batch("COMMIT")?;
+    conn.execute_batch("INSERT INTO trimorphic_fts(trimorphic_fts) VALUES ('rebuild')")?;
+    conn.execute(
+        "INSERT OR REPLACE INTO meta VALUES ('trimorphic_source', ?1)",
+        params!["Trimorphic Protennoia, tr. John D. Turner (NHC XIII,1)"],
+    )?;
+    Ok(())
 }
 
 // ─── Pistis Sophia ───────────────────────────────────────────────────────────

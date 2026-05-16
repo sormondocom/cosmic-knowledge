@@ -168,6 +168,7 @@ pub enum MainMode {
     Apocrypha,
     Zohar,
     PistisSophia,
+    Trimorphic,
     TtsSettings,
     Help,
     Quit,
@@ -260,6 +261,12 @@ static MAIN_ITEMS: &[MenuItem] = &[
     },
     MenuItem {
         key: "15",
+        icon: "🕊",
+        label: "Trimorphic Protennoia  (J.D. Turner tr.)",
+        hint: "3 discourses · Thought · Voice · Word · NHC XIII,1",
+    },
+    MenuItem {
+        key: "16",
         icon: "🔊",
         label: "Text-to-Speech Settings",
         hint: "Voice · rate · volume · auto-read toggle",
@@ -298,10 +305,11 @@ pub fn show_main_menu() -> MainMode {
             "12" => return MainMode::Apocrypha,
             "13" => return MainMode::Zohar,
             "14" => return MainMode::PistisSophia,
-            "15" => return MainMode::TtsSettings,
+            "15" => return MainMode::Trimorphic,
+            "16" => return MainMode::TtsSettings,
             "h" | "H" => return MainMode::Help,
             "0" | "" => return MainMode::Quit,
-            _ => println!("{}", "  Please enter 0–15 or h.".yellow()),
+            _ => println!("{}", "  Please enter 0–16 or h.".yellow()),
         }
     }
 }
