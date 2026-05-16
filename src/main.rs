@@ -103,8 +103,14 @@ fn main() {
     })
     .ok();
 
-    // ── TTS initialisation ────────────────────────────────────────────────────
+    // ── TTS initialisation + persisted settings ───────────────────────────────
     tts_reader::init_tts();
+    if let Ok(conn) = persistence::open_db() {
+        tts_reader::tts_apply_settings(&conn);
+        let export_dir = persistence::get_setting(&conn, "export_dir")
+            .unwrap_or_else(|| "exports".to_string());
+        audio::init_export_dir(&export_dir);
+    }
 
     // ── Audio initialisation ──────────────────────────────────────────────────
     let audio_system: Option<AudioSystem> = if enable_audio {
@@ -170,7 +176,7 @@ fn main() {
             MainMode::Zohar => run_zohar_session(),
             MainMode::PistisSophia => run_ps_session(),
             MainMode::Trimorphic => run_trimorphic_session(),
-            MainMode::TtsSettings => tts_session::run_tts_session(),
+            MainMode::Config => tts_session::run_config_session(),
             MainMode::Help => show_help(),
             MainMode::Quit => {
                 tts_reader::tts_stop();

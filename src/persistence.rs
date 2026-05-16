@@ -1470,6 +1470,29 @@ pub fn seed_apocrypha_from_static(conn: &Connection) -> rusqlite::Result<()> {
     Ok(())
 }
 
+// ─── App settings (meta key-value store) ─────────────────────────────────────
+
+/// Read one value from the `meta` key-value store.  Returns `None` if the key
+/// has never been set.
+pub fn get_setting(conn: &Connection, key: &str) -> Option<String> {
+    conn.query_row(
+        "SELECT value FROM meta WHERE key = ?1",
+        params![key],
+        |row| row.get(0),
+    )
+    .ok()
+}
+
+/// Write (or overwrite) one value in the `meta` key-value store.
+pub fn set_setting(conn: &Connection, key: &str, value: &str) {
+    conn.execute(
+        "INSERT INTO meta(key, value) VALUES(?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        params![key, value],
+    )
+    .ok();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

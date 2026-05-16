@@ -160,6 +160,45 @@ impl TtsReader {
         new
     }
 
+    pub fn set_rate_frac(&mut self, frac: f32) {
+        let min = self.inner.min_rate();
+        let max = self.inner.max_rate();
+        let val = (min + frac.clamp(0.0, 1.0) * (max - min)).clamp(min, max);
+        let _ = self.inner.set_rate(val);
+    }
+
+    pub fn get_rate_frac(&mut self) -> f32 {
+        let min = self.inner.min_rate();
+        let max = self.inner.max_rate();
+        let cur = self.inner.get_rate().unwrap_or_else(|_| self.inner.normal_rate());
+        if max <= min { return 0.5; }
+        ((cur - min) / (max - min)).clamp(0.0, 1.0)
+    }
+
+    pub fn set_volume_frac(&mut self, frac: f32) {
+        let min = self.inner.min_volume();
+        let max = self.inner.max_volume();
+        let val = (min + frac.clamp(0.0, 1.0) * (max - min)).clamp(min, max);
+        let _ = self.inner.set_volume(val);
+    }
+
+    pub fn get_volume_frac(&mut self) -> f32 {
+        let min = self.inner.min_volume();
+        let max = self.inner.max_volume();
+        let cur = self.inner.get_volume().unwrap_or_else(|_| self.inner.normal_volume());
+        if max <= min { return 0.5; }
+        ((cur - min) / (max - min)).clamp(0.0, 1.0)
+    }
+
+    pub fn set_voice_by_name(&mut self, name: &str) {
+        if let Ok(voices) = self.inner.voices() {
+            if let Some(v) = voices.iter().find(|v| v.name() == name) {
+                self.voice_name = name.to_string();
+                let _ = self.inner.set_voice(v);
+            }
+        }
+    }
+
     /// Interactive voice selection. Returns true if a voice was set.
     pub fn select_voice_interactive(&mut self) -> bool {
         let voices = self.available_voices();
@@ -350,6 +389,43 @@ pub fn tts_adjust_volume(up: bool) -> f32 {
     })
 }
 
+/// Apply persisted TTS settings (rate, volume, voice, auto-read) from the database.
+/// Call once at startup after `init_tts()`.
+#[cfg(not(target_os = "android"))]
+pub fn tts_apply_settings(conn: &rusqlite::Connection) {
+    use crate::persistence::get_setting;
+    TTS.with(|cell| {
+        if let Some(ref mut r) = *cell.borrow_mut() {
+            if let Some(s) = get_setting(conn, "tts_rate_frac") {
+                if let Ok(f) = s.parse::<f32>() { r.set_rate_frac(f); }
+            }
+            if let Some(s) = get_setting(conn, "tts_volume_frac") {
+                if let Ok(f) = s.parse::<f32>() { r.set_volume_frac(f); }
+            }
+            if let Some(name) = get_setting(conn, "tts_voice_name") {
+                if !name.is_empty() { r.set_voice_by_name(&name); }
+            }
+            if let Some(s) = get_setting(conn, "tts_auto_read") {
+                r.auto_read = s == "true";
+            }
+        }
+    });
+}
+
+/// Persist current TTS settings (rate, volume, voice, auto-read) to the database.
+#[cfg(not(target_os = "android"))]
+pub fn tts_save_settings(conn: &rusqlite::Connection) {
+    use crate::persistence::set_setting;
+    TTS.with(|cell| {
+        if let Some(ref mut r) = *cell.borrow_mut() {
+            set_setting(conn, "tts_rate_frac",    &r.get_rate_frac().to_string());
+            set_setting(conn, "tts_volume_frac",  &r.get_volume_frac().to_string());
+            set_setting(conn, "tts_voice_name",   &r.voice_name.clone());
+            set_setting(conn, "tts_auto_read",    if r.auto_read { "true" } else { "false" });
+        }
+    });
+}
+
 /// Label of the current voice for display.
 #[cfg(not(target_os = "android"))]
 pub fn tts_voice_label() -> String {
@@ -391,6 +467,10 @@ pub fn tts_adjust_rate(_up: bool) -> f32 { 0.0 }
 pub fn tts_get_volume() -> (f32, f32, f32) { (0.0, 0.0, 1.0) }
 #[cfg(target_os = "android")]
 pub fn tts_adjust_volume(_up: bool) -> f32 { 0.0 }
+#[cfg(target_os = "android")]
+pub fn tts_apply_settings(_conn: &rusqlite::Connection) {}
+#[cfg(target_os = "android")]
+pub fn tts_save_settings(_conn: &rusqlite::Connection) {}
 
 // ─── Text formatting for natural speech (all platforms) ──────────────────────
 

@@ -169,7 +169,7 @@ pub enum MainMode {
     Zohar,
     PistisSophia,
     Trimorphic,
-    TtsSettings,
+    Config,
     Help,
     Quit,
 }
@@ -266,10 +266,10 @@ static MAIN_ITEMS: &[MenuItem] = &[
         hint: "3 discourses · Thought · Voice · Word · NHC XIII,1",
     },
     MenuItem {
-        key: "16",
-        icon: "🔊",
-        label: "Text-to-Speech Settings",
-        hint: "Voice · rate · volume · auto-read toggle",
+        key: "c",
+        icon: "⚙",
+        label: "Configuration",
+        hint: "TTS voice · rate · volume · export directory",
     },
     MenuItem {
         key: "h",
@@ -306,10 +306,10 @@ pub fn show_main_menu() -> MainMode {
             "13" => return MainMode::Zohar,
             "14" => return MainMode::PistisSophia,
             "15" => return MainMode::Trimorphic,
-            "16" => return MainMode::TtsSettings,
+            "c" | "C" => return MainMode::Config,
             "h" | "H" => return MainMode::Help,
             "0" | "" => return MainMode::Quit,
-            _ => println!("{}", "  Please enter 0–16 or h.".yellow()),
+            _ => println!("{}", "  Please enter 0–15, c, or h.".yellow()),
         }
     }
 }

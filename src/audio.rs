@@ -10,13 +10,42 @@
 
 use std::f32::consts::PI;
 use std::io::{self, Write};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::Duration;
 
 use colored::*;
 #[cfg(not(target_os = "android"))]
 use rodio::{OutputStream, Sink, Source};
+
+// ─── Export directory (configurable) ─────────────────────────────────────────
+
+static EXPORT_DIR: OnceLock<Mutex<String>> = OnceLock::new();
+
+/// Initialise export directory at startup with the persisted value.
+pub fn init_export_dir(dir: &str) {
+    EXPORT_DIR.get_or_init(|| Mutex::new(dir.to_string()));
+}
+
+/// Return the current export directory (defaults to `"exports"`).
+pub fn get_export_dir() -> String {
+    EXPORT_DIR
+        .get()
+        .and_then(|m| m.lock().ok())
+        .map(|g| g.clone())
+        .unwrap_or_else(|| "exports".to_string())
+}
+
+/// Update the export directory at runtime.
+pub fn set_export_dir(dir: &str) {
+    if let Some(m) = EXPORT_DIR.get() {
+        if let Ok(mut g) = m.lock() {
+            *g = dir.to_string();
+            return;
+        }
+    }
+    EXPORT_DIR.get_or_init(|| Mutex::new(dir.to_string()));
+}
 
 // ─── Audio system ─────────────────────────────────────────────────────────────
 
@@ -317,8 +346,9 @@ pub fn generate_audio_file(
     binaural: bool,
     beat_hz: f32,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    std::fs::create_dir_all("exports")?;
-    let filepath = format!("exports/{}", filename);
+    let dir = get_export_dir();
+    std::fs::create_dir_all(&dir)?;
+    let filepath = format!("{}/{}", dir, filename);
     let spec = hound::WavSpec {
         channels: if binaural { 2 } else { 1 },
         sample_rate: 44100,
@@ -366,8 +396,9 @@ pub fn generate_binaural_beat(
     duration_seconds: u32,
     filename: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    std::fs::create_dir_all("exports")?;
-    let filepath = format!("exports/{}", filename);
+    let dir = get_export_dir();
+    std::fs::create_dir_all(&dir)?;
+    let filepath = format!("{}/{}", dir, filename);
     let spec = hound::WavSpec {
         channels: 2,
         sample_rate: 44100,
@@ -474,7 +505,7 @@ pub fn export_frequency(frequency: f32, name: &str) {
             );
             println!(
                 "{}",
-                format!("   Location: ./exports/{}", filename).dimmed()
+                format!("   Location: {}/{}", get_export_dir(), filename).dimmed()
             );
         }
         Err(e) => println!("{}", format!("❌ Export failed: {}", e).bright_red()),
@@ -510,16 +541,17 @@ pub fn export_all_frequencies() {
     if fail > 0 {
         println!("{}", format!("   ❌ Failed: {}", fail).bright_red());
     }
-    println!("{}", "   📁 Location: ./exports/".dimmed());
+    println!("{}", format!("   📁 Location: {}/", get_export_dir()).dimmed());
 }
 
 /// CLI-only variant of `export_all_frequencies` (no menu prompts).
 pub fn export_all_frequencies_cli() {
-    println!("\n{}", "Creating exports directory…".dimmed());
-    if let Err(e) = std::fs::create_dir_all("exports") {
+    let dir = get_export_dir();
+    println!("\n{}", format!("Creating export directory ({})…", dir).dimmed());
+    if let Err(e) = std::fs::create_dir_all(&dir) {
         println!(
             "{}",
-            format!("❌ Failed to create exports directory: {}", e).bright_red()
+            format!("❌ Failed to create export directory: {}", e).bright_red()
         );
         return;
     }
@@ -550,7 +582,7 @@ pub fn export_all_frequencies_cli() {
     if fail > 0 {
         println!("{}", format!("   ❌ Failed: {} files", fail).bright_red());
     }
-    println!("{}", "   📁 Location: ./exports/".bright_blue());
+    println!("{}", format!("   📁 Location: {}/", get_export_dir()).bright_blue());
     println!(
         "{}",
         "   🎧 Ready for meditation, sleep, or spiritual practice!".italic()
@@ -600,7 +632,7 @@ pub fn create_custom_binaural() {
             );
             println!(
                 "{}",
-                format!("   Location: ./exports/{}", filename).dimmed()
+                format!("   Location: {}/{}", get_export_dir(), filename).dimmed()
             );
         }
         Err(e) => println!("{}", format!("❌ Creation failed: {}", e).bright_red()),
