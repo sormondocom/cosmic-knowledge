@@ -169,6 +169,7 @@ pub enum MainMode {
     Zohar,
     PistisSophia,
     Trimorphic,
+    WordFrequency,
     Config,
     Help,
     Quit,
@@ -266,6 +267,12 @@ static MAIN_ITEMS: &[MenuItem] = &[
         hint: "3 discourses · Thought · Voice · Word · NHC XIII,1",
     },
     MenuItem {
+        key: "w",
+        icon: "🔉",
+        label: "Word & Title Frequency",
+        hint: "Gematria → Hz · discover what your words resonate with",
+    },
+    MenuItem {
         key: "c",
         icon: "⚙",
         label: "Configuration",
@@ -306,10 +313,11 @@ pub fn show_main_menu() -> MainMode {
             "13" => return MainMode::Zohar,
             "14" => return MainMode::PistisSophia,
             "15" => return MainMode::Trimorphic,
+            "w" | "W" => return MainMode::WordFrequency,
             "c" | "C" => return MainMode::Config,
             "h" | "H" => return MainMode::Help,
             "0" | "" => return MainMode::Quit,
-            _ => println!("{}", "  Please enter 0–15, c, or h.".yellow()),
+            _ => println!("{}", "  Please enter 0–15, w, c, or h.".yellow()),
         }
     }
 }

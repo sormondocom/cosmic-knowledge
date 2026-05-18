@@ -26,6 +26,7 @@ mod urim;
 mod utils;
 mod pistis_sophia;
 mod trimorphic;
+mod word_frequency;
 mod zodiac;
 mod zohar;
 
@@ -176,6 +177,7 @@ fn main() {
             MainMode::Zohar => run_zohar_session(),
             MainMode::PistisSophia => run_ps_session(),
             MainMode::Trimorphic => run_trimorphic_session(),
+            MainMode::WordFrequency => word_frequency::run_word_frequency_session(&audio_system),
             MainMode::Config => tts_session::run_config_session(),
             MainMode::Help => show_help(),
             MainMode::Quit => {
