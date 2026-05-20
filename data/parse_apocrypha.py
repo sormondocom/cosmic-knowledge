@@ -217,6 +217,32 @@ def parse_2enoch() -> list[tuple[str, int, int, str]]:
     return rows
 
 
+# ── Book of Jasher parser ────────────────────────────────────────────────────
+
+JASHER_DIR = Path("N:/chr/apo/jasher")
+JASHER_VERSE_RE = re.compile(r'^(\d+)\s+(.+)', re.DOTALL)
+
+def parse_jasher() -> list[tuple[str, int, int, str]]:
+    rows = []
+    for chap in range(1, 92):
+        fpath = JASHER_DIR / f"{chap}.htm"
+        if not fpath.exists():
+            continue
+        raw = fpath.read_text(encoding='utf-8', errors='replace')
+        soup = BeautifulSoup(raw, 'html.parser')
+        paras = body_paragraphs(soup)
+        for t in paras:
+            if NAV_RE.match(t):
+                continue
+            m = JASHER_VERSE_RE.match(t)
+            if m:
+                vnum = int(m.group(1))
+                vtext = m.group(2).strip()
+                if vtext:
+                    rows.append(('Book of Jasher', chap, vnum, vtext))
+    return rows
+
+
 # ── Jubilees parser ──────────────────────────────────────────────────────────
 
 JUB_DIR = Path("N:/bib/jub")
@@ -353,7 +379,11 @@ if __name__ == '__main__':
     r3 = parse_jubilees()
     print(f"  {len(r3)} verse fragments")
 
-    all_rows = r1 + r2 + r3
+    print("Parsing Book of Jasher...")
+    r4 = parse_jasher()
+    print(f"  {len(r4)} verses")
+
+    all_rows = r1 + r2 + r3 + r4
     print(f"Total: {len(all_rows)} records")
 
     print(f"Writing to {DB_PATH}...")
@@ -361,7 +391,7 @@ if __name__ == '__main__':
     print("Done.")
 
     conn = sqlite3.connect(DB_PATH)
-    for book in ['1 Enoch', '2 Enoch', 'Jubilees']:
+    for book in ['1 Enoch', '2 Enoch', 'Jubilees', 'Book of Jasher']:
         count = conn.execute(
             "SELECT COUNT(*) FROM apocrypha_verses WHERE book=?", (book,)
         ).fetchone()[0]

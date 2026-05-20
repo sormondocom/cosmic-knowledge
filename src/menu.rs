@@ -245,7 +245,7 @@ static MAIN_ITEMS: &[MenuItem] = &[
     MenuItem {
         key: "12",
         icon: "📜",
-        label: "Apocrypha  (1 & 2 Enoch · Jubilees, beta)",
+        label: "Apocrypha  (Enoch · Jubilees · Jasher)",
         hint: "FTS5 search · verse lookup · chapter browse",
     },
     MenuItem {

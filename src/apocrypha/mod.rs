@@ -30,6 +30,12 @@ pub static BOOKS: &[ApocrBook] = &[
         chapters: 50,
         blurb:    "Little Genesis, R.H. Charles tr. — 50 chapters",
     },
+    ApocrBook {
+        name:     "Book of Jasher",
+        short:    "jas",
+        chapters: 91,
+        blurb:    "Sefer HaYashar (sacred-texts.com tr.) — 91 chapters",
+    },
 ];
 
 /// Resolve a user-supplied string to a canonical book name.
@@ -48,7 +54,7 @@ pub fn resolve_book(input: &str) -> Option<&'static ApocrBook> {
             return Some(b);
         }
     }
-    // Numeric shorthand: "1" → 1 Enoch, "2" → 2 Enoch, "3" → Jubilees
+    // Numeric shorthand: "1" → 1 Enoch, "2" → 2 Enoch, "3" → Jubilees, "4" → Jasher
     if let Ok(n) = s.parse::<usize>() {
         return BOOKS.get(n.wrapping_sub(1));
     }

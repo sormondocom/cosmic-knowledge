@@ -1460,7 +1460,7 @@ pub fn seed_apocrypha_from_static(conn: &Connection) -> rusqlite::Result<()> {
 
     conn.execute(
         "INSERT OR REPLACE INTO meta VALUES ('apocr_source', ?1)",
-        params!["1 Enoch (R.H. Charles 1917), 2 Enoch & Jubilees (sacred-texts.com)"],
+        params!["1 Enoch (R.H. Charles 1917), 2 Enoch, Jubilees, Book of Jasher (sacred-texts.com)"],
     )?;
     conn.execute(
         "INSERT OR REPLACE INTO meta VALUES ('apocr_verse_count', ?1)",
