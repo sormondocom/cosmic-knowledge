@@ -163,16 +163,22 @@ pub enum MainMode {
     Tarot,
     Runes,
     Urim,
+    SacredTexts,
+    WordFrequency,
+    Config,
+    Help,
+    Quit,
+}
+
+/// Sacred Texts submenu choices returned by [`show_sacred_texts_menu`].
+pub enum SacredTextsMode {
     Bible,
     Quran,
     Apocrypha,
     Zohar,
     PistisSophia,
     Trimorphic,
-    WordFrequency,
-    Config,
-    Help,
-    Quit,
+    Back,
 }
 
 static MAIN_ITEMS: &[MenuItem] = &[
@@ -231,40 +237,10 @@ static MAIN_ITEMS: &[MenuItem] = &[
         hint: "Oracle of the High Priest · Breastplate · Binary Oracle",
     },
     MenuItem {
-        key: "10",
-        icon: "📖",
-        label: "KJV Bible Search  (beta)",
-        hint: "FTS5 full-text search · verse lookup · chapter browse",
-    },
-    MenuItem {
-        key: "11",
-        icon: "📿",
-        label: "Quran Search  (Pickthall, beta)",
-        hint: "FTS5 search · ayah lookup · surah browse",
-    },
-    MenuItem {
-        key: "12",
-        icon: "📜",
-        label: "Apocrypha  (Enoch · Jubilees · Jasher)",
-        hint: "FTS5 search · verse lookup · chapter browse",
-    },
-    MenuItem {
-        key: "13",
-        icon: "🔯",
-        label: "Zohar  (Bereshith · Lekh Lekha, beta)",
-        hint: "FTS5 search · passage lookup · chapter browse",
-    },
-    MenuItem {
-        key: "14",
-        icon: "✨",
-        label: "Pistis Sophia  (G.R.S. Mead, 1921)",
-        hint: "6 books · 148 chapters · FTS5 search · browse",
-    },
-    MenuItem {
-        key: "15",
-        icon: "🕊",
-        label: "Trimorphic Protennoia  (J.D. Turner tr.)",
-        hint: "3 discourses · Thought · Voice · Word · NHC XIII,1",
+        key: "t",
+        icon: "📚",
+        label: "Sacred Texts",
+        hint: "Bible · Quran · Apocrypha · Zohar · Pistis Sophia · more",
     },
     MenuItem {
         key: "w",
@@ -307,17 +283,75 @@ pub fn show_main_menu() -> MainMode {
             "7" => return MainMode::Tarot,
             "8" => return MainMode::Runes,
             "9" => return MainMode::Urim,
-            "10" => return MainMode::Bible,
-            "11" => return MainMode::Quran,
-            "12" => return MainMode::Apocrypha,
-            "13" => return MainMode::Zohar,
-            "14" => return MainMode::PistisSophia,
-            "15" => return MainMode::Trimorphic,
+            "t" | "T" => return MainMode::SacredTexts,
             "w" | "W" => return MainMode::WordFrequency,
             "c" | "C" => return MainMode::Config,
             "h" | "H" => return MainMode::Help,
             "0" | "" => return MainMode::Quit,
-            _ => println!("{}", "  Please enter 0–15, w, c, or h.".yellow()),
+            _ => println!("{}", "  Please enter 1–9, t, w, c, or h.".yellow()),
+        }
+    }
+}
+
+static SACRED_TEXTS_ITEMS: &[MenuItem] = &[
+    MenuItem {
+        key: "1",
+        icon: "📖",
+        label: "KJV Bible Search  (beta)",
+        hint: "FTS5 full-text search · verse lookup · chapter browse",
+    },
+    MenuItem {
+        key: "2",
+        icon: "📿",
+        label: "Quran Search  (Pickthall, beta)",
+        hint: "FTS5 search · ayah lookup · surah browse",
+    },
+    MenuItem {
+        key: "3",
+        icon: "📜",
+        label: "Apocrypha  (Enoch · Jubilees · Jasher)",
+        hint: "FTS5 search · verse lookup · chapter browse",
+    },
+    MenuItem {
+        key: "4",
+        icon: "🔯",
+        label: "Zohar  (Bereshith · Lekh Lekha, beta)",
+        hint: "FTS5 search · passage lookup · chapter browse",
+    },
+    MenuItem {
+        key: "5",
+        icon: "✨",
+        label: "Pistis Sophia  (G.R.S. Mead, 1921)",
+        hint: "6 books · 148 chapters · FTS5 search · browse",
+    },
+    MenuItem {
+        key: "6",
+        icon: "🕊",
+        label: "Trimorphic Protennoia  (J.D. Turner tr.)",
+        hint: "3 discourses · Thought · Voice · Word · NHC XIII,1",
+    },
+];
+
+static SACRED_TEXTS_MENU: Menu = Menu {
+    title: "✦  SACRED TEXTS  ✦",
+    border_color: MenuColor::Cyan,
+    items: SACRED_TEXTS_ITEMS,
+    back_key: "0",
+    back_label: "Back to main menu",
+};
+
+/// Display the Sacred Texts submenu and return the user's selection.
+pub fn show_sacred_texts_menu() -> SacredTextsMode {
+    loop {
+        match SACRED_TEXTS_MENU.show_and_read().as_str() {
+            "1" => return SacredTextsMode::Bible,
+            "2" => return SacredTextsMode::Quran,
+            "3" => return SacredTextsMode::Apocrypha,
+            "4" => return SacredTextsMode::Zohar,
+            "5" => return SacredTextsMode::PistisSophia,
+            "6" => return SacredTextsMode::Trimorphic,
+            "0" | "" => return SacredTextsMode::Back,
+            _ => println!("{}", "  Please enter 1–6 or 0 to go back.".yellow()),
         }
     }
 }
